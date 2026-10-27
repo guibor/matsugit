@@ -1,0 +1,12 @@
+# Include this file explicitly. The runner must provide Python 3.10+ and Quarto.
+# It runs only for an explicitly requested API/web pipeline, not ordinary pushes.
+folioforge-pages:
+  script:
+    - python3 .folioforge-ci/build.py
+  pages:
+    publish: __SITE_DIR__
+  artifacts:
+    paths:
+      - __SITE_DIR__
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api")'

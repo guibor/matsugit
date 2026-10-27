@@ -1,0 +1,110 @@
+#+title: Folioforge
+
+Turn one editable document into a themed reading page and Reveal.js slides,
+then publish the pair to a Git checkout. Works independently of any editor.
+Python 3.10+, Git and [[https://quarto.org/docs/get-started/][Quarto]] are required. There are no Python runtime dependencies.
+
+* Install and render
+#+begin_src sh
+python3 -m pip install /path/to/folioforge
+folioforge render report.md --output /tmp/report-preview
+#+end_src
+
+Alternatively run =bin/folioforge= directly from this checkout. Supported sources
+are Markdown, Org and Quarto Markdown. HTML renders first, then slides. No
+document code is executed; executable YAML metadata is not propagated.
+
+Open =index.html= or =slides.html= in the output directory locally. When working
+on a remote host, use your own authenticated preview mechanism instead of
+exposing an unauthenticated web server. Render never pushes anything.
+
+* Theme packs and project defaults
+Themes default to =~/.config/folioforge/themes=; override with
+=FOLIOFORGE_THEMES_DIR= or =--themes-dir=. Each pack has =theme.json=:
+#+begin_src json
+{"document": "document.css", "slides": "slides.scss", "assets": []}
+#+end_src
+Only named files are copied, not an entire theme repository. Themes are trusted
+CSS/SCSS; do not select an untrusted theme. A neutral =default= theme is bundled.
+External themes and organization configuration do not belong in this package.
+
+Settings resolve from =~/.config/folioforge/config.json=, then =folioforge.json=
+in the source Git root, then explicit CLI flags. =FOLIOFORGE_CONFIG= overrides
+the global file. Relative paths in JSON are relative to the source Git root.
+For example:
+#+begin_src json
+{"repo": "../published-docs", "theme": "partner", "themes_dir": "~/themes"}
+#+end_src
+The target defaults to the current source repository, branch =main=, remote
+=origin=, directory =folioforge-site=, and a slug derived from the filename.
+All can be overridden explicitly. External images retain their source URLs;
+local referenced images/attachments are copied only from inside the source
+project, never hidden files or outside paths. Rendering may need network access
+for external media. Unsupported links/resources fail with a useful error.
+
+* Publish, edit and deploy
+#+begin_src sh
+folioforge publish report.md --repo ../published-docs --theme partner
+#+end_src
+This renders both versions, asks for confirmation, commits only its artifacts
+and pushes. =--yes= supplies explicit noninteractive confirmation. Target must
+be clean and on the chosen branch. Updates are fast-forward-only; existing
+unpublished commits, user changes, unrelated destination directories and
+unexpected files are never reset or stashed.
+
+Each artifact contains =index.html=, =slides.html=, editable =source.md=, assets,
+its copied theme and a reproducible Quarto configuration. Documents link to
+slides and editable source; slides have a subtle =Document= footer link.
+Org is converted to Markdown for the published editable representation.
+Edit source on GitHub/GitLab, then request CI to rebuild both outputs. This is
+not a two-way note-sync service: publishing over remote-edited source refuses
+until you reconcile it, or explicitly publish that edited =source.md= itself.
+
+Hosting setup is separate and explicit:
+#+begin_src sh
+folioforge setup-ci --repo ../published-docs --provider github
+# Review and commit the generated workflow and .folioforge-ci/ files.
+# In GitHub: Settings > Pages > Source > GitHub Actions.
+folioforge publish report.md --repo ../published-docs --deploy
+#+end_src
+
+For GitLab use =--provider gitlab= and include =folioforge.gitlab-ci.yml= from
+your existing =.gitlab-ci.yml=. The runner must provide Quarto and Python.
+The template uses the modern =pages.publish= syntax. Review compatibility
+with your GitLab version; existing CI is never overwritten.
+
+CI contains a copy of the renderer and theme, so no access to this private
+package repository is needed. Rebuilding source runs only on an explicit
+workflow request; unrelated pushes do not deploy. GitHub uses =gh workflow run=;
+GitLab uses =glab ci run= with existing CLI authentication. Update the copied CI
+renderer deliberately when upgrading; setup-ci refuses existing files.
+
+Pushed does not mean deployed. Check Actions/Pipelines for success before
+sharing a URL. The command never enables hosting, changes visibility or grants
+permissions. A private GitHub repository does NOT guarantee private Pages.
+GitLab Pages access control must also be reviewed before publishing private data.
+
+* Tables and slides
+Plain pipe tables cannot encode merged cells. Use HTML =rowspan=/=colspan=
+inside Markdown, or merged grid tables when your Quarto/Pandoc supports them.
+Spans are retained as HTML, not flattened into pipe tables. Example:
+#+begin_src html
+<table>
+  <tr><th colspan="2">Group</th><th>Total</th></tr>
+  <tr><td rowspan="2">North</td><td>Alpha</td><td>12</td></tr>
+  <tr><td>Beta</td><td>18</td></tr>
+</table>
+#+end_src
+Use level-two headings for slide boundaries and =---= for explicit breaks.
+Long slides are scrollable; Folioforge does not silently split merged tables,
+shrink text or rewrite content into a different structure. HTML-only merged
+tables are not an in-editor merged-cell widget. Arbitrary scripts, inline styles
+and active HTML embeds in the document source are rejected.
+
+* Development
+#+begin_src sh
+python3 -m unittest discover -s tests
+QUARTO=/path/to/quarto python3 -m unittest discover -s tests
+#+end_src
+Real renderer tests run when Quarto is available. Git publication tests use
+temporary local bare remotes, never a live website or private document.
