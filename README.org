@@ -101,10 +101,52 @@ shrink text or rewrite content into a different structure. HTML-only merged
 tables are not an in-editor merged-cell widget. Arbitrary scripts, inline styles
 and active HTML embeds in the document source are rejected.
 
+* Visual table editing
+#+begin_src sh
+folioforge setup-editor
+folioforge edit-table table.md --output edited-table.md
+#+end_src
+The input must contain exactly one Markdown table; output must not already
+exist. A local browser window opens with a Tiptap/ProseMirror table editor.
+Save writes the selected output and exits; Cancel exits 2 without creating it.
+=--no-open= reports the authenticated localhost URL as a JSON event for editor
+integrations. Only 127.0.0.1 is bound. Remote use needs an explicit SSH tunnel;
+do not expose this server publicly.
+
+Ordinary tables return as pipe Markdown. Merged or multiline cells use readable
+Pandoc ASCII grid tables: no HTML source, no independent sidecar. Grid tables
+render through Pandoc/Quarto, not GitHub's normal GFM README preview. The existing
+document renderer still accepts HTML-table source as well.
+
+The editor provides row/column operations, cell merge/split, wrapping, semantic
+formatting, links, lists, header rows, source preview and undo/redo. Column
+resizing affects the editor view; source widths are normalized on export.
+Import and output are checked for lossy conversion before saving. Unsupported
+content (including images, math, nested tables, raw HTML and captions inside the
+selection) is refused rather than silently discarded. Maximum: 1 MiB, 500 rows,
+4000 cells. All browser assets are bundled, without runtime npm or a CDN.
+
+=setup-editor= reuses Pandoc >=3.7.0.2 or downloads an official release binary
+verified against its published SHA-256 digest. The isolated install lives in
+=~/.local/share/folioforge/tools=; system Pandoc is never replaced. Override
+with =FOLIOFORGE_TOOLS_DIR= or =FOLIOFORGE_PANDOC=. Older writers have silently
+flattened merged cells, so the version floor is intentional. Suitable installed
+Quarto's bundled Pandoc can also be used. Linux and macOS x86_64/arm64 installs
+are supported; other platforms need a manually installed converter.
+
 * Development
 #+begin_src sh
 python3 -m unittest discover -s tests
 QUARTO=/path/to/quarto python3 -m unittest discover -s tests
+cd editor
+npm ci --ignore-scripts
+npm run build
 #+end_src
 Real renderer tests run when Quarto is available. Git publication tests use
 temporary local bare remotes, never a live website or private document.
+The browser bundle and dependency licenses are committed so consumers need no
+Node toolchain. Commit the lockfile and generated assets together after changes.
+Optional real-browser tests require Playwright and Chrome:
+#+begin_src sh
+FOLIOFORGE_BROWSER_TESTS=1 CHROME=/path/to/chrome python3 -m unittest discover -s tests -p test_editor_browser.py
+#+end_src

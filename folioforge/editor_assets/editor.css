@@ -1,0 +1,43 @@
+:root { color-scheme: light; font: 15px/1.5 system-ui, sans-serif; color: #25312d; background: #f5f7f6; }
+* { box-sizing: border-box; letter-spacing: 0; }
+body { margin: 0; }
+header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 24px; border-bottom: 1px solid #d7dfda; background: white; }
+header strong { font-size: 19px; }
+.divider { margin: 0 12px; color: #8c9c92; }
+#name { overflow-wrap: anywhere; }
+button, select, input { font: inherit; }
+button, select { background: white; color: #25312d; border: 1px solid #c8d4ce; border-radius: 4px; padding: 7px 12px; cursor: pointer; }
+button:hover, select:hover { background: #eef4f1; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #27785f; outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: #19634d; border-color: #19634d; color: white; }
+.commands { display: flex; gap: 8px; align-items: center; }
+#toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 24px; border-bottom: 1px solid #d7dfda; background: #fff; position: sticky; top: 0; z-index: 2; }
+#toolbar button { width: 36px; height: 36px; padding: 8px; display: grid; place-items: center; }
+#toolbar button[aria-pressed="true"] { background: #dcece5; border-color: #55967d; }
+#toolbar .separator { height: 24px; width: 1px; margin: 0 5px; background: #d7dfda; }
+svg { width: 18px; height: 18px; }
+main { padding: 28px 24px 80px; max-width: 1500px; margin: auto; }
+.tiptap { outline: none; min-height: 240px; }
+.tiptap .tableWrapper { overflow-x: auto; padding-bottom: 8px; }
+.tiptap table { border-collapse: collapse; table-layout: fixed; width: 100%; background: white; margin: 0; }
+.tiptap td, .tiptap th { min-width: 80px; border: 1px solid #bbc9c1; padding: 12px; vertical-align: top; position: relative; overflow-wrap: anywhere; }
+.tiptap th { background: #e8efeb; font-weight: 650; text-align: left; }
+.tiptap p { margin: 0 0 8px; }
+.tiptap p:last-child { margin: 0; }
+.tiptap a { color: #176a9c; text-decoration: underline; }
+.tiptap code { font-family: ui-monospace, monospace; font-size: .9em; background: #eef0ed; padding: 1px 3px; }
+.tiptap ul, .tiptap ol { padding-left: 22px; }
+.selectedCell::after { content: ""; position: absolute; inset: 0; background: #2f98772e; pointer-events: none; z-index: 1; }
+.column-resize-handle { position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px; background: #bd8727; pointer-events: none; z-index: 2; }
+.resize-cursor { cursor: col-resize; }
+footer { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; position: fixed; bottom: 0; width: 100%; padding: 10px 24px; border-top: 1px solid #d7dfda; background: #fff; color: #52635a; font-size: 13px; z-index: 3; }
+#source-panel { margin-top: 32px; border-top: 1px solid #c8d4ce; padding-top: 16px; }
+h2 { font-size: 15px; margin: 0 0 12px; }
+pre { font: 13px/1.5 ui-monospace, monospace; white-space: pre; overflow: auto; }
+#error { position: fixed; bottom: 55px; left: 24px; right: 24px; background: #fff0e5; border: 1px solid #be854f; padding: 12px; z-index: 5; }
+dialog { border: 1px solid #bdcbc3; border-radius: 6px; padding: 24px; width: min(440px, 92vw); }
+dialog::backdrop { background: #18251f33; }
+dialog input { display: block; width: 100%; border: 1px solid #bdcbc3; border-radius: 4px; padding: 8px; margin: 8px 0 20px; }
+dialog .commands { justify-content: flex-end; }
+@media (max-width: 600px) { header, #toolbar, footer { padding-left: 12px; padding-right: 12px; } main { padding: 18px 12px 90px; } header > div:first-child { width: 100%; } .commands { margin-left: auto; } #toolbar select { max-width: 130px; } }

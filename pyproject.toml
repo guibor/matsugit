@@ -13,4 +13,7 @@ dependencies = []
 folioforge = "folioforge.cli:main"
 
 [tool.setuptools.package-data]
-folioforge = ["themes/default/*", "templates/*"]
+folioforge = ["themes/default/*", "templates/*", "editor_assets/*"]
+
+[tool.setuptools.packages.find]
+include = ["folioforge*"]

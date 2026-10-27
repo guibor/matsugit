@@ -1,0 +1,24 @@
+Bundled license information:
+
+lucide/dist/esm/createElement.js:
+lucide/dist/esm/defaultAttributes.js:
+lucide/dist/esm/icons/bold.js:
+lucide/dist/esm/icons/code.js:
+lucide/dist/esm/icons/combine.js:
+lucide/dist/esm/icons/file-code-2.js:
+lucide/dist/esm/icons/italic.js:
+lucide/dist/esm/icons/link-2.js:
+lucide/dist/esm/icons/list.js:
+lucide/dist/esm/icons/panel-top.js:
+lucide/dist/esm/icons/redo-2.js:
+lucide/dist/esm/icons/split.js:
+lucide/dist/esm/icons/strikethrough.js:
+lucide/dist/esm/icons/undo-2.js:
+lucide/dist/esm/icons/unlink.js:
+lucide/dist/esm/lucide.js:
+  /**
+   * @license lucide v0.468.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */

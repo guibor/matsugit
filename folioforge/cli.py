@@ -9,6 +9,12 @@ from .publish import publish, setup_ci
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Render editable documents and themed slides together")
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("setup-editor", help="Provision a verified isolated Pandoc when needed")
+    editor = commands.add_parser("edit-table", help="Edit one Markdown table in a local browser window")
+    editor.add_argument("source", type=Path)
+    editor.add_argument("--output", required=True, type=Path)
+    editor.add_argument("--no-open", action="store_true")
+    editor.add_argument("--port", type=int, default=0)
     for name in ("render", "publish", "setup-ci"):
         p = commands.add_parser(name)
         if name != "setup-ci":
@@ -24,6 +30,13 @@ def main(argv=None):
             p.add_argument("--provider", choices=["github", "gitlab"], required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "setup-editor":
+            from .converter import install_converter
+            install_converter()
+            return 0
+        if args.command == "edit-table":
+            from .table_editor import serve
+            return serve(args.source, args.output, open_browser=not args.no_open, port=args.port)
         settings = config(getattr(args, "source", Path.cwd() / "source.md"), vars(args))
         if args.command == "render":
             render(settings, args.output)
