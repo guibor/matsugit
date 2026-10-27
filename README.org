@@ -134,6 +134,68 @@ flattened merged cells, so the version floor is intentional. Suitable installed
 Quarto's bundled Pandoc can also be used. Linux and macOS x86_64/arm64 installs
 are supported; other platforms need a manually installed converter.
 
+* Renderer updates
+
+=folioforge update --all= installs and pushes the latest approved renderer
+release to configured projects. =status= is offline; =--dry-run= fetches and
+validates releases without installing, committing or pushing them.
+
+#+begin_src sh
+folioforge status --all
+folioforge update --all --dry-run
+folioforge update --all
+folioforge rollback --all
+# Or select a single registered checkout:
+folioforge update --repo /path/to/project
+#+end_src
+
+This is separate from document publication and from upgrading the Folioforge
+executable. The updater never enables hosting, edits CI deployment rules or
+publishes source documents. It commits and pushes renderer updates only. Existing
+CI manual gates still apply; a successful push is not a verified deployment.
+
+One-time configuration lives in =~/.config/folioforge/updates.json=, or the
+=FOLIOFORGE_UPDATE_CONFIG= environment variable / =--config= override:
+
+#+begin_src json
+{
+  "schema": 1,
+  "repository": "git@github.com:your-org/private-renderers.git",
+  "ref": "main",
+  "catalog": "releases/catalog.json",
+  "projects": [
+    {"name": "docs", "repo": "~/code/docs", "bundle": "partner",
+     "branch": "main", "remote": "origin"}
+  ]
+}
+#+end_src
+
+This local configuration explicitly trusts executable renderer releases from
+that repository. Authentication uses existing Git configuration, with no stored
+credentials added by Folioforge. Brand-specific releases and account/project
+configuration belong in that separate private repository, not this package.
+
+Each catalog maps a bundle's =latest= and numbered =versions= to manifest paths
+and SHA-256 digests. A manifest contains =schema: 1=, =bundle=, =version=,
+=files= (relative path to SHA-256), =entrypoints= (legacy scripts to runtime
+scripts), =adopt= (approved SHA-256 values for initial migration), and an optional
+=check= Python script contained in the verified files. Release versions are
+immutable: publish a new version rather than replacing an existing manifest.
+
+The installed runtime lives in =.folioforge-renderer/= with generated small
+launchers under =scripts/=. =folioforge-renderer.lock.json= records the version,
+source revision, file hashes and previous releases. Everything needed by CI is
+committed in the target repository; CI needs no release-repository credentials.
+
+Initial adoption accepts only reviewed file hashes. Later updates reject edited
+or unexpected renderer files. Unrelated unstaged document edits are preserved;
+staged work and unrelated unpublished commits block the operation. All selected
+projects pass validation before renderer changes start. Updates across separate
+Git remotes are not atomic; rerun after a partial push/network failure. An owned
+renderer commit can be retried without creating another commit. Rollback restores
+the preceding managed release as a new commit, never a Git reset. The first
+managed installation has no previous managed version to roll back to.
+
 * Development
 #+begin_src sh
 python3 -m unittest discover -s tests
