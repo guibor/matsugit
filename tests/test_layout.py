@@ -107,6 +107,35 @@ class LayoutTests(unittest.TestCase):
         del ast['meta']['slide-empty-slides']
         self.assertEqual(slides(ast),ast)
 
+    def test_rows_support_explicit_and_heading_forms_without_changing_content(self):
+        for blocks in ([container('row',[para('First')]),container('row',[para('Second')])],
+                       [heading(4,'First section'),para('First'),heading(4,'Second section'),para('Second')]):
+            ast=document([heading(2,'Title'),container('rows',blocks)])
+            before=deepcopy(ast)
+            result=slides(ast)
+            self.assertEqual(ast,before)
+            rows=result['blocks'][1]['c'][1][0]
+            self.assertEqual(rows['c'][0][1],['ff-rows'])
+            self.assertEqual([p['c'][0][1] for p in rows['c'][1]],[['ff-row'],['ff-row']])
+            self.assertIn('First',str(rows))
+            self.assertIn('Second',str(rows))
+
+    def test_rows_reject_ambiguous_empty_and_single_sections(self):
+        for blocks in ([para('Not sections')], [container('row',[para('Only')])],
+                       [container('row',[]),container('row',[para('Second')])],
+                       [heading(4,'First'),para('A'),container('row',[para('Mixed')])]):
+            with self.assertRaises(ValueError):
+                slides(document([heading(2,'Title'),container('rows',blocks)]))
+
+    def test_columns_can_be_nested_in_rows(self):
+        result=slides(document([heading(2,'Title'),container('rows',[
+            container('row',[container('columns',[heading(4,'A'),para('One'),heading(4,'B'),para('Two')])]),
+            container('row',[para('Conclusion')])])]))
+        row=result['blocks'][1]['c'][1][0]['c'][1][0]
+        columns=row['c'][1][0]
+        self.assertEqual(len(columns['c'][1]),2)
+        self.assertTrue(all(part['c'][1][0]['t']=='Div' for part in columns['c'][1]))
+
     def test_explicit_divider_option_also_works_in_default_layout(self):
         ast=document([heading(1,'Section'),heading(2,'Title'),para('Body')],layout='default')
         result=slides(ast)

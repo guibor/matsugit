@@ -25,3 +25,19 @@
 .reveal .ff-takeaway > :last-child { margin-bottom: 0; }
 .reveal .ff-content h2 { overflow-wrap: anywhere; }
 .reveal .ff-section h2 { border: 0; }
+
+/* Stacked regions are explicit, content-sized and never cropped. */
+.ff-rows { display: flex; flex-direction: column; min-width: 0; }
+.ff-rows > .ff-row { min-width: 0; flex: 0 0 auto; }
+.ff-rows > .ff-row + .ff-row {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--personal-rule, #d6dfe8);
+}
+.ff-row > :first-child { margin-top: 0; }
+.ff-row > :last-child { margin-bottom: 0; }
+/* Reading HTML retains the authored class names. Neutralize Bootstrap's row. */
+body:not(.reveal-viewport) .rows > .row { display: block; margin-inline: 0; --bs-gutter-x: 0; }
+body:not(.reveal-viewport) .rows > .row + .row {
+  margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d6dfe8;
+}

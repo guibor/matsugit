@@ -76,29 +76,59 @@ def body_headings(node, minimum=4):
     return {key: body_headings(value, minimum) for key, value in node.items()}
 
 
-def columns(block):
-    """Support explicit columns and H4-delimited columns inserted by Emacs."""
+def divisions(block, group, item):
+    """Split explicit regions or H4-delimited regions without guessing content."""
     children = block['c'][1]
-    if children and all('column' in classes(b) for b in children):
+    if children and all(item in classes(b) for b in children):
         parts = children
     else:
         parts = []
         for child in children:
             if child.get('t') == 'Header' and child['c'][0] == 4:
-                parts.append(div(['column'], []))
-            if not parts or 'column' in classes(child):
-                raise ValueError('Columns need H4 headings or explicit column blocks; do not mix them')
+                parts.append(div([item], []))
+            if not parts or item in classes(child):
+                raise ValueError(f'{group.title()} need H4 headings or explicit {item} blocks; do not mix them')
             parts[-1]['c'][1].append(child)
     if len(parts) not in (2, 3):
-        raise ValueError('Use two or three columns')
+        raise ValueError(f'Use two or three {group}')
     for part in parts:
         if not has_content(part['c'][1]):
-            raise ValueError('Each column needs content')
-        part['c'][1] = body_headings(part['c'][1])
+            raise ValueError(f'Each {item} needs content')
+    return parts
+
+
+def columns(block):
+    """Support explicit columns and H4-delimited columns inserted by Emacs."""
+    parts = divisions(block, 'columns', 'column')
+    for part in parts:
+        part['c'][1] = body_headings(prepare_divisions(part['c'][1]))
         if 'width' not in dict(part['c'][0][2]):
             part['c'][0][2].append(['width', f'{100 / len(parts):g}%'])
     block['c'][1] = parts
     return block
+
+
+def rows(block):
+    """Stack authored sections; use names that cannot collide with Bootstrap."""
+    parts = divisions(block, 'rows', 'row')
+    block['c'][0][1] = ['ff-rows' if c == 'rows' else c for c in classes(block)]
+    for part in parts:
+        part['c'][0][1] = ['ff-row' if c == 'row' else c for c in classes(part)]
+        part['c'][1] = body_headings(prepare_divisions(part['c'][1]))
+    block['c'][1] = parts
+    return block
+
+
+def prepare_divisions(node):
+    if isinstance(node, list):
+        return [prepare_divisions(n) for n in node]
+    if not isinstance(node, dict):
+        return node
+    if 'columns' in classes(node):
+        return columns(node)
+    if 'rows' in classes(node):
+        return rows(node)
+    return {key: prepare_divisions(value) for key, value in node.items()}
 
 
 def groups(blocks, layout):
@@ -157,7 +187,7 @@ def content(section, layout, include_empty):
                 takeaway = block
                 takeaway['c'][0][1].append('ff-takeaway')
             else:
-                body.append(columns(block) if 'columns' in classes(block) else block)
+                body.append(prepare_divisions(block))
         if not has_content(body) and not claim and not takeaway and not include_empty:
             continue
         heading = deepcopy(section['heading'])

@@ -32,6 +32,9 @@
       container.style.height = `${Math.max(96, Math.floor(budget))}px`;
       return;
     }
+    const style = getComputedStyle(container);
+    budget -= number(style.paddingTop) + number(style.paddingBottom)
+      + number(style.borderTopWidth) + number(style.borderBottomWidth);
     const children = [...container.children].filter(visible);
     if (container.matches(".columns")) {
       for (const child of children.filter(flexible)) allocate(child, budget);
@@ -57,8 +60,7 @@
     for (const slide of slides) {
       if (!slide?.querySelector(".ff-media") || !slide.offsetWidth || slide.classList.contains("stack")) continue;
       prepare(slide);
-      const style = getComputedStyle(slide);
-      allocate(slide, height - number(style.paddingTop) - number(style.paddingBottom) - 24);
+      allocate(slide, height - 24);
       slide.dataset.ffMediaReady = "true";
     }
   }

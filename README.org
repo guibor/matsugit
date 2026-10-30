@@ -133,6 +133,30 @@ Both preview and publication call the same converter. =render.qmd= contains
 the reading input and =slides.qmd= the generated slide structure. The copied
 CI bundle must include =layout.py= and =runtime/layout.css= as well as =core.py=.
 
+** Stacked sections
+Use =rows= for two or three explicit, vertically stacked regions. Each region
+is sized to its content, not forced into half the slide or shrunk to fit.
+Use H4 headings inside the outer block, or explicit =row= blocks for untitled
+regions. Columns can be nested inside a row. Keep the claim and takeaway outside
+the rows. This requires =structured= or =title-claim= layout.
+#+begin_src markdown
+:::: rows
+::: row
+| Input | Value |
+| :--- | ---: |
+| Sample | 30 |
+:::
+
+::: row
+#### Worked example
+
+Explain what follows from the table.
+:::
+::::
+#+end_src
+The renderer adds semantic boundaries; themes control the separator style.
+It does not infer sections from the wording, numbers or subject of a table.
+
 * Diagrams and image layout
 Both ordinary =mermaid= fences and native Quarto ={mermaid}= cells render in
 the reading page and slides. Mermaid uses Quarto's bundled browser renderer,
