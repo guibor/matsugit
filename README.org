@@ -27,6 +27,8 @@ Themes default to =~/.config/folioforge/themes=; override with
 Only named files are copied, not an entire theme repository. Themes are trusted
 CSS/SCSS; do not select an untrusted theme. A neutral =default= theme is bundled.
 External themes and organization configuration do not belong in this package.
+=FOLIOFORGE_DEFAULT_THEME= supplies a fallback without overriding project or
+CLI theme choices; personal launchers can use it without modifying this package.
 
 Settings resolve from =~/.config/folioforge/config.json=, then =folioforge.json=
 in the source Git root, then explicit CLI flags. =FOLIOFORGE_CONFIG= overrides
@@ -101,6 +103,36 @@ shrink text or rewrite content into a different structure. HTML-only merged
 tables are not an in-editor merged-cell widget. Arbitrary scripts, inline styles
 and active HTML embeds in the document source are rejected.
 
+* Structured slides
+The document keeps its complete outline while slides can use an explicit layout:
+#+begin_src yaml
+title: My presentation
+slide-layout: structured
+slide-section-dividers: false
+slide-empty-slides: false
+#+end_src
+Put this YAML in frontmatter delimited by =---=. It is retained in =source.md=
+for CI rebuilds but is not displayed as document text. Only =title=, =subtitle=
+and these slide options are retained; executable metadata is never propagated.
+
+In =structured= layout, H1 groups sections, H2 starts a slide, the immediately
+following H3 is a smaller claim, and H4 divides slide content. =::: takeaway=
+creates a distinct conclusion. =:::: columns= accepts two/three H4-delimited
+columns or explicit =::: column= blocks, including untitled columns. =---=
+starts a continuation with the same title and claim; takeaways stay on their
+own segment. Body headings do not accidentally become nested Reveal slides.
+
+Heading-only placeholders are omitted unless =slide-empty-slides: true=.
+Section introductions are never discarded when dividers are disabled. Legacy
+=title-claim= uses a parent heading as the title and its child as the claim.
+Without layout options, ordinary Quarto slide behavior is preserved. Dense
+content stays scrollable; the converter does not invent diagrams from ASCII
+art, crop tables, shrink text, or remove repeated substantive content.
+
+Both preview and publication call the same converter. =render.qmd= contains
+the reading input and =slides.qmd= the generated slide structure. The copied
+CI bundle must include =layout.py= and =runtime/layout.css= as well as =core.py=.
+
 * Diagrams and image layout
 Both ordinary =mermaid= fences and native Quarto ={mermaid}= cells render in
 the reading page and slides. Mermaid uses Quarto's bundled browser renderer,
@@ -113,6 +145,9 @@ Standalone images and diagrams automatically fit the remaining slide height,
 after headings, prose, captions and takeaways. In Quarto =.columns= / =.column=
 blocks each visual fits its column. Aspect ratio is retained; diagrams are
 never cropped. Dense slides scroll rather than shrinking text.
+The runtime cancels Reveal's scale only while Mermaid measures its temporary
+HTML labels, preventing undersized nodes on small screens. The final diagram
+retains normal slide scaling; no source labels are changed.
 
 #+begin_src markdown
 ## Process and evidence

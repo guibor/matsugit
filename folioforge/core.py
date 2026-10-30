@@ -12,6 +12,11 @@ import shutil
 import subprocess
 from urllib.parse import quote, unquote, urlsplit
 
+if __package__:
+    from .layout import metadata as display_metadata, slides as slide_layout, plain
+else:  # The standalone CI bundle imports core directly.
+    from layout import metadata as display_metadata, slides as slide_layout, plain
+
 
 class Error(Exception):
     pass
@@ -75,7 +80,7 @@ def config(source, overrides=None):
     settings["repo"] = (root / Path(settings.get("repo", root)).expanduser()).resolve()
     themes = settings.get("themes_dir", os.environ.get("FOLIOFORGE_THEMES_DIR", "~/.config/folioforge/themes"))
     settings["themes_dir"] = (root / Path(themes).expanduser()).resolve()
-    for key, default in (("theme", "default"), ("branch", "main"), ("remote", "origin"),
+    for key, default in (("theme", os.environ.get("FOLIOFORGE_DEFAULT_THEME", "default")), ("branch", "main"), ("remote", "origin"),
                          ("site_dir", "folioforge-site"), ("quarto", os.environ.get("QUARTO", "quarto"))):
         settings.setdefault(key, default)
     settings.setdefault("slug", re.sub(r"[^\w-]+", "-", source.stem.lower()).strip("-"))
@@ -187,11 +192,8 @@ def normalize(settings, output):
     if fmt == "markdown":
         text = diagram_fences(text)
     ast = json.loads(run([*pandoc, "-f", fmt, "-t", "json"], text=text))
-    # Do not propagate executable filters, includes, templates, or project settings.
-    title = ast.get("meta", {}).get("title")
-    if title and title.get("t") == "MetaInlines":
-        ast["blocks"].insert(0, {"t": "Header", "c": [1, ["", [], []], title["c"]]})
-    ast["meta"] = {}
+    # Keep declarative display settings, not filters/includes/executable settings.
+    ast["meta"] = display_metadata(ast.get("meta", {}))
 
     def resource(value):
         url = urlsplit(value)
@@ -250,8 +252,9 @@ def normalize(settings, output):
         return node
 
     ast = visit(ast)
-    markdown = run([*pandoc, "-f", "json", "-t", "markdown", "--wrap=none"], text=json.dumps(ast))
+    markdown = run([*pandoc, "-f", "json", "-t", "markdown", "--standalone", "--wrap=none"], text=json.dumps(ast))
     (output / "source.md").write_text(markdown, encoding="utf-8")
+    return ast
 
 
 def render(settings, output, edit_url=None):
@@ -260,15 +263,20 @@ def render(settings, output, edit_url=None):
         raise Error(f"Output must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
     theme = install_theme(settings, output)
-    normalize(settings, output)
+    ast = normalize(settings, output)
+    print(f"Theme: {settings['theme']}; slide layout: {plain(ast['meta'].get('slide-layout')) or 'default'}", flush=True)
     # Quarto requires .qmd for Mermaid cells, even with the inert markdown engine.
     # Keep the published editable source in Markdown; this is a generated input.
     # Enable only native Mermaid display, not programming-language execution.
     (output / "render.qmd").write_text(
         diagram_fences((output / "source.md").read_text(encoding="utf-8"), render=True), encoding="utf-8")
+    slide_source = run([settings["quarto"], "pandoc", "-f", "json", "-t", "markdown",
+                        "--standalone", "--wrap=none"], text=json.dumps(slide_layout(ast)))
+    (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
     (output / "media-head.html").write_text(
         '<link rel="stylesheet" href="runtime/media.css">\n'
+        '<link rel="stylesheet" href="runtime/layout.css">\n'
         '<script defer src="runtime/media.js"></script>\n', encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     links = '<a href="slides.html">Slides</a> <a href="source.md">Source</a>'
@@ -278,7 +286,7 @@ def render(settings, output, edit_url=None):
         f'<nav class="folioforge-nav" aria-label="Document formats">{links}'
         f'<span>Updated <time datetime="{stamp}">{stamp}</time></span></nav>', encoding="utf-8")
     metadata = {
-        "project": {"type": "default", "render": ["render.qmd"]},
+        "project": {"type": "default", "render": ["render.qmd", "slides.qmd"]},
         "execute": {"enabled": False, "eval": False},
         "engine": "markdown",
         "include-in-header": "media-head.html",
@@ -296,7 +304,8 @@ def render(settings, output, edit_url=None):
     write_json(output / "_quarto.yml", metadata)
     for fmt, filename in (("html", "index.html"), ("revealjs", "slides.html")):
         print(f"Rendering {fmt}: {filename}", flush=True)
-        run([settings["quarto"], "render", "render.qmd", "--to", fmt, "--output", filename, "--no-execute"], cwd=output)
+        source = "render.qmd" if fmt == "html" else "slides.qmd"
+        run([settings["quarto"], "render", source, "--to", fmt, "--output", filename, "--no-execute"], cwd=output)
         if not (output / filename).is_file():
             raise Error(f"Renderer did not produce {filename}")
     for name in (".quarto", "render_files", "source_files", "index_files", "slides_files"):

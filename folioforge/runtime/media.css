@@ -1,6 +1,12 @@
 /* Geometry only: colours and typography belong to the selected theme. */
 .ff-media { min-width: 0; max-width: 100%; }
 .ff-media img, .ff-media svg.mermaid-js { max-width: 100%; }
+/* Mermaid measures HTML labels with screen rectangles. Cancel Reveal's scale
+   only in the temporary source container; Quarto removes it after rendering. */
+.reveal pre.mermaid-js {
+  transform: scale(calc(1 / var(--slide-scale, 1)));
+  transform-origin: top left;
+}
 .ff-media.media-half, .media-half > .ff-media { width: 50%; margin-inline: auto; }
 .ff-media.media-left, .media-left > .ff-media { margin-inline: 0 auto; }
 .ff-media.media-right, .media-right > .ff-media { margin-inline: auto 0; }
