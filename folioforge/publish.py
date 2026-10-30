@@ -125,6 +125,8 @@ def setup_ci(settings, provider):
         workflow: templates / (provider + ".yml"),
         ".folioforge-ci/core.py": Path(__file__).parent / "core.py",
         ".folioforge-ci/build.py": templates / "build.py",
+        ".folioforge-ci/runtime/media.js": Path(__file__).parent / "runtime/media.js",
+        ".folioforge-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
     }
     for name in sources:
         if (repo / name).exists():

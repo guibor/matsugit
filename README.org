@@ -101,6 +101,46 @@ shrink text or rewrite content into a different structure. HTML-only merged
 tables are not an in-editor merged-cell widget. Arbitrary scripts, inline styles
 and active HTML embeds in the document source are rejected.
 
+* Diagrams and image layout
+Both ordinary =mermaid= fences and native Quarto ={mermaid}= cells render in
+the reading page and slides. Mermaid uses Quarto's bundled browser renderer,
+not an external diagram service. Theme packs can set Quarto's =--mermaid-*= CSS
+variables. Programming-language blocks remain displayed code, never executed.
+Diagram cell options support captions, labels, dimensions and alignment; file
+includes and executable options are refused.
+
+Standalone images and diagrams automatically fit the remaining slide height,
+after headings, prose, captions and takeaways. In Quarto =.columns= / =.column=
+blocks each visual fits its column. Aspect ratio is retained; diagrams are
+never cropped. Dense slides scroll rather than shrinking text.
+
+#+begin_src markdown
+## Process and evidence
+:::: {.columns}
+::: {.column width="50%"}
+```mermaid
+flowchart TD
+  A[Draft] --> B[Review] --> C[Share]
+```
+:::
+::: {.column width="50%"}
+![Evidence](chart.png)
+:::
+::::
+#+end_src
+
+Optional image attributes: ={.media-half}= for half width, ={.media-natural}=
+to keep authored/natural dimensions instead of slide fitting, ={.media-cover}=
+to allow cropping explicitly, and =.media-left= / =.media-right= for alignment.
+For diagrams apply these classes to a surrounding fenced div. Reading pages
+keep normal document flow. The synthetic =tests/fixtures/media.md= illustrates
+full-width diagrams, side-by-side media, portraits, captions and takeaways.
+
+The published =source.md= remains editable. =render.qmd= is generated solely
+because Quarto requires that extension for diagram cells. The markdown engine,
+disabled execution and =--no-execute= remain in use; only Mermaid's browser
+display is enabled. CI copies the bundled =runtime/= alongside =core.py=.
+
 * Visual table editing
 #+begin_src sh
 folioforge setup-editor

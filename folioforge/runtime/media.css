@@ -1,0 +1,46 @@
+/* Geometry only: colours and typography belong to the selected theme. */
+.ff-media { min-width: 0; max-width: 100%; }
+.ff-media img, .ff-media svg.mermaid-js { max-width: 100%; }
+.ff-media.media-half, .media-half > .ff-media { width: 50%; margin-inline: auto; }
+.ff-media.media-left, .media-left > .ff-media { margin-inline: 0 auto; }
+.ff-media.media-right, .media-right > .ff-media { margin-inline: auto 0; }
+.reveal .ff-media.ff-fitted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-block: 12px;
+  min-width: 0;
+}
+.reveal .ff-media.ff-fitted .ff-media-inner { display: contents !important; }
+.reveal .ff-media.ff-fitted p:empty { display: none; }
+.reveal .ff-media.ff-fitted img,
+.reveal .ff-media.ff-fitted svg.mermaid-js {
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100% !important;
+  height: 0;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  object-fit: contain;
+  object-position: center;
+}
+.reveal .ff-media.ff-fitted figcaption {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 0.62em;
+  line-height: 1.3;
+  max-width: 100%;
+}
+.reveal .media-cover img { object-fit: cover !important; }
+.reveal .media-left img { object-position: left center !important; }
+.reveal .media-right img { object-position: right center !important; }
+.reveal .column { min-width: 0; }
+.ff-media:not(.ff-fitted) img { height: auto; }
+@media (max-width: 640px) {
+  body:not(.reveal-viewport) .media-half > .ff-media,
+  body:not(.reveal-viewport) .ff-media.media-half { width: 100%; }
+}

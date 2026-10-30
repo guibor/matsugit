@@ -141,13 +141,52 @@ def install_theme(settings, output):
     return manifest
 
 
+def diagram_fences(text, render=False):
+    """Translate native Mermaid fences outside other fenced code examples."""
+    lines, active = [], None
+    for line in text.splitlines(keepends=True):
+        match = re.match(r"^( {0,3})(`{3,}|~{3,})(.*?)(\r?\n)?$", line)
+        if match:
+            indent, fence, info, ending = match.groups()
+            if active:
+                if fence[0] == active[0] and len(fence) >= active[1] and not info.strip():
+                    active = None
+            else:
+                active = (fence[0], len(fence))
+                if info.strip() == "{mermaid}":
+                    line = (indent + fence + "{mermaid}" + (ending or "\n") + "%%| eval: true\n"
+                            if render else indent + fence + "mermaid" + (ending or "\n"))
+        lines.append(line)
+    return "".join(lines)
+
+
+def mermaid_block(attributes, code):
+    """Emit a native diagram cell, without allowing file includes or code execution."""
+    safe_options = {"label", "fig-cap", "fig-width", "fig-height", "fig-align", "fig-responsive"}
+    lines = []
+    for line in code.splitlines():
+        if line.lstrip().startswith("%%|"):
+            match = re.fullmatch(r"\s*%%\|\s*([a-z-]+):\s*(.*?)\s*", line)
+            if not match or match[1] not in safe_options:
+                raise Error("Unsupported Mermaid cell option; file includes are not allowed")
+        lines.append(line)
+    # Longer delimiters preserve diagram labels that happen to contain backticks.
+    fence = '`' * max(3, 1 + max((len(x) for x in re.findall(r'`+', code)), default=0))
+    cell = {"t": "RawBlock", "c": ["markdown", fence + "{mermaid}\n" + '\n'.join(lines) + '\n' + fence]}
+    identifier, classes, values = attributes
+    return {"t": "Div", "c": [[identifier, ["ff-media", "ff-diagram", *[c for c in classes if c != "mermaid"]], values], [cell]]}
+
+
 def normalize(settings, output):
     source = settings["source"]
     fmt = {".md": "markdown", ".markdown": "markdown", ".qmd": "markdown", ".org": "org"}.get(source.suffix.lower())
     if not fmt:
         raise Error("Supported sources: .md, .markdown, .qmd and .org")
     pandoc = [settings["quarto"], "pandoc"]
-    ast = json.loads(run([*pandoc, "-f", fmt, "-t", "json"], text=source.read_text(encoding="utf-8")))
+    text = source.read_text(encoding="utf-8")
+    if fmt == "markdown":
+        text = diagram_fences(text)
+    ast = json.loads(run([*pandoc, "-f", fmt, "-t", "json"], text=text))
     # Do not propagate executable filters, includes, templates, or project settings.
     title = ast.get("meta", {}).get("title")
     if title and title.get("t") == "MetaInlines":
@@ -178,6 +217,8 @@ def normalize(settings, output):
         if not isinstance(node, dict):
             return node
         kind = node.get("t")
+        if kind == "CodeBlock" and "mermaid" in node["c"][0][1]:
+            return mermaid_block(*node["c"])
         if kind in {"Image", "Link"}:
             node["c"][-1][0] = resource(node["c"][-1][0])
         if kind in {"RawBlock", "RawInline"} and node["c"][0] == "html":
@@ -186,6 +227,20 @@ def normalize(settings, output):
             parser.close()
             node["c"][1] = "".join(parser.output)
         node = {key: visit(value) for key, value in node.items()}
+        if kind == "Div" and "ff-media" in node["c"][0][1] and len(node["c"][1]) == 1:
+            child = node["c"][1][0]
+            if child.get("t") == "Div" and "ff-media" in child["c"][0][1]:
+                outer, inner = node["c"][0], child["c"][0]
+                child["c"][0] = [outer[0] or inner[0], list(dict.fromkeys(outer[1] + inner[1])),
+                                  list(dict(inner[2] + outer[2]).items())]
+                return child
+        if kind == "Figure":
+            images = [block for block in node["c"][2]
+                      if block.get("t") in {"Para", "Plain"} and len(block["c"]) == 1
+                      and block["c"][0].get("t") == "Image"]
+            if len(images) == 1 and len(node["c"][2]) == 1:
+                classes = [c for c in images[0]["c"][0]["c"][0][1] if c.startswith("media-")]
+                return {"t": "Div", "c": [["", ["ff-media", "ff-image", *classes], []], [node]]}
         if kind == "Table":
             _, _, _, head, bodies, foot = node["c"]
             rows = head[1] + foot[1] + [row for body in bodies for row in body[2] + body[3]]
@@ -206,6 +261,15 @@ def render(settings, output, edit_url=None):
     output.mkdir(parents=True, exist_ok=True)
     theme = install_theme(settings, output)
     normalize(settings, output)
+    # Quarto requires .qmd for Mermaid cells, even with the inert markdown engine.
+    # Keep the published editable source in Markdown; this is a generated input.
+    # Enable only native Mermaid display, not programming-language execution.
+    (output / "render.qmd").write_text(
+        diagram_fences((output / "source.md").read_text(encoding="utf-8"), render=True), encoding="utf-8")
+    shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
+    (output / "media-head.html").write_text(
+        '<link rel="stylesheet" href="runtime/media.css">\n'
+        '<script defer src="runtime/media.js"></script>\n', encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     links = '<a href="slides.html">Slides</a> <a href="source.md">Source</a>'
     if edit_url:
@@ -214,15 +278,17 @@ def render(settings, output, edit_url=None):
         f'<nav class="folioforge-nav" aria-label="Document formats">{links}'
         f'<span>Updated <time datetime="{stamp}">{stamp}</time></span></nav>', encoding="utf-8")
     metadata = {
-        "project": {"type": "default", "render": ["source.md"]},
+        "project": {"type": "default", "render": ["render.qmd"]},
         "execute": {"enabled": False, "eval": False},
         "engine": "markdown",
+        "include-in-header": "media-head.html",
         "format": {
             "html": {"theme": "default", "css": "theme/" + theme["document"], "toc": True,
                      "embed-resources": True, "pagetitle": settings["source"].stem,
                      "include-before-body": "navigation.html"},
             "revealjs": {"theme": ["default", "theme/" + theme["slides"]], "embed-resources": True,
                          "slide-level": 2, "width": 1280, "height": 720, "scrollable": True,
+                         "auto-stretch": False,
                          "slide-number": "c/t", "transition": "none",
                          "footer": '<a class="folioforge-document-link" href="index.html" aria-label="Read the document version">Document</a>'},
         },
@@ -230,10 +296,10 @@ def render(settings, output, edit_url=None):
     write_json(output / "_quarto.yml", metadata)
     for fmt, filename in (("html", "index.html"), ("revealjs", "slides.html")):
         print(f"Rendering {fmt}: {filename}", flush=True)
-        run([settings["quarto"], "render", "source.md", "--to", fmt, "--output", filename, "--no-execute"], cwd=output)
+        run([settings["quarto"], "render", "render.qmd", "--to", fmt, "--output", filename, "--no-execute"], cwd=output)
         if not (output / filename).is_file():
             raise Error(f"Renderer did not produce {filename}")
-    for name in (".quarto", "source_files", "index_files", "slides_files"):
+    for name in (".quarto", "render_files", "source_files", "index_files", "slides_files"):
         if (output / name).is_dir():
             shutil.rmtree(output / name)
     manifest = {"version": 1, "theme": settings["theme"], "updated": stamp, "edit_url": edit_url,
