@@ -55,13 +55,34 @@ body:not(.reveal-viewport) .rows > .row + .row {
 .ff-region > :last-child { margin-bottom: 0; }
 .ff-region + .ff-region { border-left: 1px solid var(--personal-rule,#d6dfe8); padding-left: 22px; }
 .ff-metrics .ff-region > p:first-of-type strong { display:block; font-size:1.7em; color:var(--personal-claim,#2859a6); }
-.ff-timeline .ff-region { border-top:3px solid var(--personal-blue,#2859a6); padding-top:16px; }
+.ff-timeline .ff-region { padding-top:8px; }
+.ff-timeline .ff-division-heading { color:var(--personal-blue,#2859a6); }
 .ff-assertion { font-size:1.5em; line-height:1.3; color:var(--personal-ink,#202830); padding-block:40px; }
 .ff-speaker-notes { margin-top:24px; padding-top:16px; border-top:1px solid #d6dfe8; }
 .ff-handout-slide { margin-block:40px; padding-bottom:28px; border-bottom:1px solid #d6dfe8; }
 .ff-handout-slide .ff-claim { font-size:1.2em; color:var(--bs-link-color,#2859a6); }
 /* Explicit data-dense treatment, available in every theme; never applied by inference. */
 .reveal .slides .compact table th, .reveal .slides .compact table td { padding:7px 12px; }
+/* Explicit slide roles preserve a reference's structure without invented headings. */
+.reveal .slides section.statement { height:100%; justify-content:center; }
+.reveal .slides section.ff-content.statement > h2 { border:0; padding:0; font-size:1.85em; line-height:1.35; }
+.reveal .slides section.ff-content.image-slide > h2 { display:none; }
+.reveal .slides section.cover { text-align:center; justify-content:center; }
+.reveal .slides section.ff-content.cover > h2 { order:2; border:0; padding:0; margin:24px 0; font-size:2em; }
+.reveal .slides section.cover > .ff-claim { order:3; border:0; background:none; font-size:1.4em; font-weight:600; }
+.reveal .slides section.cover > .ff-body { order:1; margin:0; }
+.reveal .slides section.cover .ff-media { height:240px; }
+.reveal .slides section.cover img { max-height:240px; width:auto; }
+.reveal .slides .data-table table { font-size:.66em; line-height:1.2; }
+.reveal .slides .data-table table th, .reveal .slides .data-table table td { padding:3px 6px; }
+.reveal .slides .data-table table th:first-child { width:44%; }
+.reveal .slides .quotation { font-size:.82em; line-height:1.38; }
+.reveal .slides .quotation p { margin:0 0 .7em; }
+.reveal .slides .quotation p:last-child { margin-bottom:0; }
+.reveal .slides section.dense .ff-body { font-size:.85em; line-height:1.3; }
+.reveal .slides section.dense li + li { margin-top:.16em; }
+.reveal .slides .source { overflow-wrap:anywhere; }
+.reveal .slides .source.fine-print { font-size:.48em; }
 @media (max-width:640px) {
   body:not(.reveal-viewport) :is(.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline) {grid-template-columns:1fr;}
   body:not(.reveal-viewport) .ff-region + .ff-region {border-left:0;padding-left:0;border-top:1px solid #d6dfe8;padding-top:16px;}

@@ -295,8 +295,13 @@ def render(settings, output, edit_url=None):
         diagram_fences(run([settings['quarto'], 'pandoc', '-f', 'json', '-t', 'markdown',
                            '--standalone', '--wrap=none'], text=json.dumps(display_ast)), render=True), encoding="utf-8")
     slide_ast = slide_layout(display_ast)
+    slide_render_ast = slide_ast
+    if not ast['meta'].get('slide-title-page', {'c':True})['c']:
+        # Pandoc generates its cover from title metadata; keep the reading title intact.
+        slide_render_ast = dict(slide_ast, meta={k:v for k,v in slide_ast['meta'].items()
+                                                if k not in ('title', 'subtitle')})
     slide_source = run([settings["quarto"], "pandoc", "-f", "json", "-t", "markdown",
-                        "--standalone", "--wrap=none"], text=json.dumps(slide_ast))
+                        "--standalone", "--wrap=none"], text=json.dumps(slide_render_ast))
     (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
     (output / "media-head.html").write_text(
@@ -325,7 +330,10 @@ def render(settings, output, edit_url=None):
                      "embed-resources": True, "pagetitle": settings["source"].stem,
                      "include-before-body": "navigation.html"},
             "revealjs": {"theme": ["default", "theme/" + theme["slides"]], "embed-resources": True,
-                         "slide-level": 2, "width": 1280, "height": 720, "scrollable": True,
+                         "slide-level": 2, "width": 1280,
+                         "height": 960 if plain(ast['meta'].get('slide-aspect-ratio')) == '4:3' else 720,
+                         "pagetitle": plain(ast['meta'].get('title')) or settings['source'].stem,
+                         "scrollable": True,
                          "auto-stretch": False,
                          "slide-number": "c/t", "transition": "none",
                          "footer": '<a class="folioforge-document-link" href="index.html" aria-label="Read the document version">Document</a>'},

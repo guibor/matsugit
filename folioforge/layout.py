@@ -13,11 +13,15 @@ def div(names, blocks):
 def metadata(meta):
     """Keep display/layout metadata, never executable Quarto configuration."""
     result = {key: deepcopy(meta[key]) for key in ('title', 'subtitle') if key in meta}
-    for key in ('slide-layout', 'slide-section-dividers', 'slide-empty-slides'):
+    for key in ('slide-layout', 'slide-section-dividers', 'slide-empty-slides',
+                'slide-aspect-ratio', 'slide-title-page'):
         if key not in meta:
             continue
         value = meta[key]
-        if key == 'slide-layout':
+        if key == 'slide-aspect-ratio':
+            if plain(value) not in ('16:9', '4:3'):
+                raise ValueError('slide-aspect-ratio must be "16:9" or "4:3"')
+        elif key == 'slide-layout':
             text = plain(value)
             if text not in ('default', 'structured', 'title-claim'):
                 raise ValueError('slide-layout must be default, structured or title-claim')

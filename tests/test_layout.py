@@ -32,6 +32,15 @@ def document(blocks, layout='structured', dividers=False, empty=False):
 
 
 class LayoutTests(unittest.TestCase):
+    def test_aspect_and_title_page_are_safe_opt_in_display_settings(self):
+        value=metadata({'slide-aspect-ratio':{'t':'MetaString','c':'4:3'},
+                        'slide-title-page':{'t':'MetaBool','c':False}})
+        self.assertEqual(value['slide-title-page']['c'],False)
+        self.assertEqual(value['slide-aspect-ratio']['c'],'4:3')
+        for bad in ('1:0','100000:1','4:3;execute'):
+            with self.assertRaises(ValueError):metadata({'slide-aspect-ratio':{'t':'MetaString','c':bad}})
+        with self.assertRaises(ValueError):metadata({'slide-title-page':{'t':'MetaString','c':'false'}})
+
     def test_personal_default_never_overrides_explicit_theme(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {
                 'FOLIOFORGE_CONFIG':str(Path(directory)/'absent.json'),
@@ -176,6 +185,19 @@ Second segment with the same title and claim.
 
 @unittest.skipUnless(QUARTO,'Set QUARTO for real rendering tests')
 class LayoutRenderTests(unittest.TestCase):
+    def test_reference_aspect_and_authored_cover_keep_document_title(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            source=root/'input.md'
+            source.write_text('---\ntitle: Test deck\nslide-layout: structured\nslide-aspect-ratio: "4:3"\nslide-title-page: false\nslide-empty-slides: true\n---\n\n## An authored statement {.statement}\n')
+            output=root/'output'
+            render(config(source,{'quarto':QUARTO}),output)
+            deck=(output/'slides.html').read_text()
+            self.assertNotIn('id="title-slide"',deck)
+            self.assertIn('An authored statement',deck)
+            self.assertIn('Test deck',(output/'index.html').read_text())
+            self.assertIn('"height": 960',(output/'_quarto.yml').read_text())
+
     def test_standalone_ci_preserves_layout_and_document_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

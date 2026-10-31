@@ -3,6 +3,22 @@
 Every component is interpreted by the renderer, independently of the theme.
 Themes change presentation, never capability or the source structure.
 
+See [the syntax cookbook](syntax.md) for complete copyable examples, including
+headings, columns, rows, evidence components, charts, media and explicit breaks.
+
+For faithful reference reconstruction, preserve the original words and exhibits.
+Do not invent takeaways or turn the original claims into commentary about a source.
+Keep reconstruction notes separate from the slides.
+
+Optional YAML `slide-aspect-ratio: "4:3"` uses the older presentation proportion;
+the default remains `"16:9"`. `slide-title-page: false` omits the generated cover,
+without removing the title from the reading document. Author one explicitly with
+`## Title {.cover}`. Use `## The whole statement {.statement}` for a statement-only
+slide, together with `slide-empty-slides: true`. `## {.image-slide}` creates a
+titleless image slide. `.data-table` provides deliberate dense financial-table
+spacing; `.quotation` preserves longer quotations without silently summarising.
+These roles work in every style. They are explicit choices, not inferred rewrites.
+
 Start with `folioforge template section --output deck.md`. Templates are ordinary
 editable Markdown; the command refuses to overwrite an existing file.
 
