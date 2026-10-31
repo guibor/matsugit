@@ -1,6 +1,6 @@
 # Research and capability gaps
 
-Reviewed 2026-10-31 against Folioforge 0.5.2. This is a capability audit and design
+Reviewed 2026-10-31 against Folioforge 0.6.0. This is a capability audit and design
 direction, not promised syntax or a delivery schedule. The public examples below
 inform composition; no reference slides, logos or private source files are
 bundled with this skill.
@@ -42,12 +42,12 @@ Reuse composition ideas; do not infer a right to redistribute third-party decks.
 | Full exhibit, 65/35 split, table above implication | Composable with columns/rows | No new primitive needed |
 | Metrics, options, stages, decisions, quotation | Native | Author values and statements; renderer does not infer them |
 | Bar/barh, categorical line, numeric scatter | Native bounded charts | 30 rows, 1-4 value series; explicit unit |
-| Financial/operational bridge | Missing native waterfall | Use a reviewed local exhibit image; add totals/deltas/subtotals semantics first |
-| Mix or contribution to a whole | Missing stacked/100%-stacked, area, Mekko | Plain table or external chart; never treat grouped bars as stacked |
-| Scenario, forecast and uncertainty | Partial: multiple series | Missing date axis, forecast boundary, ranges/error bars and benchmark lines |
-| Analytical annotations | Partial: one-category bar highlight | Missing data-anchored arrows, brackets, deltas and source-linked callouts |
+| Financial/operational bridge | Native Vega-Lite transforms/layers, prepared with Altair | Author and verify totals/deltas; no separate waterfall DSL |
+| Mix or contribution to a whole | Stacked and normalized table charts; richer native Vega-Lite | No bespoke Mekko helper; verify geometry and percentages |
+| Scenario, forecast and uncertainty | Native Vega-Lite temporal axes, layers, ranges and rules | Author forecast boundaries and units explicitly |
+| Analytical annotations | Single-category bar highlight; Vega-Lite text/rule layers | No cross-slide evidence registry or automatic callouts |
 | Small multiples | Spatial columns only | No shared axes/legend contract or automated scale-comparability check |
-| 2x2 portfolio / heatmap | Table or Mermaid approximation | Missing native axes, weighted points and quantitative cells; do not fake numeric geometry |
+| 2x2 portfolio / heatmap | Native Vega-Lite encodings | Review scales and units; do not fake numeric geometry |
 | Geography | External image | No native choropleth, geographic joins or map projection |
 | Process / logic tree | Mermaid | No dedicated editable value-driver model or dated-resource swimlane |
 | Evidence/source management | Authored source text | No stable evidence IDs, automatic footnote registry or reconciliation across slides |
@@ -61,9 +61,10 @@ capabilities: the metadata allowlist deliberately rejects executable settings.
 
 ## Prioritize primitives, not templates
 
-1. **Analytical chart grammar:** waterfall with explicit totals/subtotals,
-   stacked/100% bars, numeric/date axes, benchmarks and forecast/range semantics.
-   Validate arithmetic and units before drawing. Keep data in an ordinary table.
+1. **Chart preparation, not a plotting engine:** use Altair/Vega-Lite for
+   analytical geometry, including bridges, date axes, benchmarks and ranges.
+   Validate arithmetic and units; retain editable data/specs. Add preparation
+   helpers only when they remove real repetition, not a parallel chart grammar.
 2. **Exhibit annotations:** attach labels/brackets/callouts to data or named
    regions, not browser coordinates. Give them source, reading and accessibility
    representations. This serves nearly every existing recipe.

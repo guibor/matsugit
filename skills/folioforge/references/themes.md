@@ -124,3 +124,9 @@ manual review. Do not report a theme as tested based only on valid JSON/SCSS.
 Roll out by selecting the new theme on a preview first. Leave existing defaults
 and renderer releases unchanged until approved. Publishing a theme or updating
 a managed renderer is distinct from deploying a real document.
+
+Takeaways must read as conclusions, not footnotes. The shared runtime supplies
+a filled, high-contrast band, near-body-size type and stronger weight. Set
+`--ff-takeaway-bg` and `--ff-takeaway-ink` for the theme (default white ink on
+its accent), and verify at least 4.5:1 text contrast. Keep source notes quiet.
+Do not add invented takeaway wording or shrink evidence to make room.

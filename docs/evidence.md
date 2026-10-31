@@ -63,7 +63,7 @@ is appropriate. This changes padding, not the data; it is available in every sty
 ## Table-backed charts
 
 Run `folioforge setup-charts` once, or install `folioforge[charts]` in your own
-environment. The optional backend uses Matplotlib; it does not execute document
+environment. The preferred backend uses Altair/Vega-Lite; it does not execute document
 code. It produces local SVG and retains the original editable table in source.md.
 
 ```markdown
@@ -83,6 +83,8 @@ Supported types: `bar`, `barh`, `line`, `scatter`. One category column plus 1-4
 numeric series, up to 30 data rows. Units are required. Use numeric cells without
 unit suffixes; missing values are rejected, never replaced by zeros. Scatter's
 first column must be numeric; line charts treat categories as equally spaced.
+`stacked` and `stacked100` also use tables; native `vega-lite` JSON fences cover
+temporal axes, layers and richer marks. See [chart preparation](charts.md).
 Do not use an equally spaced line chart to imply a continuous series across
 missing years. Source and date belong in a `source` block.
 
@@ -108,7 +110,8 @@ are blocked during checks; remote media therefore needs local verification.
 Checks cover overflow, top-level overlap and broken images, not every possible
 typographic or factual problem. Inspect the actual deck on the intended screen.
 
-CI runners that rebuild native charts need Matplotlib in their Python environment.
+CI runners that rebuild native charts need Altair and vl-convert-python in their
+Python environment; legacy Matplotlib remains available. See [charts.md](charts.md).
 No new dependency is required for documents without chart blocks. Installing or
 updating Folioforge never enables hosting or changes a repository's visibility.
 

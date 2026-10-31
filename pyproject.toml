@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "folioforge"
-version = "0.5.2"
+version = "0.6.0"
 description = "Editable documents and themed slides, published together through Git"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-charts = ["matplotlib>=3.7"]
+charts = ["altair>=5", "vl-convert-python>=1.7", "matplotlib>=3.7"]
 lint = ["playwright>=1.40"]
 
 [project.scripts]

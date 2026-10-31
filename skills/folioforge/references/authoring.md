@@ -90,14 +90,30 @@ Synthetic example. Replace with observed data and its period.
 :::
 ```
 
-Charts support `bar`, `barh`, `line`, `scatter`; one label column plus 1-4 numeric
+Charts support `bar`, `barh`, `line`, `scatter`, `stacked`, `stacked100`; one label column plus 1-4 numeric
 series, at most 30 data rows. Units are required, numeric cells omit suffixes,
 missing values fail rather than become zero. Scatter requires numeric X labels;
 line categories are equally spaced, not a continuous date axis. `highlight`
 must name a category; the current visual highlight applies to single-series
 bar/barh charts, not arbitrary annotations. Provision the optional backend with
 `folioforge setup-charts` only when installation is authorized. Otherwise use an
-existing Matplotlib environment or explain the dependency.
+existing Altair/vl-convert environment or explain the dependency. Matplotlib is
+the explicit legacy backend, not the preferred engine.
+
+For richer exhibits use a `vega-lite` JSON fence with inline data, usually
+prepared with Altair in a separate reviewed script. Standard Vega-Lite handles
+temporal axes, layers, rules, ranges, heatmaps and waterfall calculations. Do not
+invent a chart DSL, manually draw chart geometry or execute document Python.
+Specifications are schema-validated and exported to SVG with editable `.vl.json`
+assets. Remote data, image marks, hyperlinks, interactive parameters,
+expression-valued properties and facet/concat/repeat are refused; compose with
+Markdown columns/rows instead. Limits: 1 MB, 5000 items per array, 40 levels,
+60 seconds per chart. Slot dimensions override spec dimensions, retaining
+logical font sizes in columns. Validate labels and arithmetic in the preview.
+
+Takeaways are conclusions, not sources or notes: write a short implication in
+`::: takeaway`. Shared themes render a high-contrast conclusion band. Never
+invent a takeaway that the supplied evidence or reference does not support.
 
 Mermaid fences render diagrams without executing general document code:
 

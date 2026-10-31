@@ -64,9 +64,11 @@ above are illustrative, not observed results.
 | A safer delivery path | Local previews, lint, Git publication, explicit CI deployment |
 | An assistant that knows the language | A portable authoring and theme-building [[file:skills/folioforge/SKILL.md][agent skill]] |
 
-This is not a PowerPoint clone or an automatic fact-checker. Native charts are
-currently bar, horizontal bar, categorical line and scatter. Unsupported exhibits
-can be included as images, but that is not native data-editable support. See the
+This is not a PowerPoint clone or an automatic fact-checker. Charts use Altair and
+Vega-Lite: ordinary Markdown tables cover bars, lines, scatter and stacked bars;
+inline Vega-Lite specs cover richer exhibits without inventing a chart language.
+Folioforge prepares self-contained SVGs and retains editable specs beside them.
+External SVG/PNG is also supported. See the
 [[file:skills/folioforge/references/research-and-gaps.md][capability audit and prioritized gaps]] for the boundaries.
 
 * Install and render
@@ -99,7 +101,10 @@ folioforge render skills/folioforge/assets/slide-types.md \
   --output /tmp/folioforge-recipes
 #+end_src
 Use a new/empty output directory for another render. =setup-charts= explicitly
-installs an isolated Matplotlib environment; ordinary documents do not need it.
+installs an isolated Altair/Vega-Lite environment, with Matplotlib for legacy
+charts; ordinary documents do not need it. Existing chart tables are unchanged.
+Use =backend="matplotlib"= to retain the old backend explicitly. See the
+[[file:docs/charts.md][chart preparation guide]] for native Vega-Lite, sizing and offline boundaries.
 
 ** Give your agent the same language
 The repository includes one self-contained skill with deck-authoring and
@@ -233,6 +238,8 @@ creates a distinct conclusion. =:::: columns= accepts two/three H4-delimited
 columns or explicit =::: column= blocks, including untitled columns. =---=
 starts a continuation with the same title and claim; takeaways stay on their
 own segment. Body headings do not accidentally become nested Reveal slides.
+Takeaways use a high-contrast conclusion band across themes, not footnote styling.
+Keep them to a short, authored implication; citations belong in =::: source=.
 
 Heading-only placeholders are omitted unless =slide-empty-slides: true=.
 Section introductions are never discarded when dividers are disabled. Legacy
