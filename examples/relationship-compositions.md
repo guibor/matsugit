@@ -5,17 +5,34 @@ slide-section-dividers: false
 slide-title-page: false
 ---
 
-## One intake, clear accountability
+## A shared intake makes ownership and priorities explicit
 
 :::: {.implication relation="enables"}
-#### What changes
-- One entry point for requests.
-- A named owner for each handoff.
-- A shared review of unresolved work.
+#### Current approach
+**Repeatable delivery**
 
-#### What it enables
-- Teams know where to take a request.
-- Delays have an accountable owner.
+- Teams use an established process.
+- Common requests follow familiar paths.
+
+**Fixed scope**
+
+- Exceptions require separate coordination.
+- Priorities are reviewed within each team.
+
+#### Next approach
+**Repeatable delivery with shared context**
+
+- Keep the established process for common requests.
+- Give every handoff a named owner.
+
+**Flexible prioritization**
+
+- Route exceptions through one intake.
+- Review priorities across teams.
+
+**A clearer review cycle**
+
+- Track unresolved work at a shared checkpoint.
 ::::
 
 ## Match each insight to an action

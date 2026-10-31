@@ -55,11 +55,14 @@ class RelationshipBrowserTests(unittest.TestCase):
                             self.assertTrue(page.locator('.present .ff-implication').evaluate('''g=>{
                               const hs=[...g.querySelectorAll(':scope>.ff-premise>.ff-division-heading,:scope>.ff-consequence>.ff-division-heading')];
                               const a=getComputedStyle(g.querySelector(':scope>.ff-relation'),'::before');
+                              const connector=g.querySelector(':scope>.ff-relation').getBoundingClientRect();
                               const ratio=parseFloat(a.height)/parseFloat(a.width);
                               return Math.abs(hs[0].getBoundingClientRect().top-hs[1].getBoundingClientRect().top)<1
                                 && hs.every(h=>getComputedStyle(h).borderBottomWidth==='0px')
-                                && Math.abs(ratio-2)<.05 && parseFloat(a.height)<=2.31*parseFloat(getComputedStyle(g).fontSize);
-                            }'''),'Implication must use the same unruled headings and bounded triangle as paired actions')
+                                && ratio>6 && parseFloat(a.width)<=1.16*parseFloat(getComputedStyle(g).fontSize)
+                                && Math.abs(connector.top-g.getBoundingClientRect().top)<1
+                                && connector.height>=g.getBoundingClientRect().height-2;
+                            }'''),'A narrow whole-panel wedge must span the aligned headings and bodies')
                         if index == 1:
                             self.assertTrue(page.locator('.present .ff-mapping').evaluate('''g=>{
                               const head=g.querySelector('.ff-mapping-head'),rows=[...g.querySelectorAll('.ff-mapping-row')];

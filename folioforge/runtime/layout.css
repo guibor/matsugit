@@ -111,7 +111,11 @@ body:not(.reveal-viewport) .rows > .row + .row {
 }
 .ff-premise { grid-column:1; }
 .ff-consequence { grid-column:3; }
-.ff-implication-body { grid-row:2; min-width:0; align-self:center; padding-block:.6em; }
+.ff-implication-body { grid-row:2; min-width:0; align-self:start; padding-block:.5em; }
+.ff-implication-body > p { margin-block:.65em .5em; }
+.reveal .ff-implication-body li > p { margin:0; }
+.reveal .slides .ff-implication-body li { margin-block:0 .2em; }
+.reveal .slides .ff-implication-body > :last-child { margin-bottom:0; }
 .ff-implication-body > :first-child { margin-top:0; }
 .ff-implication-body > :last-child { margin-bottom:0; }
 .ff-implication-body > ul { margin-left:1em; }
@@ -125,7 +129,12 @@ body:not(.reveal-viewport) .rows > .row + .row {
   content:""; display:block; width:1.4em; height:1.8em; margin:0.25em auto;
   background:currentColor; clip-path:polygon(0 0,100% 50%,0 100%);
 }
-.ff-implication > .ff-relation { grid-column:2; grid-row:2; position:relative; min-height:2.3em; }
+.ff-implication > .ff-relation { grid-column:2; grid-row:1 / span 2; position:relative; min-height:8em; }
+/* One narrow wedge relates complete panels, independently of their bullet counts. */
+.ff-implication > .ff-relation::before {
+  position:absolute; left:50%; top:0; transform:translateX(-50%);
+  width:1.15em; height:100%; margin:0;
+}
 /* The authored verb remains accessible, not an extra column heading or caption. */
 .ff-relation-label {
   position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%);
@@ -141,7 +150,6 @@ body:not(.reveal-viewport) .rows > .row + .row {
 .ff-mapping-row + .ff-mapping-row { border-top:1.5px dashed var(--ff-relationship-rule,#667085); }
 .ff-mapping-head > .ff-relation::before { display:none; }
 .ff-mapping-row > .ff-relation { position:relative; align-self:stretch; min-height:1.4em; }
-.ff-implication > .ff-relation::before,
 .ff-mapping-row > .ff-relation::before {
   position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
   height:min(2.3em,100%); width:auto; aspect-ratio:1 / 2; margin:0;
