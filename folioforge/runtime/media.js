@@ -36,6 +36,19 @@
     budget -= number(style.paddingTop) + number(style.paddingBottom)
       + number(style.borderTopWidth) + number(style.borderBottomWidth);
     const children = [...container.children].filter(visible);
+    if (style.display === "grid") {
+      const columns = style.gridTemplateColumns.split(/\s+/).length;
+      const groups = [];
+      children.forEach((child, index) => {
+        const row = Math.floor(index / columns);
+        (groups[row] ||= []).push(child);
+      });
+      const heights = groups.map(row => Math.max(...row.map(el => el.offsetHeight + margins(el))));
+      const extra = Math.max(0, budget - heights.reduce((a,b) => a+b, 0)
+        - number(style.rowGap) * Math.max(0, groups.length - 1)) / Math.max(1, groups.length);
+      groups.forEach((row,i) => row.filter(flexible).forEach(el => allocate(el, heights[i] + extra - margins(el))));
+      return;
+    }
     if (container.matches(".columns")) {
       for (const child of children.filter(flexible)) allocate(child, budget);
       return;

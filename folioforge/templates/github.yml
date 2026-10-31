@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: quarto-dev/quarto-actions/setup@v2
+      - name: Prepare isolated chart backend
+        run: python3 .folioforge-ci/charts.py --setup
       - name: Render documents before slides, without executing document code
         run: python3 .folioforge-ci/build.py
       - uses: actions/configure-pages@v5

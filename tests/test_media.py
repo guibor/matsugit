@@ -42,6 +42,19 @@ class MediaTests(unittest.TestCase):
 
 @unittest.skipUnless(QUARTO, "Set QUARTO for normalization and real render tests")
 class MediaRenderTests(unittest.TestCase):
+    def test_uncaptioned_image_gets_one_sizing_wrapper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            (root/'shape.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="900"><rect width="300" height="900"/></svg>')
+            source=root/'test.md'
+            source.write_text('## Portrait\n\n![](shape.svg)\n')
+            first,second=root/'first',root/'second'
+            first.mkdir();second.mkdir()
+            normalize(config(source,{'quarto':QUARTO}),first)
+            normalize(config(first/'source.md',{'quarto':QUARTO}),second)
+            self.assertEqual((first/'source.md').read_text(),(second/'source.md').read_text())
+            self.assertEqual((first/'source.md').read_text().count('.ff-media'),1)
+
     def test_org_diagram_normalizes_without_executing_code(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

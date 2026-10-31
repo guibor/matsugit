@@ -41,3 +41,29 @@ body:not(.reveal-viewport) .rows > .row { display: block; margin-inline: 0; --bs
 body:not(.reveal-viewport) .rows > .row + .row {
   margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d6dfe8;
 }
+
+/* Evidence layouts keep source order and use theme colours, never card chrome. */
+:is(.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline) {
+  display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 28px;
+}
+:is(.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline)[data-regions="1"] { grid-template-columns: minmax(0,1fr); }
+:is(.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline)[data-regions="2"] { grid-template-columns: repeat(2,minmax(0,1fr)); }
+:is(.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline)[data-regions="4"] { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.ff-timeline[data-regions="5"],.ff-timeline[data-regions="6"] { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.ff-region { min-width: 0; }
+.ff-region > :first-child { margin-top: 0; }
+.ff-region > :last-child { margin-bottom: 0; }
+.ff-region + .ff-region { border-left: 1px solid var(--personal-rule,#d6dfe8); padding-left: 22px; }
+.ff-metrics .ff-region > p:first-of-type strong { display:block; font-size:1.7em; color:var(--personal-claim,#2859a6); }
+.ff-timeline .ff-region { border-top:3px solid var(--personal-blue,#2859a6); padding-top:16px; }
+.ff-assertion { font-size:1.5em; line-height:1.3; color:var(--personal-ink,#202830); padding-block:40px; }
+.ff-speaker-notes { margin-top:24px; padding-top:16px; border-top:1px solid #d6dfe8; }
+.ff-handout-slide { margin-block:40px; padding-bottom:28px; border-bottom:1px solid #d6dfe8; }
+.ff-handout-slide .ff-claim { font-size:1.2em; color:var(--bs-link-color,#2859a6); }
+/* Explicit data-dense treatment, available in every theme; never applied by inference. */
+.reveal .slides .compact table th, .reveal .slides .compact table td { padding:7px 12px; }
+@media (max-width:640px) {
+  body:not(.reveal-viewport) :is(.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline) {grid-template-columns:1fr;}
+  body:not(.reveal-viewport) .ff-region + .ff-region {border-left:0;padding-left:0;border-top:1px solid #d6dfe8;padding-top:16px;}
+}
+@media print { .ff-handout-slide { break-before:page; break-inside:avoid; } }

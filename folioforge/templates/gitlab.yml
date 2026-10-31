@@ -2,6 +2,7 @@
 # It runs only for an explicitly requested API/web pipeline, not ordinary pushes.
 folioforge-pages:
   script:
+    - python3 .folioforge-ci/charts.py --setup
     - python3 .folioforge-ci/build.py
   pages:
     publish: __SITE_DIR__

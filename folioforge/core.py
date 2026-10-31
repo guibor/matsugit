@@ -14,8 +14,14 @@ from urllib.parse import quote, unquote, urlsplit
 
 if __package__:
     from .layout import metadata as display_metadata, slides as slide_layout, plain
+    from .components import prepare as evidence_components
+    from .charts import prepare as chart_components
+    from .handout import prepare as handout_layout
 else:  # The standalone CI bundle imports core directly.
     from layout import metadata as display_metadata, slides as slide_layout, plain
+    from components import prepare as evidence_components
+    from charts import prepare as chart_components
+    from handout import prepare as handout_layout
 
 
 class Error(Exception):
@@ -129,15 +135,26 @@ class ResourceHTML(HTMLParser):
 
 
 def install_theme(settings, output):
-    name = settings["theme"]
-    theme = inside(settings["themes_dir"], name)
-    if name == "default" and not theme.exists():
-        theme = Path(__file__).parent / "themes/default"
-    manifest = read_json(theme / "theme.json")
+    def resolve(name, parents=()):
+        if name in parents or len(parents) >= 8:
+            raise Error('Theme inheritance cycle or depth exceeds eight')
+        theme = inside(settings['themes_dir'], name)
+        if name == 'default' and not theme.exists():
+            theme = Path(__file__).parent / 'themes/default'
+        own = read_json(theme / 'theme.json')
+        manifest, files = resolve(own['extends'], (*parents, name)) if own.get('extends') else ({}, {})
+        for key in ('document', 'slides', 'charts'):
+            if key in own:
+                files[own[key]] = inside(theme, own[key])
+        for asset in own.get('assets', []):
+            files[asset] = inside(theme, asset)
+        manifest.update({k:v for k,v in own.items() if k not in ('extends', 'assets')})
+        manifest['assets'] = sorted(set(files) - {manifest.get(k) for k in ('document', 'slides', 'charts')})
+        return manifest, files
+    manifest, files = resolve(settings['theme'])
     (output / "theme").mkdir(parents=True, exist_ok=True)
     write_json(output / "theme/theme.json", manifest)
-    for name in [manifest["document"], manifest["slides"], *manifest.get("assets", [])]:
-        source = inside(theme, name)
+    for name, source in files.items():
         if not source.is_file():
             raise Error(f"Missing theme file: {source}")
         dest = inside(output / "theme", name)
@@ -229,6 +246,10 @@ def normalize(settings, output):
             parser.close()
             node["c"][1] = "".join(parser.output)
         node = {key: visit(value) for key, value in node.items()}
+        if kind == 'Para' and len(node['c']) == 1 and node['c'][0].get('t') == 'Image':
+            # Pandoc leaves uncaptioned standalone images as paragraphs, not figures.
+            names = [c for c in node['c'][0]['c'][0][1] if c.startswith('media-')]
+            return {'t':'Div', 'c':[['',['ff-media','ff-image',*names],[]],[node]]}
         if kind == "Div" and "ff-media" in node["c"][0][1] and len(node["c"][1]) == 1:
             child = node["c"][1][0]
             if child.get("t") == "Div" and "ff-media" in child["c"][0][1]:
@@ -264,14 +285,18 @@ def render(settings, output, edit_url=None):
     output.mkdir(parents=True, exist_ok=True)
     theme = install_theme(settings, output)
     ast = normalize(settings, output)
+    colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
+    display_ast = evidence_components(chart_components(ast, output, colours))
     print(f"Theme: {settings['theme']}; slide layout: {plain(ast['meta'].get('slide-layout')) or 'default'}", flush=True)
     # Quarto requires .qmd for Mermaid cells, even with the inert markdown engine.
     # Keep the published editable source in Markdown; this is a generated input.
     # Enable only native Mermaid display, not programming-language execution.
     (output / "render.qmd").write_text(
-        diagram_fences((output / "source.md").read_text(encoding="utf-8"), render=True), encoding="utf-8")
+        diagram_fences(run([settings['quarto'], 'pandoc', '-f', 'json', '-t', 'markdown',
+                           '--standalone', '--wrap=none'], text=json.dumps(display_ast)), render=True), encoding="utf-8")
+    slide_ast = slide_layout(display_ast)
     slide_source = run([settings["quarto"], "pandoc", "-f", "json", "-t", "markdown",
-                        "--standalone", "--wrap=none"], text=json.dumps(slide_layout(ast)))
+                        "--standalone", "--wrap=none"], text=json.dumps(slide_ast))
     (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
     (output / "media-head.html").write_text(
@@ -280,6 +305,11 @@ def render(settings, output, edit_url=None):
         '<script defer src="runtime/media.js"></script>\n', encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     links = '<a href="slides.html">Slides</a> <a href="source.md">Source</a>'
+    if settings.get('handout'):
+        links += ' <a href="handout.html">Presenter handout</a>'
+        handout = run([settings['quarto'], 'pandoc', '-f', 'json', '-t', 'markdown',
+                       '--standalone', '--wrap=none'], text=json.dumps(handout_layout(slide_ast)))
+        (output / 'handout.qmd').write_text(diagram_fences(handout, render=True), encoding='utf-8')
     if edit_url:
         links += f' <a href="{html.escape(edit_url, quote=True)}">Edit source</a>'
     (output / "navigation.html").write_text(
@@ -308,10 +338,15 @@ def render(settings, output, edit_url=None):
         run([settings["quarto"], "render", source, "--to", fmt, "--output", filename, "--no-execute"], cwd=output)
         if not (output / filename).is_file():
             raise Error(f"Renderer did not produce {filename}")
-    for name in (".quarto", "render_files", "source_files", "index_files", "slides_files"):
+    if settings.get('handout'):
+        print('Rendering presenter handout: handout.html', flush=True)
+        run([settings['quarto'], 'render', 'handout.qmd', '--to', 'html', '--output',
+             'handout.html', '--no-execute'], cwd=output)
+    for name in (".quarto", "render_files", "source_files", "index_files", "slides_files", 'handout_files'):
         if (output / name).is_dir():
             shutil.rmtree(output / name)
     manifest = {"version": 1, "theme": settings["theme"], "updated": stamp, "edit_url": edit_url,
+                'handout': bool(settings.get('handout')),
                 "source_sha256": hashlib.sha256((output / "source.md").read_bytes()).hexdigest(),
                 "files": sorted(str(p.relative_to(output)) for p in output.rglob("*") if p.is_file())}
     write_json(output / "folioforge-manifest.json", manifest)
