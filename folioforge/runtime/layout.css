@@ -99,3 +99,77 @@ body:not(.reveal-viewport) .rows > .row + .row {
   body:not(.reveal-viewport) .ff-region + .ff-region {border-left:0;padding-left:0;border-top:1px solid #d6dfe8;padding-top:16px;}
 }
 @media print { .ff-handout-slide { break-before:page; break-inside:avoid; } }
+
+/* Relationships express meaning; ordinary columns never acquire arrows. */
+.ff-implication {
+  display:grid; grid-template-columns:minmax(0,1fr) 4em minmax(0,1fr);
+  gap:1em; align-items:center; margin-block:1em;
+}
+.ff-premise,.ff-consequence { min-width:0; }
+:is(.ff-premise,.ff-consequence) > :first-child { margin-top:0; }
+:is(.ff-premise,.ff-consequence) > :last-child { margin-bottom:0; }
+.ff-relation { color:var(--ff-accent,var(--personal-blue,#17665c)); text-align:center; min-width:0; }
+.ff-relation > p { margin:0; }
+.ff-relation::before {
+  content:""; display:block; width:1.4em; height:1.8em; margin:0.25em auto;
+  background:currentColor; clip-path:polygon(0 0,100% 50%,0 100%);
+}
+.ff-implication > .ff-relation::before { width:2.8em; height:5em; }
+.ff-relation-label { display:block; font-size:.65em; line-height:1.3; overflow-wrap:anywhere; }
+.ff-mapping { margin-block:.5em; }
+.ff-mapping-head,.ff-mapping-row {
+  display:grid; grid-template-columns:minmax(0,1fr) 4em minmax(0,1fr);
+  gap:1em; align-items:center; padding-block:.45em;
+}
+.ff-mapping-head { font-weight:650; border-bottom:2px solid var(--personal-rule,#d6dfe8); }
+.ff-mapping-row + .ff-mapping-row { border-top:1px solid var(--personal-rule,#d6dfe8); }
+.ff-mapping-head > .ff-relation::before { display:none; }
+.ff-mapping-row > .ff-relation::before { width:1em; height:1.2em; }
+.ff-mapping-row .ff-relation-label {
+  position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%);
+}
+.ff-mapping-cell { min-width:0; overflow-wrap:anywhere; }
+.ff-mapping-cell > :first-child { margin-top:0; }
+.ff-mapping-cell > :last-child { margin-bottom:0; }
+
+/* Callouts reserve their own rail; labels never float over the evidence. */
+.ff-annotated {
+  position:relative; display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr);
+  gap:3em; align-items:start; margin-block:1em;
+}
+.ff-evidence,.ff-callouts { min-width:0; }
+.ff-callouts { display:flex; flex-direction:column; gap:1.1em; }
+.ff-callout { display:grid; grid-template-columns:1.2em minmax(0,1fr); gap:.25em .35em; overflow-wrap:anywhere; }
+.ff-callout > :first-child { grid-column:1; grid-row:1; }
+.ff-callout > :not(:first-child) { grid-column:2; }
+.ff-callout > p { margin:0; }
+a.ff-callout-number,.reveal .slides a.ff-callout-number {
+  display:inline-block; font-size:.75em; line-height:1.5; min-width:1.5em;
+  text-align:center; color:#fff !important; text-decoration:none;
+  background:var(--ff-accent,var(--personal-blue,#17665c)); border-radius:3px;
+}
+.ff-annotation-target { outline:1.5px solid var(--ff-accent,var(--personal-blue,#17665c)); outline-offset:3px; }
+.ff-annotation-target::after {
+  content:attr(data-ff-number); display:inline-block; margin-left:.35em;
+  font-size:.65em; vertical-align:super; font-weight:700;
+  color:var(--ff-accent,var(--personal-blue,#17665c));
+}
+:is(div,table,pre,figure).ff-annotation-target { position:relative; }
+:is(div,table,pre,figure).ff-annotation-target::after {
+  position:absolute; top:-.6em; right:-.6em; margin:0; padding:.1em .35em;
+  background:var(--ff-accent,var(--personal-blue,#17665c)); color:#fff;
+}
+.ff-annotation-lines {
+  position:absolute; inset:0; width:100%; height:100%; overflow:visible;
+  pointer-events:none; color:var(--ff-accent,var(--personal-blue,#17665c));
+}
+@media (max-width:640px) {
+  body:not(.reveal-viewport) .ff-implication,
+  body:not(.reveal-viewport) .ff-annotated { grid-template-columns:minmax(0,1fr); gap:1em; }
+  body:not(.reveal-viewport) .ff-implication > .ff-relation::before { width:2em; height:1em; clip-path:polygon(0 0,100% 0,50% 100%); }
+  body:not(.reveal-viewport) .ff-mapping-head { display:none; }
+  body:not(.reveal-viewport) .ff-mapping-row { grid-template-columns:minmax(0,1fr); gap:.3em; }
+  body:not(.reveal-viewport) .ff-mapping-cell::before { content:attr(data-column); display:block; font-weight:650; }
+  body:not(.reveal-viewport) .ff-mapping-row > .ff-relation::before { width:1em; height:.6em; clip-path:polygon(0 0,100% 0,50% 100%); }
+  body:not(.reveal-viewport) .ff-annotation-lines { display:none; }
+}

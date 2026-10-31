@@ -126,6 +126,7 @@ def setup_ci(settings, provider):
         ".folioforge-ci/core.py": Path(__file__).parent / "core.py",
         ".folioforge-ci/layout.py": Path(__file__).parent / "layout.py",
         ".folioforge-ci/components.py": Path(__file__).parent / "components.py",
+        ".folioforge-ci/relationships.py": Path(__file__).parent / "relationships.py",
         ".folioforge-ci/charts.py": Path(__file__).parent / "charts.py",
         ".folioforge-ci/vega.py": Path(__file__).parent / "vega.py",
         ".folioforge-ci/handout.py": Path(__file__).parent / "handout.py",

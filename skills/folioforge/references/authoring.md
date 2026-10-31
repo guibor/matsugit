@@ -69,11 +69,16 @@ outside the body-region container.
 | `timeline` | 2-6 H4 regions | Ordered stages, dates, gates and owners |
 | `decision` | 2-4 H4 regions | Request, reservations, proof gates or accountability |
 | `assertion` | One body statement | Emphasis inside a slide |
+| `implication` | Exactly two regions | One whole panel leads to the other |
+| `mapping` | Two-column table, 1-6 rows | Each point leads to its corresponding point |
+| `annotated` | One evidence block, 1-3 callouts | Saved pointers to unique named evidence |
 | `source` | Authored text/links | Visible attribution, period and scope |
 | `notes` | Authored text | Presenter guidance; not a secrecy boundary |
 
 Semantic components are not numerical models. Metrics, totals, timelines and
 recommendations are authored, not computed. Cite the evidence supporting them.
+See [relationships.md](relationships.md) for examples, accessibility fallbacks
+and the distinction between evidence pointers and chart data-point annotations.
 
 ## Evidence
 

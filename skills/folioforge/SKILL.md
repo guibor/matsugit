@@ -23,6 +23,9 @@ one slide.
   [starter pack](assets/themes/starter/theme.json) into a new theme directory;
   validate it with the same twelve-slide corpus, without editing the corpus to
   conceal theme defects.
+- **Relationships or saved pointers:** read [relationships.md](references/relationships.md).
+  Distinguish whole-panel implication, paired rows and named evidence callouts.
+  For chart data points use native Altair/Vega-Lite annotations, not DOM coordinates.
 - **Evaluate a missing capability:** read [research-and-gaps.md](references/research-and-gaps.md).
   Distinguish native support, composition from existing blocks, external-image
   fallback, and proposed features. Never invent supported options.

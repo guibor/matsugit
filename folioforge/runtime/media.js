@@ -7,7 +7,7 @@
     const style = getComputedStyle(el);
     return number(style.marginTop) + number(style.marginBottom);
   };
-  const visible = el => getComputedStyle(el).display !== "none" && !el.matches("aside.notes");
+  const visible = el => getComputedStyle(el).display !== "none" && !el.matches("aside.notes,.ff-annotation-lines");
   const flexible = el => el.matches(".ff-media.ff-fitted") || el.querySelector(".ff-media.ff-fitted");
 
   function prepare(slide) {
@@ -85,7 +85,12 @@
   function start() {
     if (!document.querySelector(".reveal")) return;
     for (const img of document.querySelectorAll(".ff-media img")) img.addEventListener("load", schedule);
-    new MutationObserver(schedule).observe(document.querySelector(".reveal .slides"), {childList: true, subtree: true});
+    new MutationObserver(records => {
+      // Redrawing an annotation must not trigger another media/annotation fit cycle.
+      if (records.some(record => !record.target.closest?.(".ff-annotation-lines") &&
+          [...record.addedNodes, ...record.removedNodes].some(node =>
+            node.nodeType !== 1 || !node.matches(".ff-annotation-lines")))) schedule();
+    }).observe(document.querySelector(".reveal .slides"), {childList: true, subtree: true});
     if (window.Reveal) {
       for (const event of ["ready", "slidechanged", "slidetransitionend", "resize", "scrollviewchange"]) {
         Reveal.on(event, schedule);

@@ -307,7 +307,8 @@ def render(settings, output, edit_url=None):
     (output / "media-head.html").write_text(
         '<link rel="stylesheet" href="runtime/media.css">\n'
         '<link rel="stylesheet" href="runtime/layout.css">\n'
-        '<script defer src="runtime/media.js"></script>\n', encoding="utf-8")
+        '<script defer src="runtime/media.js"></script>\n'
+        '<script defer src="runtime/annotations.js"></script>\n', encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     links = '<a href="slides.html">Slides</a> <a href="source.md">Source</a>'
     if settings.get('handout'):

@@ -2,6 +2,51 @@
 from pathlib import Path
 
 TEMPLATES = {
+    'implication': '''## The mechanism connects the two sides
+### State the relationship, not just a comparison
+
+:::: {.implication relation="enables"}
+#### Change
+- One shared intake.
+- Explicit ownership.
+
+#### Result
+Fewer handoffs and a measurable review gate.
+::::
+''',
+    'mapping': '''## Each insight has a corresponding action
+
+::: {.mapping relation="suggests"}
+| Insight | Action |
+| :--- | :--- |
+| Ownership is unclear. | Name one decision owner. |
+| Handoffs add waiting. | Test one shared intake. |
+| Rework is not measured. | Add a quality gate. |
+:::
+''',
+    'annotated': '''## Point to the evidence that changes the decision
+
+::::: annotated
+:::: evidence
+| Measure | Baseline | Pilot |
+| :--- | ---: | ---: |
+| Cycle time | 12 days | [8 days]{#pilot-cycle} |
+| Rework | 18% | [18%]{#pilot-rework} |
+::::
+
+::: {.callout target="pilot-cycle"}
+Cycle time fell by one third.
+:::
+
+::: {.callout target="pilot-rework"}
+Quality did not deteriorate.
+:::
+:::::
+
+::: source
+Illustrative values, not measured results.
+:::
+''',
     'metrics': '''## The key measures support the decision
 ### State the comparison period and scope
 

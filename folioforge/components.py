@@ -3,8 +3,10 @@ from copy import deepcopy
 
 if __package__:
     from .layout import classes, div, body_headings, has_content
+    from . import relationships
 else:
     from layout import classes, div, body_headings, has_content
+    import relationships
 
 LIMITS = {'metrics': (1, 4), 'comparison': (2, 3), 'timeline': (2, 6),
           'decision': (2, 4)}
@@ -16,8 +18,18 @@ def prepare(node):
         return [prepare(n) for n in node]
     if not isinstance(node, dict):
         return node
+    if 'blocks' in node:
+        relationships.validate_targets(node)
     node = deepcopy(node)
     names = set(classes(node))
+    special = names & relationships.KINDS
+    if special:
+        if len(special) > 1 or names.intersection(LIMITS):
+            raise ValueError('Use one evidence layout per block')
+        kind = special.pop()
+        return getattr(relationships, kind)(node, prepare)
+    if 'callout' in names:
+        raise ValueError('Put saved callouts inside an annotated block, after its evidence block')
     found = names.intersection(LIMITS)
     if len(found) > 1:
         raise ValueError('Use one evidence layout per block')

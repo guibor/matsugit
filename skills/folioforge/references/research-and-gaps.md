@@ -1,6 +1,6 @@
 # Research and capability gaps
 
-Reviewed 2026-10-31 against Folioforge 0.6.0. This is a capability audit and design
+Reviewed 2026-10-31 against Folioforge 0.7.0. This is a capability audit and design
 direction, not promised syntax or a delivery schedule. The public examples below
 inform composition; no reference slides, logos or private source files are
 bundled with this skill.
@@ -45,12 +45,13 @@ Reuse composition ideas; do not infer a right to redistribute third-party decks.
 | Financial/operational bridge | Native Vega-Lite transforms/layers, prepared with Altair | Author and verify totals/deltas; no separate waterfall DSL |
 | Mix or contribution to a whole | Stacked and normalized table charts; richer native Vega-Lite | No bespoke Mekko helper; verify geometry and percentages |
 | Scenario, forecast and uncertainty | Native Vega-Lite temporal axes, layers, ranges and rules | Author forecast boundaries and units explicitly |
-| Analytical annotations | Single-category bar highlight; Vega-Lite text/rule layers | No cross-slide evidence registry or automatic callouts |
+| Analytical annotations | Named evidence callouts; Vega-Lite text/rule layers for data points | No cross-slide evidence registry; author the target and explanation |
+| Causal / implication layouts | Whole-panel implication; paired-row mapping | Relationships are authored, not inferred from adjacent columns |
 | Small multiples | Spatial columns only | No shared axes/legend contract or automated scale-comparability check |
 | 2x2 portfolio / heatmap | Native Vega-Lite encodings | Review scales and units; do not fake numeric geometry |
 | Geography | External image | No native choropleth, geographic joins or map projection |
 | Process / logic tree | Mermaid | No dedicated editable value-driver model or dated-resource swimlane |
-| Evidence/source management | Authored source text | No stable evidence IDs, automatic footnote registry or reconciliation across slides |
+| Evidence/source management | Authored source text and named callout targets | No automatic footnote registry or reconciliation across slides |
 | Finite slide recipes | Documented and example-tested | No machine-validated recipe schema or complete theme conformance suite |
 | Theme styling | Manifest, inheritance, CSS, chart colors | No versioned semantic token schema; chart fonts remain fixed |
 | Output and QA | HTML document/slides, optional handout, lint | No integrated editable PPTX/PDF command, visual diff service or reference-fidelity score |

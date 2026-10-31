@@ -225,7 +225,7 @@ def prepare(node, output, colours=None, width=960):
         image = {'t':'Image', 'c':[['',[],[]],[{'t':'Str','c':title}],['assets/'+name,'']]}
         figure = {'t':'Figure', 'c':[['',[],[]],[None,[{'t':'Plain','c':[{'t':'Str','c':title}]}]],
                                    [{'t':'Plain','c':[image]}]]}
-        return {'t':'Div', 'c':[['',['ff-media','ff-chart'],[]],[figure]]}
+        return {'t':'Div', 'c':[[node['c'][0][0],['ff-media','ff-chart'],[]],[figure]]}
     if 'columns' in classes(node) and contains_chart(node):
         parts = divisions(node, 'columns', 'column')
         weights = [float(dict(p['c'][0][2]).get('width', '1').rstrip('%')) for p in parts]
@@ -237,6 +237,10 @@ def prepare(node, output, colours=None, width=960):
     if set(classes(node)) & {'metrics', 'comparison', 'timeline', 'decision'}:
         count = sum(b.get('t') == 'Header' and b['c'][0] == 4 for b in node['c'][1])
         width = (width - 28 * (min(count, 4) - 1)) / max(1, min(count, 4))
+    if 'implication' in classes(node):
+        width = (width - 120) / 2
+    if 'annotated' in classes(node):
+        width = (width - 80) * 2 / 3
     return {k: prepare(v, output, colours, width) for k, v in node.items()}
 
 
