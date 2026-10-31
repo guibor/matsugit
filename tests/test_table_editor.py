@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from folioforge.core import Error
 from folioforge.converter import converter
-from folioforge.table_editor import TableDocument, TableHTML, signature, validate
+from folioforge.table_editor import TableDocument, TableHTML, TableSession, signature, validate
 
 SIMPLE = "| Name | Value |\n| --- | --- |\n| **Alpha** | 12 |\n"
 MERGED = '<table><tr><th colspan="2">Group</th><th>Total</th></tr><tr><td rowspan="2">North</td><td>Alpha</td><td>12</td></tr><tr><td>Beta</td><td>18</td></tr></table>'
@@ -108,3 +108,69 @@ class RoundtripTests(unittest.TestCase):
         with patch("folioforge.table_editor.convert", side_effect=flatten):
             with self.assertRaisesRegex(Error, "would change"):
                 table.serialize(MERGED)
+
+
+@unittest.skipUnless(COMMAND, 'Requires span-aware Pandoc')
+class SessionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.output = Path(self.temp.name) / 'result.md'
+        self.document = TableDocument(SIMPLE, COMMAND)
+        self.session = TableSession(self.document, SIMPLE, self.output)
+
+    def test_checkpoints_recover_without_committing_source(self):
+        self.session.open('first-client-123456')
+        self.session.checkpoint(MERGED, 1)
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.session.path.stat().st_mode & 0o777, 0o600)
+        recovered = TableSession(self.document, SIMPLE, self.output)
+        state = recovered.open('second-client-123456')
+        self.assertTrue(state['recovered'])
+        self.assertEqual(state['html'], MERGED)
+        self.assertEqual(recovered.import_document.check_import(MERGED), {'ok': True})
+        recovered.save(state['html'])
+        self.assertIn('+', self.output.read_text())
+        self.assertTrue(recovered.path.exists(), 'Keep recovery until the editor applies output')
+
+    def test_stale_revisions_and_tabs_cannot_replace_newer_edits(self):
+        self.session.open('first-client-123456')
+        self.session.checkpoint(MERGED, 2)
+        self.session.checkpoint(MERGED, 2)
+        for revision in (1, -1, True, '3'):
+            with self.assertRaises(Error):
+                self.session.checkpoint(self.document.html, revision)
+        with self.assertRaisesRegex(Error, 'Conflicting'):
+            self.session.checkpoint(self.document.html, 2)
+        self.session.open('second-client-123456')
+        self.assertFalse(self.session.owns('first-client-123456'))
+        self.assertTrue(self.session.owns('second-client-123456'))
+        self.session.checkpoint(MERGED, 0)
+
+    def test_wrong_source_symlink_and_invalid_checkpoint_are_preserved(self):
+        self.session.checkpoint(MERGED, 1)
+        original = self.session.path.read_bytes()
+        with self.assertRaisesRegex(Error, 'different source'):
+            TableSession(self.document, SIMPLE + '\n', self.output)
+        self.assertEqual(original, self.session.path.read_bytes())
+        self.session.path.unlink()
+        self.session.path.symlink_to(self.output)
+        with self.assertRaisesRegex(Error, 'symlink'):
+            TableSession(self.document, SIMPLE, self.output)
+        self.assertTrue(self.session.path.is_symlink())
+
+    def test_explicit_save_does_not_overwrite_existing_output(self):
+        self.output.write_text('existing output')
+        with self.assertRaises(FileExistsError):
+            self.session.save(MERGED)
+        self.assertEqual(self.output.read_text(), 'existing output')
+
+    def test_org_draft_recovers_as_org(self):
+        source = '| Name | Value |\n|------+-------|\n| Alpha | 12 |\n'
+        document = TableDocument(source, COMMAND, 'org')
+        session = TableSession(document, source, self.output.with_suffix('.org'))
+        session.checkpoint(MERGED, 1)
+        recovered = TableSession(document, source, session.output)
+        recovered.open('org-client-12345678')
+        self.assertIn('#+begin_export markdown', recovered.draft['markdown'])
+        self.assertEqual(recovered.import_document.check_import(MERGED), {'ok': True})

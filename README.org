@@ -352,8 +352,26 @@ folioforge edit-table table.md --output edited-table.md
 The input must contain exactly one Markdown or Org table; output must not already
 exist. A local browser window opens with a Tiptap/ProseMirror table editor.
 Save writes the selected output and exits; Cancel exits 2 without creating it.
+Edits checkpoint locally after a short pause and on leaving the tab; checkpoints
+do not modify the source or create the output. Reopen the same URL to recover
+the latest acknowledged draft. The new tab owns the session; old tabs become
+read-only and cannot overwrite it. Save/Cancel ends the session, even if the
+browser refuses to close its tab automatically.
+
+If the process exits before Save, restart with the same input/output paths to
+recover =OUTPUT.draft.json=. The source hash and recovered table are validated.
+This private recovery file is retained after Save until the calling editor has
+successfully applied the output; standalone CLI users may remove it afterward.
+Cancel discards it. After 15 minutes without browser contact, a session with a
+draft exits 3, preserving recovery; without a draft it exits 2. Closing/crashing
+a browser is not a Save: very recent typing that has not checkpointed can still
+be lost. Wait for =Draft saved= or use Save when it matters.
+
 =--no-open= reports the authenticated localhost URL as a JSON event for editor
-integrations. Only 127.0.0.1 is bound. Remote use needs an explicit SSH tunnel;
+integrations (protocol 2). The authenticated =/api/control= endpoint accepts
+=save= (asks the active browser to submit current content), =save-draft= (explicitly
+commits the last checkpoint), or =cancel=. There is no automatic stale-draft
+commit when a browser is unresponsive. Only 127.0.0.1 is bound. Remote use needs an explicit SSH tunnel;
 do not expose this server publicly.
 
 Ordinary tables return as pipe Markdown. Merged or multiline cells use readable

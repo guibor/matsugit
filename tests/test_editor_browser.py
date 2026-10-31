@@ -131,9 +131,127 @@ class BrowserTests(unittest.TestCase):
             self.assertEqual(page.request.get(origin + '/api/table').status, 403)
             self.assertEqual(page.request.get(origin + '/api/table', headers={**auth, 'Origin':'https://example.invalid'}).status, 403)
             self.assertEqual(page.request.get(origin + '/api/table', headers={**auth, 'Host':'example.invalid'}).status, 403)
+            client = 'test-client-1234567890'
+            self.assertEqual(page.request.post(origin + '/api/open', headers=auth, data={'client': client}).status, 200)
+            auth['X-Folioforge-Client'] = client
             self.assertEqual(page.request.post(origin + '/api/save', headers=auth, data={'html':'<script>bad()</script>'}).status, 400)
             self.assertEqual(page.request.post(origin + '/api/save', headers=auth, data=['invalid']).status, 400)
             self.assertEqual(page.request.get(origin + '/api/table', headers=auth).status, 200)
+
+    def control(self, page, url, action):
+        parts = urlsplit(url)
+        return page.request.post(f'{parts.scheme}://{parts.netloc}/api/control',
+                                 headers={'Authorization': 'Bearer ' + parts.fragment},
+                                 data={'action': action})
+
+    def edit_first_cell(self, page, value):
+        page.evaluate('''value => {
+            const editor = window.folioforgeEditor;
+            editor.chain().setTextSelection(3).insertContent(value).run();
+        }''', value)
+
+    def test_close_tab_reopen_recovers_and_emacs_save_uses_latest_typing(self):
+        with self.session() as (page, process, output, url):
+            self.edit_first_cell(page, 'Checkpoint ')
+            self.expect(page.locator('#status')).to_have_text('Draft saved', timeout=10000)
+            self.assertFalse(output.exists())
+            page.close()
+            other = self.browser.new_page()
+            try:
+                other.goto(url)
+                self.expect(other.locator('#status')).to_have_text('Recovered draft')
+                self.expect(other.locator('.tiptap')).to_contain_text('Checkpoint')
+                self.edit_first_cell(other, 'Latest ')
+                response = self.control(other, url, 'save')
+                self.assertEqual(response.status, 200)
+                self.expect(other.locator('#status')).to_have_text('Saved', timeout=10000)
+                self.assertEqual(process.wait(timeout=10), 0)
+                self.assertIn('Latest', output.read_text())
+                self.assertIn('Checkpoint', output.read_text())
+            finally:
+                other.close(run_before_unload=False)
+
+    def test_duplicate_tab_cannot_overwrite_new_owner_and_reload_recovers(self):
+        with self.session() as (page, process, output, url):
+            self.edit_first_cell(page, 'Initial ')
+            self.expect(page.locator('#status')).to_have_text('Draft saved', timeout=10000)
+            other = self.browser.new_page()
+            try:
+                other.goto(url)
+                self.expect(other.locator('#status')).to_have_text('Recovered draft')
+                self.expect(page.locator('#status')).to_have_text('Replaced by another tab')
+                self.assertEqual(page.locator('.tiptap').get_attribute('contenteditable'), 'false')
+                self.expect(page.get_by_role('button', name='Save and Return', exact=True)).to_be_disabled()
+                self.edit_first_cell(other, 'New owner ')
+                self.expect(other.locator('#status')).to_have_text('Draft saved', timeout=10000)
+                other.reload()
+                self.expect(other.locator('#status')).to_have_text('Recovered draft')
+                self.expect(other.locator('.tiptap')).to_contain_text('New owner')
+                other.get_by_role('button', name='Save and Return', exact=True).click()
+                self.assertEqual(process.wait(timeout=10), 0)
+                self.assertIn('New owner', output.read_text())
+            finally:
+                other.close(run_before_unload=False)
+
+    def test_explicit_checkpoint_commit_and_cancel_disable_open_tabs(self):
+        for action, code in [('save-draft', 0), ('cancel', 2)]:
+            with self.subTest(action=action), self.session() as (page, process, output, url):
+                self.edit_first_cell(page, 'Recoverable ')
+                self.expect(page.locator('#status')).to_have_text('Draft saved', timeout=10000)
+                self.assertEqual(self.control(page, url, action).status, 200)
+                self.assertEqual(process.wait(timeout=10), code)
+                self.expect(page.locator('#status')).to_have_text('Session ended', timeout=10000)
+                self.assertEqual(page.locator('.tiptap').get_attribute('contenteditable'), 'false')
+                self.assertEqual(output.exists(), action == 'save-draft')
+                self.assertEqual(Path(str(output) + '.draft.json').exists(), action == 'save-draft')
+
+    def test_backend_restart_recovers_checkpoint_without_new_source(self):
+        with self.session() as (page, process, output, _url):
+            self.edit_first_cell(page, 'After restart ')
+            self.expect(page.locator('#status')).to_have_text('Draft saved', timeout=10000)
+            process.terminate()
+            process.wait(timeout=10)
+            page.close()
+            restarted = subprocess.Popen(
+                [sys.executable, '-m', 'folioforge', 'edit-table', str(output.parent / 'table.md'),
+                 '--output', str(output), '--no-open'], cwd=ROOT,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            other = self.browser.new_page()
+            try:
+                self.assertTrue(select.select([restarted.stdout], [], [], 20)[0])
+                event = json.loads(restarted.stdout.readline())
+                other.goto(event['url'])
+                self.expect(other.locator('#status')).to_have_text('Recovered draft')
+                self.expect(other.locator('.tiptap')).to_contain_text('After restart')
+                self.assertFalse(output.exists())
+                other.get_by_role('button', name='Save and Return', exact=True).click()
+                self.assertEqual(restarted.wait(timeout=10), 0)
+                self.assertIn('After restart', output.read_text())
+            finally:
+                other.close(run_before_unload=False)
+                if restarted.poll() is None:
+                    restarted.terminate()
+                restarted.communicate(timeout=10)
+
+    def test_closing_tab_never_commits_and_checkpoint_is_explicit(self):
+        with self.session() as (page, process, output, url):
+            self.edit_first_cell(page, 'Closed tab ')
+            self.expect(page.locator('#status')).to_have_text('Draft saved', timeout=10000)
+            page.close()
+            other = self.browser.new_page()
+            try:
+                response = self.control(other, url, 'save')
+                self.assertEqual(response.status, 200)
+                state = response.json()
+                # Browsers may omit pagehide on forced closure. Never infer a
+                # commit from closure or depend on receiving a detach event.
+                self.assertTrue(state['has_draft'])
+                self.assertFalse(output.exists())
+                self.assertEqual(self.control(other, url, 'save-draft').status, 200)
+                self.assertEqual(process.wait(timeout=10), 0)
+                self.assertIn('Closed tab', output.read_text())
+            finally:
+                other.close()
 
     def test_org_merge_save_and_reopen(self):
         source = '| Name | Value |\n|------+-------|\n| *Alpha* | 12 |\n| Beta | 18 |\n'

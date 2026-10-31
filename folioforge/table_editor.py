@@ -1,4 +1,5 @@
-"""Authenticated loopback editor. Markdown is the only persisted table source."""
+"""Authenticated loopback editor with recoverable, single-writer table sessions."""
+import hashlib
 import hmac
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from html.parser import HTMLParser
@@ -7,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import tempfile
 import time
 from urllib.parse import urlsplit
 import webbrowser
@@ -159,6 +161,82 @@ class TableDocument:
                 "columns": len(table["c"][2])}
 
 
+class TableSession:
+    """Checkpoints are not commits: only explicit Save produces the output file."""
+    def __init__(self, document, source, output):
+        self.document = document
+        self.output = Path(output)
+        self.path = self.output.with_name(self.output.name + '.draft.json')
+        self.source_hash = hashlib.sha256(source.encode('utf-8')).hexdigest()
+        self.draft = None
+        self.client = None
+        self.revision = -1
+        self.attached = False
+        self.seen = 0
+        self.command = None
+        self.import_document = document
+        if self.path.is_symlink():
+            raise Error('Recovery file is a symlink; left untouched')
+        if self.path.exists():
+            if self.path.stat().st_size > MAX_BYTES * 3:
+                raise Error('Recovery file is too large; left untouched')
+            data = json.loads(self.path.read_text())
+            if not isinstance(data, dict) or data.get('version') != 1 or data.get('source_sha256') != self.source_hash:
+                raise Error('Recovery belongs to a different source table; left untouched')
+            result = document.serialize(data['html'])
+            self.draft = dict(data, markdown=result['markdown'])
+
+    def open(self, client):
+        if not isinstance(client, str) or not re.fullmatch(r'[A-Za-z0-9-]{16,80}', client):
+            raise Error('Invalid editor identity')
+        self.client, self.revision, self.attached = client, -1, True
+        self.seen, self.command = time.monotonic(), None
+        self.import_document = (TableDocument(self.draft['markdown'], self.document.command, self.document.format)
+                                if self.draft else self.document)
+        return {'html': self.draft['html'] if self.draft else self.document.html,
+                'recovered': bool(self.draft)}
+
+    def owns(self, client):
+        return bool(self.client and client == self.client)
+
+    def checkpoint(self, html, revision):
+        if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
+            raise Error('Invalid draft revision')
+        if revision < self.revision:
+            raise Error('An older draft cannot replace a newer edit')
+        if revision == self.revision:
+            if not self.draft or html != self.draft['html']:
+                raise Error('Conflicting draft revision')
+            return self.draft
+        result = self.document.serialize(html)
+        data = {'version': 1, 'source_sha256': self.source_hash, 'html': html,
+                'markdown': result['markdown']}
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=self.path.parent,
+                                         prefix='.folioforge-draft-', delete=False) as stream:
+            temp = Path(stream.name)
+            try:
+                json.dump(data, stream, ensure_ascii=False)
+                stream.flush()
+                os.fsync(stream.fileno())
+                os.replace(temp, self.path)
+            finally:
+                temp.unlink(missing_ok=True)
+        self.draft, self.revision = data, revision
+        return data
+
+    def save(self, html):
+        result = self.document.serialize(html)
+        fd = os.open(self.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+            stream.write(result['markdown'])
+        return result
+
+    def status(self):
+        return {'has_draft': bool(self.draft),
+                'attached': self.attached and time.monotonic() - self.seen < 75,
+                'command': self.command}
+
+
 def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
     output = Path(output)
     if output.exists() or output.is_symlink():
@@ -168,7 +246,9 @@ def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
     if Path(source).stat().st_size > MAX_BYTES:
         raise Error('Selected table is too large (maximum 1 MiB)')
     fmt = 'org' if Path(source).suffix.lower() == '.org' else 'markdown'
-    document = TableDocument(Path(source).read_text(encoding="utf-8"), fmt=fmt)
+    text = Path(source).read_text(encoding="utf-8")
+    document = TableDocument(text, fmt=fmt)
+    session = TableSession(document, text, output)
     token = secrets.token_urlsafe(32)
     state = {"done": False, "saved": False, "last": time.monotonic()}
     origin = None
@@ -186,8 +266,11 @@ def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'none'; frame-ancestors 'none'; base-uri 'none'")
-            self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.end_headers()
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # Closing a tab must not abort its checkpoint or the server.
 
         def authorized(self, api=False):
             if self.headers.get("Host") != urlsplit(origin).netloc:
@@ -201,16 +284,29 @@ def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
                 return False
             return True
 
+        def owner(self):
+            if not session.owns(self.headers.get('X-Folioforge-Client')):
+                self.reply(409, {'error': 'This editor was replaced by another tab. Resume from your source editor.'})
+                return False
+            session.seen = time.monotonic()
+            return True
+
         def do_GET(self):
             path = urlsplit(self.path).path
             if not self.authorized(api=path.startswith("/api/")):
                 return
             if path == "/api/table":
                 state["last"] = time.monotonic()
-                self.reply(200, {"html": document.html, "name": Path(source).name})
+                self.reply(200, {"html": session.draft['html'] if session.draft else document.html,
+                                 "name": Path(source).name})
+            elif path == '/api/status':
+                self.reply(200, session.status())
             elif path == "/api/ping":
+                if not self.owner():
+                    return
+                session.attached = True
                 state["last"] = time.monotonic()
-                self.reply(200, {"ok": True})
+                self.reply(200, session.status())
             elif path in {"/", "/editor.js", "/editor.css"}:
                 name = "index.html" if path == "/" else path[1:]
                 mime = {"index.html": "text/html; charset=utf-8", "editor.js": "text/javascript", "editor.css": "text/css"}[name]
@@ -232,17 +328,47 @@ def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
                 if not isinstance(data, dict):
                     raise Error('Expected a JSON object')
                 state["last"] = time.monotonic()
+                if self.path == '/api/open':
+                    self.reply(200, dict(session.open(data.get('client')), name=Path(source).name))
+                    return
+                if self.path == '/api/control':
+                    action = data.get('action')
+                    if action == 'save':
+                        if session.status()['attached']:
+                            session.command = 'save'
+                        self.reply(200, session.status())
+                    elif action == 'save-draft':
+                        if not session.draft:
+                            raise Error('No saved draft is available; resume the editor')
+                        result = session.save(session.draft['html'])
+                        state.update(done=True, saved=True)
+                        self.reply(200, result)
+                    elif action == 'cancel':
+                        session.path.unlink(missing_ok=True)
+                        state['done'] = True
+                        self.reply(200, {'cancelled': True})
+                    else:
+                        raise Error('Unknown session action')
+                    return
+                if not self.owner():
+                    return
                 if self.path == "/api/cancel":
+                    session.path.unlink(missing_ok=True)
                     state["done"] = True
                     self.reply(200, {"cancelled": True})
+                elif self.path in ('/api/draft', '/api/detach'):
+                    if 'html' in data:
+                        session.checkpoint(data['html'], data.get('revision'))
+                        print(json.dumps({'event': 'draft', 'path': str(session.path)}), flush=True)
+                    if self.path == '/api/detach':
+                        session.attached = False
+                    self.reply(200, {'checkpointed': session.revision})
                 elif self.path == '/api/check':
-                    self.reply(200, document.check_import(data['html']))
+                    self.reply(200, session.import_document.check_import(data['html']))
                 elif self.path in {"/api/preview", "/api/save"}:
-                    result = document.serialize(data["html"])
+                    result = (session.save(data['html']) if self.path == '/api/save'
+                              else document.serialize(data['html']))
                     if self.path == "/api/save":
-                        fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-                            stream.write(result["markdown"])
                         state.update(done=True, saved=True)
                     self.reply(200, result)
                 else:
@@ -260,10 +386,13 @@ def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
         server.timeout = 1
         origin = f"http://127.0.0.1:{server.server_port}"
         url = origin + "/#" + token
-        print(json.dumps({"event": "ready", "url": url, "port": server.server_port}), flush=True)
+        print(json.dumps({"event": "ready", "url": url, "port": server.server_port,
+                          'protocol': 2, 'draft': str(session.path)}), flush=True)
         if open_browser:
             webbrowser.open(url, new=1)
         while not state["done"] and time.monotonic() - state["last"] < idle_timeout:
             server.handle_request()
-    print(json.dumps({"event": "saved" if state["saved"] else "cancelled", "output": str(output)}), flush=True)
-    return 0 if state["saved"] else 2
+    suspended = not state['done'] and session.draft
+    print(json.dumps({"event": "saved" if state["saved"] else 'suspended' if suspended else "cancelled",
+                      "output": str(output), 'draft': str(session.path)}), flush=True)
+    return 0 if state["saved"] else 3 if suspended else 2
