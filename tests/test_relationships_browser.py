@@ -27,8 +27,13 @@ class RelationshipBrowserTests(unittest.TestCase):
                     count = page.evaluate('Reveal.getSlides().length')
                     self.assertEqual(count,4)
                     for index in range(count):
-                        page.evaluate('i=>{const n=Reveal.getIndices(Reveal.getSlides()[i]);Reveal.slide(n.h,n.v)}',index)
+                        if page.evaluate('Reveal.isScrollView()'):
+                            if index:
+                                page.keyboard.press('ArrowRight')
+                        else:
+                            page.evaluate('i=>{const n=Reveal.getIndices(Reveal.getSlides()[i]);Reveal.slide(n.h,n.v)}',index)
                         page.wait_for_timeout(600)
+                        page.wait_for_function('i=>Reveal.getCurrentSlide()===Reveal.getSlides()[i]',arg=index)
                         result = page.evaluate('''()=>{
                           const s=Reveal.getCurrentSlide();
                           const parts=[...s.querySelectorAll(':scope>h2,:scope>.ff-claim,:scope>.ff-body,:scope>.ff-takeaway')].filter(e=>e.getBoundingClientRect().height);
@@ -49,10 +54,12 @@ class RelationshipBrowserTests(unittest.TestCase):
                         if index == 0:
                             self.assertTrue(page.locator('.present .ff-implication').evaluate('''g=>{
                               const hs=[...g.querySelectorAll(':scope>.ff-premise>.ff-division-heading,:scope>.ff-consequence>.ff-division-heading')];
-                              const a=g.querySelector(':scope>.ff-relation').getBoundingClientRect();
+                              const a=getComputedStyle(g.querySelector(':scope>.ff-relation'),'::before');
+                              const ratio=parseFloat(a.height)/parseFloat(a.width);
                               return Math.abs(hs[0].getBoundingClientRect().top-hs[1].getBoundingClientRect().top)<1
-                                && a.height/a.width>2.8;
-                            }'''),'Implication headings must align and its wedge must span the argument')
+                                && hs.every(h=>getComputedStyle(h).borderBottomWidth==='0px')
+                                && Math.abs(ratio-2)<.05 && parseFloat(a.height)<=2.31*parseFloat(getComputedStyle(g).fontSize);
+                            }'''),'Implication must use the same unruled headings and bounded triangle as paired actions')
                         if index == 1:
                             self.assertTrue(page.locator('.present .ff-mapping').evaluate('''g=>{
                               const head=g.querySelector('.ff-mapping-head'),rows=[...g.querySelectorAll('.ff-mapping-row')];

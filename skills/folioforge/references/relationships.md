@@ -17,10 +17,11 @@ Fewer handoffs and a measurable review gate.
 ::::
 ```
 
-Two H4 regions form the sides; one large triangular connector relates the
+Two H4 regions form the sides; a single triangular connector relates the
 **whole left panel** to the right. The number of bullets need not match.
-The panel headings align; the connector spans their body regions rather than
-appearing as a small play icon between independently centered text blocks.
+The panel headings align; one bounded triangle is centered between the body
+regions. It uses the same proportions as the paired-row connectors, not a
+full-height wedge or a separate arrow-caption heading.
 Alternatively use exactly two `::: column` child blocks for untitled sides.
 The optional `relation` label defaults to `leads to`. Write `supports`,
 `suggests`, `enables`, or another short label that states the actual argument;
