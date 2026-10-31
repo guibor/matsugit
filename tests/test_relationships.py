@@ -35,6 +35,15 @@ class RelationshipTests(unittest.TestCase):
         result = prepare(container('implication', [container('column', [para('Before')]),
                                                    container('column', [para('After')])]))
         self.assertIn('ff-consequence', str(result))
+        self.assertEqual(sum(n.get('t') == 'Div' and 'ff-implication-body' in n['c'][0][1]
+                             for n in nodes(result)), 2)
+
+    def test_implication_keeps_headings_outside_aligned_body_regions(self):
+        result = prepare(container('implication', [heading(4,'Before'),para('Evidence'),
+                                                   heading(4,'After'),para('Result')]))
+        for side in (result['c'][1][0], result['c'][1][2]):
+            self.assertIn('ff-division-heading',side['c'][1][0]['c'][0][1])
+            self.assertIn('ff-implication-body',side['c'][1][1]['c'][0][1])
 
     def test_relation_options_reject_typos_and_controls(self):
         source = container('implication', [heading(4,'A'),para('A'),heading(4,'B'),para('B')])
@@ -72,6 +81,7 @@ class MarkdownRelationshipTests(unittest.TestCase):
         self.assertIn('href="https://example.com"', html)
         self.assertIn('<code>x</code>', html)
         self.assertEqual(html.count('class="ff-mapping-row"'), 1)
+        self.assertIn('data-rows="1"',html)
 
     def test_mapping_bounds_and_bad_tables(self):
         for content in ('Not a table', '|A|B|C|\n|-|-|-|\n|1|2|3|',

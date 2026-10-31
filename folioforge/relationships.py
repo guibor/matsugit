@@ -70,7 +70,9 @@ def implication(block, prepare):
         raise ValueError('An implication needs exactly two H4 regions or column blocks')
     for part in parts:
         part['c'][0][1] = ['ff-premise' if c == 'column' else c for c in classes(part)]
-        part['c'][1] = body_headings(prepare(part['c'][1]))
+        content = body_headings(prepare(part['c'][1]))
+        heading = content[:1] if content and 'ff-division-heading' in classes(content[0]) else []
+        part['c'][1] = heading + [div(['ff-implication-body'], content[len(heading):])]
     parts[1]['c'][0][1] = ['ff-consequence' if c == 'ff-premise' else c for c in classes(parts[1])]
     block['c'][0][1].append('ff-implication')
     block['c'][0][2] = []
@@ -112,7 +114,8 @@ def mapping(block, prepare):
         result['c'][0][2].append(['role', 'row'])
         output.append(result)
     block['c'][0][1].append('ff-mapping')
-    block['c'][0][2] = [['role', 'table'], ['aria-label', f'{labels[0]} {label} {labels[1]}']]
+    block['c'][0][2] = [['role', 'table'], ['aria-label', f'{labels[0]} {label} {labels[1]}'],
+                        ['data-rows', str(len(rows))]]
     block['c'][1] = output
     return block
 

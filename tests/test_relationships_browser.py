@@ -46,6 +46,31 @@ class RelationshipBrowserTests(unittest.TestCase):
                         self.assertFalse(result['overflow'],(width,index,result))
                         self.assertFalse(result['overlap'],(width,index,result))
                         self.assertTrue(result['images'] and result['notes'] and result['badges'],(width,index,result))
+                        if index == 0:
+                            self.assertTrue(page.locator('.present .ff-implication').evaluate('''g=>{
+                              const hs=[...g.querySelectorAll(':scope>.ff-premise>.ff-division-heading,:scope>.ff-consequence>.ff-division-heading')];
+                              const a=g.querySelector(':scope>.ff-relation').getBoundingClientRect();
+                              return Math.abs(hs[0].getBoundingClientRect().top-hs[1].getBoundingClientRect().top)<1
+                                && a.height/a.width>2.8;
+                            }'''),'Implication headings must align and its wedge must span the argument')
+                        if index == 1:
+                            self.assertTrue(page.locator('.present .ff-mapping').evaluate('''g=>{
+                              const head=g.querySelector('.ff-mapping-head'),rows=[...g.querySelectorAll('.ff-mapping-row')];
+                              return getComputedStyle(head).borderBottomWidth==='0px'
+                                && rows.slice(1).every(r=>getComputedStyle(r).borderTopStyle==='dashed')
+                                && getComputedStyle(g.querySelector('.ff-relation-label')).width==='1px';
+                            }'''),'Mapping must use the reference row composition, not table chrome')
+                            if width == 1440:
+                                for count in (1, 2, 4, 6):
+                                    self.assertTrue(page.locator('.present .ff-mapping').evaluate('''(g,count)=>{
+                                      const backup=g.cloneNode(true), row=g.querySelector('.ff-mapping-row').cloneNode(true);
+                                      g.querySelectorAll('.ff-mapping-row').forEach(r=>r.remove());
+                                      for(let i=0;i<count;i++)g.append(row.cloneNode(true));
+                                      g.dataset.rows=String(count);
+                                      const slide=g.closest('section'), ok=slide.scrollHeight<=slide.clientHeight+2
+                                        && [...g.querySelectorAll('.ff-mapping-cell')].every(e=>e.scrollWidth<=e.clientWidth+2);
+                                      g.replaceWith(backup);return ok;
+                                    }''',count),f'{count} ordinary mapping rows must fit without shrinking text')
                         for pointer in result['pointers']:
                             self.assertEqual(pointer['notes'],pointer['lines'],(width,index,pointer))
                             self.assertTrue(pointer['valid'])

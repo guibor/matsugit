@@ -19,6 +19,8 @@ Fewer handoffs and a measurable review gate.
 
 Two H4 regions form the sides; one large triangular connector relates the
 **whole left panel** to the right. The number of bullets need not match.
+The panel headings align; the connector spans their body regions rather than
+appearing as a small play icon between independently centered text blocks.
 Alternatively use exactly two `::: column` child blocks for untitled sides.
 The optional `relation` label defaults to `leads to`. Write `supports`,
 `suggests`, `enables`, or another short label that states the actual argument;
@@ -39,7 +41,10 @@ One ordinary two-column table, two headings and 1-6 complete data rows. Each
 row receives its own connector and separator. Rich inline Markdown, links and
 Unicode remain editable. No merged cells or table captions here; use an ordinary
 table or columns when relationships are not one-to-one. A theme controls arrow
-color, type and spacing. On narrow reading pages, each pair stacks in order
+color, type and spacing. Standalone mapping slides use the available body height,
+prominent column headings and dashed row dividers, not ordinary table styling.
+The relationship verb remains in accessible text rather than becoming a third
+visual heading. On narrow reading pages, each pair stacks in order
 with its column labels repeated.
 
 ## Point to named evidence
