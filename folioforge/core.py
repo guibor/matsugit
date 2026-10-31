@@ -208,7 +208,11 @@ def normalize(settings, output):
     text = source.read_text(encoding="utf-8")
     if fmt == "markdown":
         text = diagram_fences(text)
-    ast = json.loads(run([*pandoc, "-f", fmt, "-t", "json"], text=text))
+    if __package__:
+        from .source import read, write_org
+    else:
+        from source import read, write_org
+    ast = read(text, fmt, pandoc)
     # Keep declarative display settings, not filters/includes/executable settings.
     ast["meta"] = display_metadata(ast.get("meta", {}))
 
@@ -264,15 +268,26 @@ def normalize(settings, output):
             if len(images) == 1 and len(node["c"][2]) == 1:
                 classes = [c for c in images[0]["c"][0]["c"][0][1] if c.startswith("media-")]
                 return {"t": "Div", "c": [["", ["ff-media", "ff-image", *classes], []], [node]]}
-        if kind == "Table":
+        return node
+
+    ast = visit(ast)
+    if fmt == 'org':
+        (output / 'source.org').write_text(write_org(ast, pandoc), encoding='utf-8')
+
+    def span_tables(node):
+        if isinstance(node, list):
+            return [span_tables(n) for n in node]
+        if not isinstance(node, dict):
+            return node
+        if node.get('t') == "Table":
             _, _, _, head, bodies, foot = node["c"]
             rows = head[1] + foot[1] + [row for body in bodies for row in body[2] + body[3]]
             if any(cell[2] != 1 or cell[3] != 1 for row in rows for cell in row[1]):
                 table = run([*pandoc, "-f", "json", "-t", "html"], text=json.dumps(dict(ast, blocks=[node])))
                 return {"t": "RawBlock", "c": ["html", table]}
-        return node
+        return {key: span_tables(value) for key, value in node.items()}
 
-    ast = visit(ast)
+    ast = span_tables(ast)
     markdown = run([*pandoc, "-f", "json", "-t", "markdown", "--standalone", "--wrap=none"], text=json.dumps(ast))
     (output / "source.md").write_text(markdown, encoding="utf-8")
     return ast
@@ -310,7 +325,8 @@ def render(settings, output, edit_url=None):
         '<script defer src="runtime/media.js"></script>\n'
         '<script defer src="runtime/annotations.js"></script>\n', encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    links = '<a href="slides.html">Slides</a> <a href="source.md">Source</a>'
+    source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
+    links = f'<a href="slides.html">Slides</a> <a href="{source_name}">Source</a>'
     if settings.get('handout'):
         links += ' <a href="handout.html">Presenter handout</a>'
         handout = run([settings['quarto'], 'pandoc', '-f', 'json', '-t', 'markdown',
@@ -359,7 +375,9 @@ def render(settings, output, edit_url=None):
             shutil.rmtree(output / name)
     manifest = {"version": 1, "theme": settings["theme"], "updated": stamp, "edit_url": edit_url,
                 'handout': bool(settings.get('handout')),
-                "source_sha256": hashlib.sha256((output / "source.md").read_bytes()).hexdigest(),
+                "source_file": source_name,
+                "source_sha256": hashlib.sha256((output / source_name).read_bytes()).hexdigest(),
+                "normalized_sha256": hashlib.sha256((output / "source.md").read_bytes()).hexdigest(),
                 "files": sorted(str(p.relative_to(output)) for p in output.rglob("*") if p.is_file())}
     write_json(output / "folioforge-manifest.json", manifest)
     return manifest

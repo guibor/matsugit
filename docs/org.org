@@ -1,0 +1,85 @@
+#+TITLE: Org authoring with the same slide language
+
+* Outline and settings
+
+#+begin_example
+#+TITLE: Decision brief
+#+SLIDE_LAYOUT: structured
+#+SLIDE_SECTION_DIVIDERS: false
+
+* Section
+** Slide title
+*** Smaller claim immediately after the title
+
+- Supporting evidence.
+
+#+begin_takeaway
+The conclusion that follows from the evidence.
+#+end_takeaway
+#+end_example
+
+The same safe display settings apply: =SLIDE_TITLE_PAGE=,
+=SLIDE_EMPTY_SLIDES=, =SLIDE_ASPECT_RATIO=. Booleans are =true= / =false=.
+Five hyphens (=-----=) on a separate line create a continuation slide.
+=TITLE= and =SUBTITLE= retain their ordinary Org meaning. No YAML is needed.
+
+* Compositions
+
+Use =#+begin_columns= and =#+end_columns= around two or three
+=#+begin_column :title "Evidence" :width "65%"= child blocks. For rows,
+use =rows= / =row=. Omit =:title= for untitled regions.
+
+For =metrics=, =comparison=, =timeline=, =decision= and =implication=,
+use =#+begin_region :title "Heading"= ... =#+end_region= per region.
+This becomes an H4 region in the shared document model. Org headlines inside
+special blocks are not legal structural children in Pandoc's reader: they
+can silently disappear. Folioforge rejects that input rather than lose content.
+
+=mapping= contains a normal two-column Org table. =annotated= contains one
+=evidence= block, followed by =callout :target "name"= blocks. An evidence
+block can have =:id "name"=. An Org target (=<<name>>=) at the start of a table
+cell names that cell's text; a named evidence block points to the whole exhibit.
+Native alignment cookies (=<l>=, =<c>=, =<r>=) preserve table alignment.
+
+All recipe names support =folioforge template NAME --format org=.
+Adding =--fragment= omits deck metadata. Output is readable and editable Org,
+not HTML. Themes never change the semantics of these blocks.
+
+* Tables and media
+
+Normal Org tables, links and emphasis stay native. Merged or rich multiline
+tables cannot be represented in Org's pipe-table syntax. They use a Pandoc
+grid inside an explicit =#+begin_export markdown= block. The shared converter
+parses its content as data before layout, resource validation and rendering.
+Select the whole block for =folioforge edit-table table.org --output edited.org=.
+No sidecar, raw HTML or lost spans are necessary. Table captions stay outside
+the visual editor's selection; unsupported cell content is refused.
+
+Use =#+begin_src mermaid= for diagrams, =#+begin_src vega-lite= for declarative
+Vega-Lite JSON, or =#+begin_chart :type "barh" :unit "days"= around a data table.
+Images use =[[file:assets/image.png]]=; sizing classes can be placed on an outer
+block (=#+begin_div :class "media-half"=). Math uses normal LaTeX delimiters.
+Programming-language blocks are displayed, never executed. There is no Babel
+execution, remote include, setup-file or executable directive support.
+
+* Round trips and CI
+
+Preview, lint and publication all use the same adapter. A publication retains a
+normalized =source.org= with relocated asset links; =source.md= is generated.
+The original note is untouched. Edit native source, not both representations.
+Remote edits to either representation block silent replacement.
+
+New CI installations include =source.py= and choose source format from the
+manifest. Existing copied CI bundles must be explicitly upgraded before
+rebuilding Org publications. CLI updates alone never change CI files or gates.
+For an existing Markdown-only pipeline, use the inert conversion command:
+
+#+begin_src sh
+folioforge convert --from org --to markdown < deck.org > deck.md
+folioforge render deck.org --output /tmp/org-preview
+folioforge lint deck.org --strict
+#+end_src
+
+An ordinary Org HTML exporter is not the Folioforge renderer. To render these
+slide components, use Folioforge's document/slide previews or convert through
+the adapter before passing the result to a compatible CI renderer.

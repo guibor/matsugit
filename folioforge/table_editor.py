@@ -99,11 +99,20 @@ class TableHTML(HTMLParser):
 
 
 class TableDocument:
-    def __init__(self, source, command=None):
+    def __init__(self, source, command=None, fmt='markdown'):
         if len(source.encode("utf-8")) > MAX_BYTES:
             raise Error("Selected table is too large (maximum 1 MiB)")
         self.command = command or converter()
-        self.ast = json.loads(convert(self.command, source, "markdown", "json"))
+        self.format = fmt
+        if fmt == 'org':
+            if re.search(r'^\s*#\+TBLFM:', source, re.I | re.M):
+                raise Error('Use native Org tools for formula tables; visual edits cannot update formula references')
+            from .source import read
+            self.ast = read(source, fmt, self.command)
+        elif fmt == 'markdown':
+            self.ast = json.loads(convert(self.command, source, "markdown", "json"))
+        else:
+            raise Error('Table format must be markdown or org')
         self.table = validate(self.ast)
         self.html = convert(self.command, json.dumps(self.ast), "json", "html")
 
@@ -135,7 +144,18 @@ class TableDocument:
             raise Error("This conversion would change cells or formatting. Nothing was saved.")
         if any(n["t"] in {"RawInline", "RawBlock"} for n in nodes(reparsed)):
             raise Error("Cannot represent this table without HTML. Nothing was saved.")
-        return {"markdown": text, "format": "grid" if grid else "pipe", "rows": len(rows(table)),
+        format_name = 'grid' if grid else 'pipe'
+        if self.format == 'org':
+            from .source import read, write_org
+            native = write_org(ast, self.command)
+            if not grid and signature(validate(read(native, 'org', self.command))) == signature(table):
+                text, format_name = native, 'org'
+            else:
+                text = '#+begin_export markdown\n' + text + '#+end_export\n'
+                format_name = 'org-grid'
+            if signature(validate(read(text, 'org', self.command))) != signature(table):
+                raise Error('This Org conversion would change the table. Nothing was saved.')
+        return {"markdown": text, "format": format_name, "rows": len(rows(table)),
                 "columns": len(table["c"][2])}
 
 
@@ -147,7 +167,8 @@ def serve(source, output, *, open_browser=True, port=0, idle_timeout=900):
         raise Error("Editor bundle missing; update Folioforge with spacemacs-sync")
     if Path(source).stat().st_size > MAX_BYTES:
         raise Error('Selected table is too large (maximum 1 MiB)')
-    document = TableDocument(Path(source).read_text(encoding="utf-8"))
+    fmt = 'org' if Path(source).suffix.lower() == '.org' else 'markdown'
+    document = TableDocument(Path(source).read_text(encoding="utf-8"), fmt=fmt)
     token = secrets.token_urlsafe(32)
     state = {"done": False, "saved": False, "last": time.monotonic()}
     origin = None

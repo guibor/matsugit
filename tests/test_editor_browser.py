@@ -31,10 +31,10 @@ class BrowserTests(unittest.TestCase):
         cls.playwright.stop()
 
     @contextmanager
-    def session(self, source=SOURCE):
+    def session(self, source=SOURCE, extension='.md'):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
-            input_path, output = directory / 'table.md', directory / 'result.md'
+            input_path, output = directory / ('table'+extension), directory / ('result'+extension)
             input_path.write_text(source)
             process = subprocess.Popen([sys.executable, '-m', 'folioforge', 'edit-table', str(input_path), '--output', str(output), '--no-open'],
                                        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -82,7 +82,7 @@ class BrowserTests(unittest.TestCase):
             self.select_cells(page, 2, 5)
             page.get_by_role('button', name='Merge selected cells', exact=True).click()
             self.assertEqual(page.locator('td[rowspan="2"]').count(), 1)
-            page.get_by_role('button', name='Markdown source', exact=True).click()
+            page.get_by_role('button', name='Table source', exact=True).click()
             self.expect(page.locator('#source')).to_have_text(re.compile(r'^\+'), timeout=10000)
             text = page.locator('#source').inner_text()
             self.assertNotIn('<table', text)
@@ -116,7 +116,7 @@ class BrowserTests(unittest.TestCase):
             page.get_by_label('Columns', exact=True).select_option('addColumnAfter')
             self.assertEqual(page.locator('.tiptap tr').first.locator('th').count(), 4)
             page.get_by_role('button', name='Undo', exact=True).click()
-            page.get_by_role('button', name='Markdown source', exact=True).click()
+            page.get_by_role('button', name='Table source', exact=True).click()
             self.expect(page.locator('#source')).to_contain_text('שלום', timeout=10000)
             self.assertIn(':', page.locator('#source').inner_text())
             page.get_by_role('button', name='Cancel', exact=True).click()
@@ -134,3 +134,20 @@ class BrowserTests(unittest.TestCase):
             self.assertEqual(page.request.post(origin + '/api/save', headers=auth, data={'html':'<script>bad()</script>'}).status, 400)
             self.assertEqual(page.request.post(origin + '/api/save', headers=auth, data=['invalid']).status, 400)
             self.assertEqual(page.request.get(origin + '/api/table', headers=auth).status, 200)
+
+    def test_org_merge_save_and_reopen(self):
+        source = '| Name | Value |\n|------+-------|\n| *Alpha* | 12 |\n| Beta | 18 |\n'
+        with self.session(source, '.org') as (page, process, output, _url):
+            self.select_cells(page, 0, 1)
+            page.get_by_role('button', name='Merge selected cells', exact=True).click()
+            page.get_by_role('button', name='Table source', exact=True).click()
+            self.expect(page.locator('#source')).to_contain_text('#+begin_export markdown', timeout=10000)
+            page.get_by_role('button', name='Save and Return', exact=True).click()
+            self.assertEqual(process.wait(timeout=20), 0)
+            saved = output.read_text()
+            self.assertIn('#+end_export', saved)
+            self.assertNotIn('<table', saved)
+        with self.session(saved, '.org') as (page, process, output, _url):
+            self.assertEqual(page.locator('th[colspan="2"]').count(), 1)
+            page.get_by_role('button', name='Cancel', exact=True).click()
+            self.assertEqual(process.wait(timeout=10), 2)

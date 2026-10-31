@@ -2,6 +2,95 @@
 from pathlib import Path
 
 TEMPLATES = {
+    'cover': '''## Working deck {.cover}
+### The purpose and decision this deck supports
+
+Prepared for the review meeting.
+''',
+    'statement': '''## One point to remember {.statement}
+
+One sentence that advances the argument.
+''',
+    'summary': '''## The recommendation in brief
+### State the answer before the supporting evidence
+
+::: assertion
+The bounded action recommended.
+:::
+
+- Evidence supporting the recommendation.
+- The main uncertainty.
+- The next decision gate.
+''',
+    'exhibit': '''## One exhibit carries the argument
+### State what the comparison demonstrates
+
+| Measure | Baseline | Pilot |
+| :--- | ---: | ---: |
+| Cycle time, days | 12 | 8 |
+| Rework, percent | 18 | 18 |
+
+::: source
+Illustrative values. Replace with observed evidence and its period.
+:::
+''',
+    'evidence': '''## Evidence and interpretation
+### Explain the evidence beside it
+
+::::: columns
+:::: {.column width="65%"}
+#### Evidence
+| Measure | Baseline | Pilot |
+| :--- | ---: | ---: |
+| Cycle time, days | 12 | 8 |
+::::
+:::: {.column width="35%"}
+#### Interpretation
+What follows from the comparison, and what remains uncertain.
+::::
+:::::
+
+::: source
+Illustrative values. Replace with observed evidence.
+:::
+''',
+    'table': '''## Evidence above, implication below
+### Keep the table full width
+
+::::: rows
+:::: row
+| Measure | Baseline | Pilot |
+| :--- | ---: | ---: |
+| Cycle time, days | 12 | 8 |
+| Rework, percent | 18 | 18 |
+::::
+:::: row
+#### Interpretation
+Explain what the table supports, separately from the table itself.
+::::
+:::::
+
+::: source
+Illustrative values. Replace with observed evidence.
+:::
+''',
+    'process': '''## How the mechanism works
+### Name the critical gate or dependency
+
+```mermaid
+flowchart LR
+  A[Evidence] --> B[Review] --> C[Decision]
+```
+''',
+    'quotation': '''## The evidence in its own words
+### Explain why this passage matters
+
+> Replace this placeholder with an authorized quotation.
+
+::: source
+Author, document, date and page or link.
+:::
+''',
     'implication': '''## The mechanism connects the two sides
 ### State the relationship, not just a comparison
 
@@ -152,13 +241,19 @@ The implication that follows from this cluster.
 }
 
 
-def template(name, output=None, fragment=False):
+def template(name, output=None, fragment=False, fmt='markdown'):
     if name not in TEMPLATES:
         raise ValueError('Choose a template: ' + ', '.join(TEMPLATES))
     text = TEMPLATES[name]
     if not fragment:
         text = ('---\ntitle: Working deck\nslide-layout: structured\n'
                 'slide-section-dividers: false\n---\n\n' + text)
+    if fmt == 'org':
+        from .source import convert
+        from .converter import converter
+        text = convert(text, 'markdown', 'org', converter())
+    elif fmt != 'markdown':
+        raise ValueError('Template format must be markdown or org')
     if output is None:
         return text
     with Path(output).open('x', encoding='utf-8') as file:

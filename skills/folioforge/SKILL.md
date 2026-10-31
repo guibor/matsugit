@@ -1,11 +1,16 @@
 ---
 name: folioforge
-description: Set up Folioforge, author composable Markdown decks and reading documents, or create and validate theme packs. Use for Folioforge syntax, semantic layouts, themes, charts and local previews, including Cursor setup; not for arbitrary PowerPoint editing.
+description: Set up Folioforge, author composable Markdown or Org decks, address slide agent-comments, or validate theme packs. Use for Folioforge syntax, layouts, charts, previews and Cursor setup; not arbitrary PowerPoint editing.
 ---
 
 # Folioforge
 
 Produce an editable argument, not a collection of hand-positioned slide objects.
+Markdown and Org are equal authoring inputs. For native Org syntax read
+[org.md](references/org.md); do not paste Markdown fences into an Org buffer.
+Before revising a deck, inspect its local source for `agent-comment` blocks.
+When present, follow [the review protocol](references/agent-comments.md): preserve
+requests, respond in place, and leave acceptance/resolution to the user.
 Use Markdown for meaning, a small set of recipes for composition, and a theme
 for presentation. Do not change the renderer or an existing theme just to fit
 one slide.

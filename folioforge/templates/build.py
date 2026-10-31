@@ -5,8 +5,12 @@ import tempfile
 from core import config, render, read_json
 
 site = Path(__SITE_DIR__).resolve()
-for source in sorted(site.glob("*/source.md")):
-    manifest = read_json(source.parent / "folioforge-manifest.json")
+for manifest_file in sorted(site.glob("*/folioforge-manifest.json")):
+    manifest = read_json(manifest_file)
+    source_name = manifest.get('source_file', 'source.md')
+    if source_name not in ('source.md', 'source.org'):
+        raise ValueError('Unknown source format in ' + str(manifest_file))
+    source = manifest_file.parent / source_name
     settings = config(source, {"theme": "theme", "themes_dir": str(source.parent)})
     settings['handout'] = bool(manifest.get('handout'))
     settings["source_root"] = source.parent

@@ -70,7 +70,7 @@ function update() {
   const rowCount = table?.content?.length || 0;
   const columns = table?.content?.[0]?.content?.reduce((sum, cell) => sum + (cell.attrs?.colspan || 1), 0) || 0;
   const merged = table?.content?.some((row) => row.content.some((cell) => cell.attrs?.colspan > 1 || cell.attrs?.rowspan > 1));
-  $('dimensions').textContent = `${rowCount} rows · ${columns} columns · ${merged ? 'Grid table' : 'Markdown table'}`;
+  $('dimensions').textContent = `${rowCount} rows · ${columns} columns · ${merged ? 'Merged cells' : 'Table'}`;
   for (const {element, active} of controls) if (active) element.setAttribute('aria-pressed', String(active()));
   $('save').disabled = busy || done || demo || !importOK || !rowCount;
   clearTimeout(timer); timer = setTimeout(preview, 400);
@@ -109,7 +109,7 @@ async function initialize(html) {
   button('Split merged cell', Split, () => editor.chain().focus().splitCell().run());
   button('Header row', PanelTop, () => editor.chain().focus().toggleHeaderRow().run());
   separator();
-  const source = button('Markdown source', FileCode2, () => { $('source-panel').hidden = !$('source-panel').hidden; preview(); }, () => !$('source-panel').hidden);
+  const source = button('Table source', FileCode2, () => { $('source-panel').hidden = !$('source-panel').hidden; preview(); }, () => !$('source-panel').hidden);
   if (demo) source.disabled = true;
   $('link-dialog').addEventListener('close', () => {
     if ($('link-dialog').returnValue !== 'apply') return;

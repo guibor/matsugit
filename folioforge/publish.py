@@ -39,12 +39,19 @@ def check_destination(dest, source):
     if not manifest_path.is_file():
         raise Error(f"Refusing to replace an unowned directory: {dest}")
     manifest = read_json(manifest_path)
-    published_source = dest / "source.md"
+    source_name = manifest.get('source_file', 'source.md')
+    if source_name not in ('source.md', 'source.org'):
+        raise Error('Unknown editable source format')
+    published_source = dest / source_name
     if manifest.get("version") != 1 or not published_source.is_file():
         raise Error("Unknown or incomplete Folioforge output")
     digest = hashlib.sha256(published_source.read_bytes()).hexdigest()
     if digest != manifest["source_sha256"] and source != published_source.resolve():
         raise Error(f"Published source was edited. Reconcile {published_source} with the local source before publishing")
+    if source_name == 'source.org' and manifest.get('normalized_sha256'):
+        normalized = dest / 'source.md'
+        if not normalized.is_file() or hashlib.sha256(normalized.read_bytes()).hexdigest() != manifest['normalized_sha256']:
+            raise Error('Generated source.md was edited; reconcile those edits into source.org before publishing')
     for path in dest.rglob("*"):
         if path.is_symlink() or any(p.startswith(".") for p in path.relative_to(dest).parts):
             raise Error(f"Unexpected hidden file or symlink in output: {path}")
@@ -71,7 +78,8 @@ def publish(settings, confirmed=False, deploy=False):
         raise Error("Refusing to overwrite an unowned site index")
     source_digest = hashlib.sha256(settings["source"].read_bytes()).hexdigest()
     edit_part = "/edit/" if host == "github.com" else "/-/edit/"
-    edit = base + edit_part + quote(branch, safe="") + "/" + quote(subdir + "/source.md")
+    source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
+    edit = base + edit_part + quote(branch, safe="") + "/" + quote(subdir + '/' + source_name)
     with tempfile.TemporaryDirectory(prefix="folioforge-render-") as temp:
         artifact = Path(temp) / "rendered"
         render(settings, artifact, edit_url=edit)
@@ -124,6 +132,7 @@ def setup_ci(settings, provider):
     sources = {
         workflow: templates / (provider + ".yml"),
         ".folioforge-ci/core.py": Path(__file__).parent / "core.py",
+        ".folioforge-ci/source.py": Path(__file__).parent / "source.py",
         ".folioforge-ci/layout.py": Path(__file__).parent / "layout.py",
         ".folioforge-ci/components.py": Path(__file__).parent / "components.py",
         ".folioforge-ci/relationships.py": Path(__file__).parent / "relationships.py",
@@ -132,6 +141,7 @@ def setup_ci(settings, provider):
         ".folioforge-ci/handout.py": Path(__file__).parent / "handout.py",
         ".folioforge-ci/build.py": templates / "build.py",
         ".folioforge-ci/runtime/media.js": Path(__file__).parent / "runtime/media.js",
+        ".folioforge-ci/runtime/annotations.js": Path(__file__).parent / "runtime/annotations.js",
         ".folioforge-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
         ".folioforge-ci/runtime/layout.css": Path(__file__).parent / "runtime/layout.css",
     }

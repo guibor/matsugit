@@ -1,6 +1,6 @@
 #+title: Folioforge
 
-*One Markdown source. A reading document. A deck worth presenting.*
+*One Markdown or Org source. A reading document. A deck worth presenting.*
 
 Write the argument once. Compose it from evidence, comparisons, charts and
 decisions. Preview a readable document and a Reveal.js presentation, change the
@@ -107,9 +107,12 @@ Open =index.html= or =slides.html= in the output directory locally. When working
 on a remote host, use your own authenticated preview mechanism instead of
 exposing an unauthenticated web server. Render never pushes anything.
 
-** Try all twelve recipes
+** Try the twelve-slide example
 The [[file:skills/folioforge/assets/slide-types.md][editable demonstration]] is an original synthetic deck, not a proprietary
 consulting template. It doubles as a starting theme acceptance fixture.
+The =template= command also provides individual recipes, including relationships,
+saved callouts, full-width tables and table/evidence combinations. Run
+=folioforge template --help= for the current names; each supports =--format org=.
 #+begin_src sh
 folioforge setup-charts
 folioforge render skills/folioforge/assets/slide-types.md \
@@ -194,7 +197,9 @@ unexpected files are never reset or stashed.
 Each artifact contains =index.html=, =slides.html=, editable =source.md=, assets,
 its copied theme and a reproducible Quarto configuration. Documents link to
 slides and editable source; slides have a subtle =Document= footer link.
-Org is converted to Markdown for the published editable representation.
+Org publications retain editable =source.org=; =source.md= is its normalized
+rendering representation. Source/edit links and new CI builds choose the native
+source. Existing Markdown publications keep their original behavior.
 Edit source on GitHub/GitLab, then request CI to rebuild both outputs. This is
 not a two-way note-sync service: publishing over remote-edited source refuses
 until you reconcile it, or explicitly publish that edited =source.md= itself.
@@ -344,7 +349,7 @@ display is enabled. CI copies the bundled =runtime/= alongside =core.py=.
 folioforge setup-editor
 folioforge edit-table table.md --output edited-table.md
 #+end_src
-The input must contain exactly one Markdown table; output must not already
+The input must contain exactly one Markdown or Org table; output must not already
 exist. A local browser window opens with a Tiptap/ProseMirror table editor.
 Save writes the selected output and exits; Cancel exits 2 without creating it.
 =--no-open= reports the authenticated localhost URL as a JSON event for editor
@@ -363,6 +368,47 @@ Import and output are checked for lossy conversion before saving. Unsupported
 content (including images, math, nested tables, raw HTML and captions inside the
 selection) is refused rather than silently discarded. Maximum: 1 MiB, 500 rows,
 4000 cells. All browser assets are bundled, without runtime npm or a CDN.
+
+Native Org tables remain native when their structure permits it. Merged or
+multiline tables use readable grids inside =#+begin_export markdown= blocks,
+not HTML or sidecars. Reopen that whole block with =edit-table= to edit it again.
+Org formula tables must use Org's native editing commands; this visual editor
+does not rewrite formula references.
+
+* Org authoring
+
+All slide recipes, relationships, media and themes share the same Pandoc AST
+pipeline. Use =folioforge template mapping --format org= for a native starter.
+See [[file:docs/org.org][Org syntax and parity]] for semantic blocks, merged tables,
+settings, safe conversion and deployment compatibility.
+
+=folioforge convert --from org --to markdown= reads stdin and preserves the
+slide settings and blocks for existing Markdown CI pipelines. The reverse
+conversion uses =--from markdown --to org=. Neither runs Babel/document code.
+The optional table converter provisioned by =setup-editor= supplies Pandoc.
+
+* Review with an agent
+
+Place an =agent-comment= block at the end of a slide, then ask your agent to
+address open comments. The [[file:skills/folioforge/references/agent-comments.md][review protocol]] preserves your request and has
+the agent respond in place with the change and actual verification. You decide
+when it is resolved. The Folioforge skill carries the protocol into Cursor and
+Codex; no background agent, model call or new account is required.
+
+#+begin_src markdown
+:::: {.agent-comment #review-chart status="open"}
+Request:
+Make the comparison easier to scan, without removing the quality measure.
+
+Response:
+Pending.
+::::
+#+end_src
+
+Org uses =#+begin_agent-comment :id "review-chart" :status "open"= and
+=#+end_agent-comment=. Comments are stripped from every generated artifact,
+including published source copies, but remain in your local file and Git.
+Old copied CI renderers need updating before processing the new syntax.
 
 =setup-editor= reuses Pandoc >=3.7.0.2 or downloads an official release binary
 verified against its published SHA-256 digest. The isolated install lives in

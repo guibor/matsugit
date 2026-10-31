@@ -23,18 +23,22 @@ def main(argv=None):
             p.add_argument('--version', help='Install a specific published version')
     commands.add_parser("setup-editor", help="Provision a verified isolated Pandoc when needed")
     commands.add_parser('setup-charts', help='Install the optional isolated local chart backend')
-    template = commands.add_parser('template', help='Print or create an editable Markdown starter')
+    template = commands.add_parser('template', help='Print or create an editable Markdown/Org starter')
     from .authoring import TEMPLATES
     template.add_argument('name', choices=sorted(TEMPLATES))
     template.add_argument('--output', type=Path)
     template.add_argument('--fragment', action='store_true')
+    template.add_argument('--format', choices=['markdown', 'org'], default='markdown')
+    conversion = commands.add_parser('convert', help='Convert inert slide source on stdin, retaining semantic blocks')
+    conversion.add_argument('--from', dest='reader', choices=['markdown', 'org'], required=True)
+    conversion.add_argument('--to', dest='writer', choices=['markdown', 'org'], required=True)
     lint = commands.add_parser('lint', help='Check slide structure and density (not visual proof)')
     lint.add_argument('source', type=Path)
     lint.add_argument('--quarto')
     lint.add_argument('--json', action='store_true')
     lint.add_argument('--strict', action='store_true', help='Exit 2 if any warning is found')
     lint.add_argument('--rendered', type=Path, help='Also inspect an existing local render using Playwright (network blocked)')
-    editor = commands.add_parser("edit-table", help="Edit one Markdown table in a local browser window")
+    editor = commands.add_parser("edit-table", help="Edit one Markdown or Org table in a local browser window")
     editor.add_argument("source", type=Path)
     editor.add_argument("--output", required=True, type=Path)
     editor.add_argument("--no-open", action="store_true")
@@ -62,7 +66,12 @@ def main(argv=None):
             return 0
         if args.command == 'template':
             from .authoring import template
-            print(template(args.name, args.output, args.fragment))
+            print(template(args.name, args.output, args.fragment, args.format))
+            return 0
+        if args.command == 'convert':
+            from .source import convert
+            from .converter import converter
+            print(convert(sys.stdin.read(), args.reader, args.writer, converter()), end='')
             return 0
         if args.command == 'lint':
             from .lint import check, rendered

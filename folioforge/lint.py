@@ -68,8 +68,9 @@ def inspect(ast):
 
 def check(source, quarto):
     source = Path(source)
-    fmt = 'org' if source.suffix == '.org' else 'markdown'
-    ast = json.loads(run([quarto, 'pandoc', '-f', fmt, '-t', 'json'], text=source.read_text(encoding='utf-8')))
+    from .source import read
+    fmt = 'org' if source.suffix.lower() == '.org' else 'markdown'
+    ast = read(source.read_text(encoding='utf-8'), fmt, [quarto, 'pandoc'])
     return inspect(ast)
 
 
