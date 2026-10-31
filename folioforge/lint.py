@@ -5,7 +5,7 @@ from pathlib import Path
 from .core import run
 from .layout import plain, classes, slides, metadata
 from .components import prepare
-from .charts import dataset
+from .charts import dataset, is_chart
 
 
 def walk(node):
@@ -37,22 +37,24 @@ def inspect(ast):
         groups.append((title, blocks))
     for title, blocks in groups:
         # Speaker notes should not count against slide density.
-        def visible(n):
+        def visible(n, measure=False):
             if isinstance(n, list):
-                return [visible(x) for x in n]
+                return [visible(x, measure) for x in n]
             if isinstance(n, dict):
                 if 'notes' in classes(n):
                     return {}
-                return {k:visible(v) for k,v in n.items()}
+                if measure and is_chart(n):
+                    return {'t': 'Str', 'c': dataset(n).get('caption', '')}
+                return {k:visible(v, measure) for k,v in n.items()}
             return n
         nodes = list(walk(visible(blocks)))
-        words = len(plain(visible(blocks)).split())
+        words = len(plain(visible(blocks, measure=True)).split())
         if len(title) > 95:
             add('long-title', title, 'Title exceeds 95 characters; move detail into the smaller claim.')
         if words > 150:
             add('dense-slide', title, f'{words} words; consider rows, a second slide or presenter notes.')
         for node in nodes:
-            if 'chart' in classes(node):
+            if is_chart(node):
                 dataset(node)
                 if not any('source' in classes(n) or 'ff-source' in classes(n) for n in nodes):
                     add('chart-source', title, 'State the source and period of chart data.')

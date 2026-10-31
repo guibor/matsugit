@@ -22,6 +22,13 @@ def block(spec=None):
 
 
 class VegaTests(unittest.TestCase):
+    def test_lint_measures_exhibit_caption_not_json_but_requires_source(self):
+        from folioforge.lint import inspect
+        from test_layout import document
+        spec = dict(SPEC, data={'values': [{'category': f'Item {i}', 'value': i} for i in range(200)]})
+        findings = inspect(document([heading(2, 'Evidence'), block(spec)]))
+        self.assertEqual([f['code'] for f in findings], ['chart-source'])
+
     def test_literal_data_field_names_are_not_options(self):
         spec = dict(SPEC, data={'values': [{'width': 3, 'height': 2, 'url': 'a literal label', 'mark': 'image'}]})
         self.assertEqual(vega.validate(spec), spec)
