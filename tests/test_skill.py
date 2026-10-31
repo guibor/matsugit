@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 import unittest
@@ -17,6 +18,22 @@ QUARTO = os.environ.get('QUARTO', shutil.which('quarto'))
 
 
 class SkillThemeTests(unittest.TestCase):
+    def test_installed_skill_routes_to_bundled_resources_without_repo_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / 'folioforge'
+            shutil.copytree(SKILL, copied)
+            links = re.findall(r'\]\(([^)#]+)(?:#[^)]*)?\)',
+                               (copied / 'SKILL.md').read_text())
+            self.assertIn('references/setup.md', links)
+            for link in links:
+                if '://' not in link:
+                    target = (copied / link).resolve()
+                    self.assertTrue(target.is_relative_to(copied))
+                    self.assertTrue(target.is_file(), link)
+            manifest = install_theme({'theme': 'starter', 'themes_dir': copied / 'assets/themes'},
+                                     Path(directory) / 'preview')
+            self.assertEqual(manifest['charts'], 'charts.json')
+
     def test_starter_manifest_copies_every_dependency(self):
         root = SKILL / 'assets/themes'
         with tempfile.TemporaryDirectory() as directory:

@@ -10,6 +10,21 @@ Folioforge is for people who want their presentation to remain a document they
 can edit, review and version. No manual positioning of every box. No mandatory
 AI service. No separate slide copy drifting away from the source.
 
+* Use it in Cursor
+
+Install the native skill, then ask Agent to set up a local preview:
+#+begin_src sh
+npx skills add guibor/folioforge --skill folioforge --agent cursor --global
+#+end_src
+
+In Cursor chat: =/folioforge Set up a small demo deck and preview both the
+document and slides. Use the default theme. Do not publish.=
+
+No plugin or MCP server required. The skill checks for the renderer and Quarto
+and guides their separate installation when needed. It works without Emacs or
+personal themes. While the repository is private, installation requires existing
+Git access. See the [[file:docs/cursor.md][Cursor quickstart]] for local, project and team setup.
+
 * A small language, not a thousand templates
 
 Use a bounded set of [[file:skills/folioforge/references/slide-types.md][twelve slide recipes]]: cover, statement, answer summary,
@@ -117,6 +132,9 @@ Choose another supported agent instead of =codex= when appropriate. A private
 remote installation requires your existing Git access; no credentials are bundled.
 The skill is distributed from =skills/folioforge/= in the Git repository, not
 automatically installed by pip. It does not authorize publication or change defaults.
+Folioforge owns the Markdown/layout/theme contract. Optional content skills,
+such as BCG or Ackman storylining, own the argument and evidence structure;
+they do not redefine syntax or choose a theme automatically.
 
 Example requests:
 - "Use $folioforge to turn this evidence into a six-slide decision brief."

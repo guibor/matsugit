@@ -1,6 +1,6 @@
 ---
 name: folioforge
-description: Author composable Markdown slide decks and reading documents with Folioforge, or create and validate Folioforge theme packs. Use for Folioforge syntax, evidence-led slide recipes, theme design, and local previews; not for arbitrary PowerPoint editing.
+description: Set up Folioforge, author composable Markdown decks and reading documents, or create and validate theme packs. Use for Folioforge syntax, semantic layouts, themes, charts and local previews, including Cursor setup; not for arbitrary PowerPoint editing.
 ---
 
 # Folioforge
@@ -12,6 +12,10 @@ one slide.
 
 ## Choose the workflow
 
+- **First-time setup or missing commands:** read [setup.md](references/setup.md).
+  Check the existing environment, install only approved missing prerequisites,
+  then verify a local document and slide preview. In Cursor invoke `/folioforge`;
+  no plugin, MCP server or always-on rule is required.
 - **Write or revise a deck:** read [authoring.md](references/authoring.md) and
   [slide-types.md](references/slide-types.md). Start with the closest recipe in
   [slide-types.md](assets/slide-types.md), not a new layout language.
@@ -22,6 +26,15 @@ one slide.
 - **Evaluate a missing capability:** read [research-and-gaps.md](references/research-and-gaps.md).
   Distinguish native support, composition from existing blocks, external-image
   fallback, and proposed features. Never invent supported options.
+
+## Content guidance is separate
+
+This skill owns the source format and rendering contract, not a mandatory
+storytelling style. Use the user's brief or, when available and relevant,
+`bcg-slides` for consulting argument structure and `ackman-slides` for cumulative
+evidence and narrative cadence. These optional skills must not redefine heading
+semantics or invent renderer options. A theme named for a style does not select
+that content method. All workflows remain usable without those skills.
 
 ## Establish the contract
 
