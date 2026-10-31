@@ -1,13 +1,84 @@
 #+title: Folioforge
 
-Turn one editable document into a themed reading page and Reveal.js slides,
-then publish the pair to a Git checkout. Works independently of any editor.
-Python 3.10+, Git and [[https://quarto.org/docs/get-started/][Quarto]] are required. There are no Python runtime dependencies.
+*One Markdown source. A reading document. A deck worth presenting.*
+
+Write the argument once. Compose it from evidence, comparisons, charts and
+decisions. Preview a readable document and a Reveal.js presentation, change the
+theme without rewriting the story, and publish both through Git when ready.
+
+Folioforge is for people who want their presentation to remain a document they
+can edit, review and version. No manual positioning of every box. No mandatory
+AI service. No separate slide copy drifting away from the source.
+
+* A small language, not a thousand templates
+
+Use a bounded set of [[file:skills/folioforge/references/slide-types.md][twelve slide recipes]]: cover, statement, answer summary,
+scorecard, decisive exhibit, evidence plus interpretation, table plus implication,
+comparison, process, roadmap, documentary evidence and decision request.
+
+They compose ordinary Markdown and a few semantic blocks. A theme supplies the
+visual treatment; it does not decide what your headings mean or which features
+you are allowed to use. Consulting-style analysis, an investment case and a
+technical review can use the same building blocks without becoming the same deck.
+
+#+begin_src markdown
+---
+title: Pilot decision
+slide-layout: structured
+slide-section-dividers: false
+---
+
+# Recommendation
+## Prove the process before expanding
+### Speed must improve without increasing rework
+
+:::: rows
+#### Evidence
+| Measure | Baseline | Gate |
+| :--- | ---: | ---: |
+| Cycle time | 12 days | 8 days |
+| Rework | 18% | At most 18% |
+
+#### Implication
+Expand only when both conditions are met.
+::::
+
+::: takeaway
+Approve a bounded pilot, not a full rollout.
+:::
+#+end_src
+
+The title and smaller claim have distinct roles. The table and its interpretation
+remain separate regions. The takeaway is authored, never invented. YAML controls
+the rendering but does not appear as text in the reading document. The values
+above are illustrative, not observed results.
+
+| What you need | What Folioforge provides |
+|---------------+-------------------------|
+| A clear slide structure | Titles, claims, section dividers, manual breaks, takeaways |
+| Evidence-led layouts | Columns, rows, metrics, comparisons, timelines, decisions |
+| Editable exhibits | Table-backed charts, Mermaid, ordinary and merged tables |
+| Useful media | Aspect-preserving slide/column fitting; cropping only by choice |
+| Your visual identity | Local theme packs, inheritance, document/slide styles, chart palettes |
+| A reviewable source | Markdown, Org or Quarto Markdown; source stays with the export |
+| A safer delivery path | Local previews, lint, Git publication, explicit CI deployment |
+| An assistant that knows the language | A portable authoring and theme-building [[file:skills/folioforge/SKILL.md][agent skill]] |
+
+This is not a PowerPoint clone or an automatic fact-checker. Native charts are
+currently bar, horizontal bar, categorical line and scatter. Unsupported exhibits
+can be included as images, but that is not native data-editable support. See the
+[[file:skills/folioforge/references/research-and-gaps.md][capability audit and prioritized gaps]] for the boundaries.
 
 * Install and render
+Requires Python 3.10+, Git and [[https://quarto.org/docs/get-started/][Quarto]]. The core has no Python runtime
+dependencies; chart generation and browser lint are optional extras.
+
+From an authenticated checkout of this repository:
 #+begin_src sh
-python3 -m pip install /path/to/folioforge
-folioforge render report.md --output /tmp/report-preview
+python3 -m pip install .
+folioforge template section --output deck.md
+folioforge lint deck.md
+folioforge render deck.md --output /tmp/deck-preview
 #+end_src
 
 Alternatively run =bin/folioforge= directly from this checkout. Supported sources
@@ -18,6 +89,42 @@ Open =index.html= or =slides.html= in the output directory locally. When working
 on a remote host, use your own authenticated preview mechanism instead of
 exposing an unauthenticated web server. Render never pushes anything.
 
+** Try all twelve recipes
+The [[file:skills/folioforge/assets/slide-types.md][editable demonstration]] is an original synthetic deck, not a proprietary
+consulting template. It doubles as a starting theme acceptance fixture.
+#+begin_src sh
+folioforge setup-charts
+folioforge render skills/folioforge/assets/slide-types.md \
+  --theme starter --themes-dir skills/folioforge/assets/themes \
+  --output /tmp/folioforge-recipes
+#+end_src
+Use a new/empty output directory for another render. =setup-charts= explicitly
+installs an isolated Matplotlib environment; ordinary documents do not need it.
+
+** Give your agent the same language
+The repository includes one self-contained skill with deck-authoring and
+theme-building workflows, supported syntax, bounded recipes and a tested theme
+starter. Install it from this checkout with the [[https://skills.sh/docs/cli][Skills CLI]]:
+#+begin_src sh
+DISABLE_TELEMETRY=1 npx skills add . --skill folioforge --agent codex --global
+#+end_src
+Choose another supported agent instead of =codex= when appropriate. A private
+remote installation requires your existing Git access; no credentials are bundled.
+The skill is distributed from =skills/folioforge/= in the Git repository, not
+automatically installed by pip. It does not authorize publication or change defaults.
+
+Example requests:
+- "Use $folioforge to turn this evidence into a six-slide decision brief."
+- "Use $folioforge to create a theme from my approved design reference, then
+  test all twelve recipes without changing their Markdown."
+
+** Find the right guide
+- [[file:docs/syntax.md][Syntax cookbook]]: headings, blocks, tables, charts, media and explicit breaks.
+- [[file:skills/folioforge/references/slide-types.md][Slide recipes]]: choose a composition by the argument it needs to make.
+- [[file:skills/folioforge/references/themes.md][Theme authoring]]: manifests, CSS hooks, assets, inheritance and acceptance.
+- [[file:skills/folioforge/references/research-and-gaps.md][Public McKinsey references and capability gaps]]: what we learned, what exists,
+  and what should become a shared primitive next. Not an official McKinsey product.
+
 * Theme packs and project defaults
 Themes default to =~/.config/folioforge/themes=; override with
 =FOLIOFORGE_THEMES_DIR= or =--themes-dir=. Each pack has =theme.json=:
@@ -27,6 +134,11 @@ Themes default to =~/.config/folioforge/themes=; override with
 Only named files are copied, not an entire theme repository. Themes are trusted
 CSS/SCSS; do not select an untrusted theme. A neutral =default= theme is bundled.
 External themes and organization configuration do not belong in this package.
+Copy the original neutral [[file:skills/folioforge/assets/themes/starter/theme.json][starter pack]] into a new local theme directory to
+begin. Optional =charts= selects a chart-palette JSON file; =extends= inherits
+another local pack. Inheritance resolves files, not an automatic CSS cascade:
+explicitly import a parent stylesheet when needed. Follow the
+[[file:skills/folioforge/references/themes.md][theme guide]] before changing geometry or fonts.
 =FOLIOFORGE_DEFAULT_THEME= supplies a fallback without overriding project or
 CLI theme choices; personal launchers can use it without modifying this package.
 

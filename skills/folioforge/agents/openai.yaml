@@ -1,0 +1,4 @@
+interface:
+  display_name: "Folioforge"
+  short_description: "Compose Markdown decks and reusable slide themes"
+  default_prompt: "Use $folioforge to build an evidence-led Markdown deck or a reusable theme, then render and validate it."

@@ -4,6 +4,11 @@ Write ordinary Markdown. Add layout blocks only where the arrangement matters.
 The same source works with every theme; theme selection changes presentation,
 not the meaning of headings or the available components.
 
+For choosing a composition rather than a keyword, see the
+[twelve slide recipes](../skills/folioforge/references/slide-types.md). The
+[portable Folioforge skill](../skills/folioforge/SKILL.md) also covers authoring,
+theme creation and the distinction between supported and proposed capabilities.
+
 ## Start here
 
 ```markdown
