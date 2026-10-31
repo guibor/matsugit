@@ -5,6 +5,8 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from html.parser import HTMLParser
+from urllib.parse import urlsplit, unquote
 from unittest.mock import patch
 
 from folioforge.core import Error, ResourceHTML, config, git, inside, normalize, read_json, render, run, write_json
@@ -78,6 +80,38 @@ QUARTO = os.environ.get("QUARTO", shutil.which("quarto"))
 
 @unittest.skipUnless(QUARTO, "Set QUARTO for real rendering tests")
 class RenderTests(CoreTests):
+    def test_handout_keeps_theme_and_embedded_assets_after_cleanup(self):
+        theme = self.root / 'themes/handout-test'
+        theme.mkdir(parents=True)
+        (theme / 'theme.json').write_text('{"document":"document.css","slides":"slides.scss"}')
+        (theme / 'document.css').write_text(':root { --handout-theme-marker: #164c76; }')
+        (theme / 'slides.scss').write_text('/*-- scss:defaults --*/\n$body-bg: #ffffff;\n')
+        self.source.write_text('---\ntitle: Handout test\nslide-layout: structured\n---\n\n'
+                               '## Evidence\n\n![](image.svg)\n\n::: notes\nPresenter detail.\n:::\n')
+        (self.root / 'image.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="80" height="40"/></svg>')
+        out = self.root / 'output'
+        render(config(self.source, {'quarto': QUARTO, 'handout': True,
+                                    'theme': 'handout-test', 'themes_dir': str(theme.parent)}), out)
+        text = (out / 'handout.html').read_text()
+        self.assertIn('--handout-theme-marker', text)
+        self.assertIn('Presenter detail.', text)
+        self.assertIn('ff-speaker-notes', text)
+        assets = []
+        class Resources(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                key = 'href' if tag == 'link' else 'src'
+                if tag in ('script', 'link', 'img') and key in attrs:
+                    assets.append(attrs[key])
+        Resources().feed(text)
+        self.assertTrue(assets)
+        for ref in assets:
+            url = urlsplit(ref)
+            if not url.scheme and not url.netloc and url.path:
+                self.assertTrue((out / unquote(url.path)).is_file(), ref)
+        self.assertIn('handout.qmd', read_json(out / '_quarto.yml')['project']['render'])
+        self.assertFalse((out / 'handout_files').exists())
+
     def test_merged_grid_table_is_not_flattened(self):
         self.source.write_text("+---------------+-------+\n| Area and team | Total |\n"
                                "+=======+=======+=======+\n| North | Alpha | 12    |\n"

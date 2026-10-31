@@ -339,6 +339,9 @@ def render(settings, output, edit_url=None):
                          "footer": '<a class="folioforge-document-link" href="index.html" aria-label="Read the document version">Document</a>'},
         },
     }
+    if settings.get('handout'):
+        # Quarto ignores project format options for files outside this render list.
+        metadata['project']['render'].append('handout.qmd')
     write_json(output / "_quarto.yml", metadata)
     for fmt, filename in (("html", "index.html"), ("revealjs", "slides.html")):
         print(f"Rendering {fmt}: {filename}", flush=True)
