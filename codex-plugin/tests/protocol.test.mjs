@@ -8,6 +8,11 @@ import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
+test('portable, Codex compatibility and workspace release versions agree', () => {
+  const manifests = ['plugin.json', '.codex-plugin/plugin.json', 'codex-plugin/package.json']
+    .map(name => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')));
+  assert.equal(new Set(manifests.map(manifest => manifest.version)).size, 1);
+});
 test('built plugin initializes and exposes the app, file handler and versioned file operations', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-protocol-'));
   const file = path.join(directory, 'deck.md');
@@ -18,6 +23,8 @@ test('built plugin initializes and exposes the app, file handler and versioned f
   client.onerror = error => { stderr += String(error); };
   try {
     await client.connect(transport);
+    assert.equal(client.getServerVersion().version,
+      JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8')).version);
     const {tools} = await client.listTools();
     const handler = tools.find(tool => tool.name === 'folioforge_file');
     assert.deepEqual(handler._meta['openai/ui'].entrypoints[0].extensions, ['.md', '.markdown', '.qmd', '.org']);
