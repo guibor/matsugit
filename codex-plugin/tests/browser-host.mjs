@@ -13,20 +13,25 @@ const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md
 const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
 fs.copyFileSync(fixture || new URL('./workspace.md', import.meta.url), source);
-const client = new Client({name: 'folioforge-browser-test', version: '1.0.0'});
+let client, opened, session, app;
+async function start() {
+client = new Client({name: 'folioforge-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
   args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
-  env: {...process.env, PWD: inherited, FOLIOFORGE_CONFIG: path.join(temporary, 'absent.json')}, stderr: 'inherit'}));
+  env: {...process.env, PWD: inherited, FOLIOFORGE_CONFIG: path.join(temporary, 'absent.json'),
+    FOLIOFORGE_RECOVERY_DIR: path.join(temporary, 'recovery')}, stderr: 'inherit'}));
+opened = await client.callTool({name: 'folioforge_open', arguments: {path: source}});
+session = opened.structuredContent.session;
+app = (await client.readResource({uri: 'ui://folioforge/workspace-v1'})).contents[0].text;
+}
+await start();
 if (process.platform !== 'win32') fs.rmdirSync(inherited);
-const opened = await client.callTool({name: 'folioforge_open', arguments: {path: source}});
-const session = opened.structuredContent.session;
-const app = (await client.readResource({uri: 'ui://folioforge/workspace-v1'})).contents[0].text;
 const host = `<!doctype html><meta charset="utf-8"><style>html,body,iframe{margin:0;border:0;width:100%;height:100%;display:block;overflow:hidden}</style>
 <iframe src="/app" id="app" allow="clipboard-write"></iframe><script>
 window.addEventListener('message',async e=>{if(e.source!==document.getElementById('app').contentWindow||e.data?.jsonrpc!=='2.0')return;
 const message=e.data;
 if(message.method==='ui/notifications/initialized'){
-const result=await(await fetch(location.search.includes('file')?'/file-result':'/result')).json();
+const result=await(await fetch(location.search.includes('file')?'/file-result':location.search.includes('untitled')?'/untitled-result':'/result')).json();
 e.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:result},'*');return;}
 if(message.id===undefined)return;
 try{const result=await(await fetch('/rpc',{method:'POST',body:JSON.stringify(message)})).json();e.source.postMessage({jsonrpc:'2.0',id:message.id,...result},'*');}
@@ -40,7 +45,12 @@ const server = http.createServer(async (req, res) => {
       res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' data: blob:; style-src 'unsafe-inline' data: blob:; img-src data: blob:; font-src data: blob:; frame-src blob:; base-uri https://folioforge.invalid; connect-src 'none'");
       return res.end(app);
     }
-    if (req.url === '/result') return res.end(JSON.stringify(opened));
+    if (req.url === '/result') return res.end(JSON.stringify(await client.callTool({name: 'folioforge_open', arguments: {path: source}})));
+    if (req.url === '/untitled-result') return res.end(JSON.stringify(await client.callTool({name: 'folioforge_workspace', arguments: {}})));
+    if (req.url === '/restart' && req.method === 'POST') {
+      await client.close(); fs.mkdirSync(inherited); await start(); fs.rmdirSync(inherited);
+      return res.end('{}');
+    }
     if (req.url === '/file-result') return res.end(JSON.stringify({structuredContent: {file: {name: 'pilot.md', resourceUri: 'host://selected/pilot'}}, content: []}));
     if (req.url === '/rpc') {
       let raw = ''; for await (const chunk of req) raw += chunk;
@@ -60,6 +70,6 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Content-Type', 'text/html'); res.end(host);
   } catch (error) { res.end(JSON.stringify({error: {code: -32603, message: error.message}})); }
 });
-server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({port: server.address().port, source})));
+server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({port: server.address().port, source, recovery: path.join(temporary, 'recovery')})));
 async function close() { server.close(); await client.close(); fs.rmSync(temporary, {recursive: true, force: true}); process.exit(); }
 process.once('SIGTERM', close); process.once('SIGINT', close);

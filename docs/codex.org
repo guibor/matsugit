@@ -125,14 +125,65 @@ canceled; they cannot replace a newer preview. Clicking refresh during a render
 queues the latest draft, including when =Auto= is off.
 Download the draft before choosing =Reload file= if you need both versions.
 The text editor uses UTF-8 and may normalize line endings when you explicitly save.
-There is no automatic crash-recovery storage: save or download before closing
-the workspace. An ordinary browser unload warning is not a guarantee that the
-Codex host will prompt on every close.
+Version 0.4.0 checkpoints drafts separately from Save, as described below.
+Save or download before intentional upgrades and closing important work. Neither
+an unload warning nor a final asynchronous checkpoint is guaranteed on host exit.
 
 Agent edits through the workspace's model-context tools target the current draft
 with an expected revision, not a stale disk copy. They do not save or publish.
 If the host does not expose these tools, coordinate disk edits with the user
 rather than overwriting an unsaved draft.
+
+* Draft recovery and workspace restoration (0.4.0+)
+
+Editing automatically checkpoints the current text, its original file baseline,
+theme override, Document/Slides selection, source/render/split layout, split size,
+caret/selection, editor scroll and preview position. Checkpoints run after 600 ms
+of inactivity, with a two-second flush while editing continuously. The footer
+reports =Recovery pending=, =Recovery saved= or =Recovery unavailable=; hover it
+for the timestamp or failure reason. These are best-effort timings, not a promise
+that keystrokes typed immediately before a crash can be recovered.
+
+Reopen the same file in Folioforge. View settings return automatically; an
+unsaved draft is offered with =Restore draft= and =Not now=. Restoring does not
+write the file. If it changed elsewhere, Save remains blocked: download the
+draft to reconcile it, or explicitly reload the latest file. =Not now= leaves the
+older recovery copy in the history list. If an agent saved exactly the recovered
+text, it is recognized as already saved.
+
+The history icon (=Recover workspaces=) lists copies for the current document.
+Open the global Folioforge workspace to browse all local copies, including
+unnamed drafts and files that no longer exist. Missing files recover as
+downloadable drafts; the plugin does not recreate a deleted source silently.
+Each viewer gets its own copy, so two open viewers cannot overwrite each other's
+recovery record. Delete unwanted copies explicitly using the trash icon; deleting
+the currently active copy pauses checkpoints for that viewer until reopened.
+
+Storage is on the machine running the plugin server, outside the plugin cache:
+
+- macOS: =~/Library/Application Support/Folioforge/recovery=.
+- Linux: =$XDG_STATE_HOME/folioforge/recovery=, normally
+  =~/.local/state/folioforge/recovery=.
+- =FOLIOFORGE_RECOVERY_DIR= overrides the directory when set in the MCP server's
+  environment. Do not select a shared or public directory.
+
+Records are plaintext UTF-8 JSON, not encrypted. On macOS/Linux the directory
+must be private to the current user (0700), and records are created with 0600
+permissions. They contain source text, a baseline and view settings, not rendered
+HTML or copied theme packs. No credentials are collected; confidential material
+already in the source is necessarily present in its recovery copy. Writes use a synced temporary file and
+atomic replacement. Invalid copies are retained and reported, not discarded.
+An interrupted record lock can block further writes to that copy; reopen the
+workspace to create a fresh writer and recover the intact prior copy.
+
+Limits: 128 copies and 128 MiB per storage directory, with the existing 2 MiB
+source limit. A full directory stops checkpoints with an explicit error; it does
+not evict unsaved work. Remove old copies in the picker after keeping what you
+need. This is local recovery, not cloud sync, unlimited undo history, or automatic
+restoration of every Codex window. The first preview after reopening is rebuilt.
+Opaque host resource URIs remain host-controlled; reopening that file through
+the host is required to reconnect saving. Generic recovery can retain its text
+without inventing a local path or gaining new file permissions.
 
 * Rendering boundaries
 
@@ -252,12 +303,16 @@ npm run build
 npm test
 QUARTO=/path/to/quarto node --test tests/cache-render.test.mjs
 QUARTO=/path/to/quarto /path/to/playwright-python tests/browser.py
+QUARTO=/path/to/quarto /path/to/playwright-python tests/recovery-browser.py
 #+end_src
 
 Set =PLAYWRIGHT_CHROMIUM_EXECUTABLE= when using an existing Chromium binary.
 The browser test uses an isolated loopback host, real stdio MCP and a synthetic
 deck. It checks layouts, rendering, editing, saving, conflict retention and the
 file-handler resource flow. It does not publish or open personal files.
+The recovery suite restarts a disposable MCP server, restores draft/view state,
+checks independent viewers and external edits, exercises the recovery picker at
+desktop/mobile widths, and verifies host-resource saving and checkpoint failures.
 Also run =python3 -m unittest discover -s tests= from the repository root.
 
 Passing protocol/browser tests does not prove integration in every Codex Desktop

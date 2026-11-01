@@ -32,6 +32,11 @@ Running workspaces retain their version-matched renderer across plugin-cache
 updates. Save drafts and reload to adopt a new version; updating the installed
 files no longer removes the renderer from an already-open workspace (0.3.1+).
 
+Version 0.4.0 adds private local draft recovery, separate from Save. Reopen a
+document to restore its theme, selected slide and split view, with an explicit
+offer to recover unsaved text. The history icon lists recovery copies, including
+unnamed drafts. A newer file on disk is never silently replaced by recovered text.
+
 Requires Codex Desktop with MCP Apps, Node 22+, Python 3.10+, Git and Quarto:
 #+begin_src sh
 codex plugin marketplace add guibor/folioforge

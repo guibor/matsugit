@@ -65,6 +65,21 @@ export class WorkspaceStore {
     if (hostPath) return checkedPath(hostPath);
     return null;
   }
+  recoveryOwner(session, hostPath) {
+    // Checkpoints must still work if the original was deleted or moved. This
+    // identity permits recovery storage only; source reads keep strict checks.
+    let host = null;
+    if (hostPath) {
+      if (!path.isAbsolute(hostPath)) throw Error('Choose an absolute document path.');
+      try { host = fs.realpathSync(hostPath); }
+      catch { host = path.resolve(hostPath); }
+    }
+    if (!session) return host;
+    const owner = this.sessions.get(session);
+    if (!owner) throw Error('Workspace expired; reopen the document.');
+    if (host && host !== owner) throw Error('Host file and workspace do not match; reopen the document.');
+    return owner;
+  }
   start({text, theme, session, name = 'Untitled.md', format = 'document', base}, hostPath) {
     checkedText(text);
     if (!['document', 'slides'].includes(format)) throw Error('Unknown preview format.');

@@ -7,6 +7,7 @@
   <header>
     <div class="identity"><span id="brand-icon"></span><strong>Folioforge</strong><span id="filename">Untitled.md</span><span id="dirty" hidden>*</span></div>
     <div class="actions">
+      <button id="recover" title="Recover workspaces" aria-label="Recover workspaces"></button>
       <button id="insert" title="Insert slide or element" aria-label="Insert slide or element"></button>
       <button id="open" title="Open Markdown file" aria-label="Open Markdown file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
@@ -32,6 +33,7 @@
     </div>
   </nav>
   <div id="notice" role="status" hidden><span id="notice-text"></span><button id="reload" hidden>Reload file</button></div>
+  <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
   <div id="workspace" data-layout="split">
     <section id="source-pane" aria-label="Source"><div id="editor"></div></section>
     <div id="divider" role="separator" aria-label="Resize source and preview" aria-orientation="vertical" tabindex="0" aria-valuenow="50" aria-valuemin="20" aria-valuemax="80"></div>
@@ -40,7 +42,8 @@
       <div id="empty" aria-live="polite"><span id="empty-icon"></span><span id="empty-label">Waiting for preview</span></div>
     </section>
   </div>
-  <footer><span id="status" role="status">Connecting</span><span id="location">Ln 1, Col 1</span></footer>
+  <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span></footer>
 </main>
+<dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
 <script>/* APP_SCRIPT */</script>
 </body></html>

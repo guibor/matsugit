@@ -4,13 +4,13 @@ import {EditorView, basicSetup} from 'codemirror';
 import {markdown} from '@codemirror/lang-markdown';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus} from 'lucide';
+import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu} from './authoring.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'Folioforge', version: '0.3.0'});
+const app = new App({name: 'Folioforge', version: '0.4.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.FOLIOFORGE_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -22,6 +22,8 @@ let debounce, loadSequence = 0, previewSequence = 0, readSequence = 0, disposeUp
 let previewToken = '', followingPreview = false, followTimer, origin = 'source', outlineRevision = -1, outline;
 let sourceInput = 0;
 let pendingPatch;
+let recoveryId, recoveryGeneration = 0, recoveryTimer, recoveryPending = false, recoveryPromise, recoveryCandidate;
+let restoredPosition = false;
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
 const notice = (message = '') => { $('notice').hidden = !message; $('notice-text').textContent = message; $('reload').hidden = !state.conflict; };
@@ -35,6 +37,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
   EditorView.domEventHandlers({focus: () => { sourceInput = Date.now(); }}),
   EditorView.updateListener.of(update => {
     if (update.docChanged && !state.loading) { state.revision++; refreshControls(); scheduleRender(); }
+    if ((update.docChanged || update.selectionSet) && !state.loading) scheduleRecovery();
     if ((update.selectionSet || update.docChanged) && !state.loading && !followingPreview) {
       origin = 'source'; clearTimeout(followTimer); followTimer = setTimeout(followSource, 180);
       sourceInput = Date.now();
@@ -44,7 +47,8 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
   }),
 ]});
 for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': PanelsTopLeft,
-  open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus})) $(id).append(createElement(icon));
+  open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
+  recover: History, 'close-recovery': X})) $(id).append(createElement(icon));
 
 async function call(name, args) {
   const response = await app.callServerTool({name, arguments: args});
@@ -90,6 +94,7 @@ function changeLayout(layout) {
   $('workspace').dataset.layout = layout;
   for (const button of document.querySelectorAll('[data-layout]')) if (button.tagName === 'BUTTON') button.setAttribute('aria-pressed', String(button.dataset.layout === layout));
   editor.requestMeasure(); updateModelContext();
+  scheduleRecovery();
   if (!demo && !state.loading && layout !== 'source' && state.renderedRevision !== state.revision) render();
 }
 function showPreview() {
@@ -113,6 +118,7 @@ function changeFormat(format) {
   else { $('preview').src = 'about:blank'; $('empty').hidden = false; }
   if (!demo && !state.loading && state.renderedRevision !== state.revision) render();
   refreshControls(); updateModelContext();
+  scheduleRecovery();
 }
 for (const button of document.querySelectorAll('button[data-layout]')) button.onclick = () => changeLayout(button.dataset.layout);
 for (const button of document.querySelectorAll('button[data-format]')) button.onclick = () => changeFormat(button.dataset.format);
@@ -121,7 +127,7 @@ window.addEventListener('message', event => {
   if (event.data.patched && pendingPatch?.id === event.data.patched) {
     pendingPatch.finish(event.data.patchError); pendingPatch = null;
   }
-  if (event.data.folioforgeReady) followSource();
+  if (event.data.folioforgeReady) { if (!restoredPosition) followSource(); restoredPosition = false; }
   if (['slides', 'document'].includes(event.data?.folioforgeFormat)) changeFormat(event.data.folioforgeFormat);
   const position = event.data?.folioforgePosition;
   if (position && ['slides', 'document'].includes(position.format)
@@ -131,6 +137,7 @@ window.addEventListener('message', event => {
       h: Number.isInteger(position.h) && position.h >= 0 ? position.h : 0,
       v: Number.isInteger(position.v) && position.v >= 0 ? position.v : 0,
       slideId: typeof position.slideId === 'string' && position.slideId.length < 512 ? position.slideId : ''};
+    scheduleRecovery();
     if ($('sync').checked && position.userNavigation && position.heading
         && Number.isFinite(position.inputTime) && position.inputTime >= sourceInput) {
       const target = position.heading;
@@ -250,12 +257,13 @@ async function reload(force = false) {
   const read = ++readSequence;
   try {
     const data = await resourceRead();
-    if (sequence !== loadSequence || read !== readSequence || state.saving || data.etag === state.etag) return;
+    if (sequence !== loadSequence || read !== readSequence || state.saving || (!force && data.etag === state.etag)) return;
     if (dirty() && data.text !== text() && !force) {
       state.conflict = true; notice('The file changed outside this editor. Your draft is retained. Download it or reload the file.');
     } else {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
       state.conflict = false; replaceText(data.text); notice(); scheduleRender();
+      scheduleRecovery();
     }
     refreshControls();
   } catch (error) { if (sequence === loadSequence && read === readSequence) notice(error.message); }
@@ -274,14 +282,18 @@ async function save() {
       state.conflict = true; notice('Save refused: the file changed outside this editor. Your draft is retained.');
     } else throw Error(result.outcome === 'too-large' ? 'The file exceeds the host write limit.' : 'The host did not save the file.');
   } catch (error) { if (sequence === loadSequence) notice(error.message); }
-  finally { if (sequence === loadSequence) { readSequence++; state.saving = false; refreshControls(); } }
+  finally { if (sequence === loadSequence) { readSequence++; state.saving = false; refreshControls(); scheduleRecovery(); await flushRecovery(); } }
 }
 async function load(data) {
   if (state.saving) { notice('Wait for the current save before opening another document.'); return; }
   if (dirty() && !confirm('Discard the unsaved draft and open another document?')) return;
+  await flushRecovery();
+  const suppliedRecovery = data.recovery;
   const sequence = ++loadSequence;
   readSequence++;
   state.loading = true;
+  recoveryId = null; recoveryGeneration = 0; recoveryPending = false; recoveryCandidate = null;
+  clearTimeout(recoveryTimer); $('recovery-banner').hidden = true; $('recovery-status').textContent = '';
   editor.dispatch({effects: editability.reconfigure(editable(false))});
   origin = 'source'; outlineRevision = -1;
   clearTimeout(debounce); previewSequence++; state.rendering = false;
@@ -309,14 +321,36 @@ async function load(data) {
     state.base = source; state.etag = data.etag;
     state.writable = !!data.writable; replaceText(state.base);
     editor.dispatch({selection: {anchor: 0}});
+    if (!demo) {
+      try {
+        const recovered = await call('folioforge_recovery_begin', {...recoveryScope(), name: state.name});
+        if (sequence !== loadSequence) return;
+        recoveryId = recovered.id;
+        const candidate = suppliedRecovery || recovered.candidate;
+        if (candidate && !suppliedRecovery) {
+          applyView(candidate.view);
+          if (candidate.text !== candidate.base && candidate.text !== state.base) {
+            recoveryCandidate = candidate;
+            $('recovery-message').textContent = `Unsaved recovery copy from ${new Date(candidate.updated).toLocaleString()}`;
+            $('recovery-banner').hidden = false;
+          }
+        }
+      } catch (error) { recoveryFailure(error); }
+    }
+    // Restoring an existing copy must not depend on creating another backup.
+    if (suppliedRecovery) applyRecovery(suppliedRecovery);
     state.loading = false;
     editor.dispatch({effects: editability.reconfigure(editable(!demo))});
     notice(state.writable && !state.etag ? 'The host supplied no file version. Saving is disabled to protect concurrent edits.' : '');
+    if (state.conflict) notice('Recovered draft differs from the current file. Download the draft or reload the file; Save is blocked.');
+    else if (suppliedRecovery) notice(state.writable ? 'Recovered local draft. The source file was not changed.' : 'Recovered local copy. Download to keep it; the original file is unavailable here.');
     if (state.uri) {
       disposeUpdates = extensions.resources.addUpdateHandler(({params}) => { if (params.uri === state.uri) reload(); });
       extensions.resources.subscribe({uri: state.uri}).catch(() => {});
     }
     refreshControls();
+    // Do not replace the latest recovery with the file before a pending choice.
+    if (!recoveryCandidate) scheduleRecovery();
     if (demo) { state.rendered = demo.rendered; showPreview(); }
     else await render();
   } catch (error) {
@@ -332,6 +366,139 @@ function download() {
   const link = document.createElement('a'); link.href = url; link.download = state.name;
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+function recoveryScope() {
+  return {...(state.session ? {session: state.session} : {}), ...(state.uri ? {resourceUri: state.uri} : {})};
+}
+function viewState() {
+  const style = document.documentElement.style;
+  return {layout: state.layout, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
+    anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
+    width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
+    positions: state.positions};
+}
+function applyView(view) {
+  if (!view) return;
+  const loading = state.loading; state.loading = true;
+  $('theme').value = view.theme || ''; $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
+  changeLayout(view.layout); changeFormat(view.format);
+  state.positions = view.positions; restoredPosition = true; origin = 'preview';
+  document.documentElement.style.setProperty('--source-size', view.width + '%');
+  document.documentElement.style.setProperty('--source-height', view.height + '%');
+  $('divider').setAttribute('aria-valuenow', String(innerWidth <= 700 ? view.height : view.width));
+  editor.dispatch({selection: {anchor: Math.min(view.anchor, text().length), head: Math.min(view.head, text().length)}});
+  editor.requestMeasure({read: () => null, write: () => { editor.scrollDOM.scrollTop = view.editorScroll; }});
+  state.loading = loading;
+}
+function applyRecovery(record) {
+  const current = state.base;
+  replaceText(record.text);
+  state.conflict = state.writable && current !== record.base && current !== record.text;
+  state.base = current === record.text ? current : record.base;
+  applyView(record.view); recoveryCandidate = null; $('recovery-banner').hidden = true;
+}
+function recoveryFailure(error) {
+  $('recovery-status').textContent = 'Recovery unavailable';
+  $('recovery-status').title = error.message; $('recovery-status').dataset.error = 'true';
+}
+function scheduleRecovery() {
+  if (demo || state.loading || !recoveryId) return;
+  if (recoveryCandidate && !dirty()) return;
+  recoveryPending = true;
+  $('recovery-status').textContent = 'Recovery pending';
+  clearTimeout(recoveryTimer); recoveryTimer = setTimeout(flushRecovery, 600);
+}
+async function flushRecovery() {
+  clearTimeout(recoveryTimer);
+  if (recoveryPromise) { await recoveryPromise; if (recoveryPending) return flushRecovery(); return; }
+  if (demo || state.loading || !recoveryId || !recoveryPending) return;
+  const id = recoveryId, sequence = loadSequence;
+  recoveryPending = false;
+  const snapshot = {id, generation: ++recoveryGeneration, ...recoveryScope(), text: text(), base: state.base, view: viewState()};
+  recoveryPromise = (async () => {
+    try {
+      const result = await call('folioforge_recovery_checkpoint', snapshot);
+      if (sequence !== loadSequence) return;
+      $('recovery-status').dataset.error = 'false';
+      $('recovery-status').textContent = recoveryPending ? 'Recovery pending' : 'Recovery saved';
+      $('recovery-status').title = `Private recovery copy: ${new Date(result.updated).toLocaleString()}. Original file not saved.`;
+    } catch (error) { if (sequence === loadSequence) recoveryFailure(error); }
+  })();
+  try { await recoveryPromise; } finally { recoveryPromise = null; }
+}
+async function recoveryPicker() {
+  await flushRecovery();
+  const container = $('recovery-items'); container.replaceChildren();
+  if (!$('recovery-dialog').open) $('recovery-dialog').showModal();
+  try {
+    const result = await call('folioforge_recovery_list', recoveryScope());
+    if (!result.items.length) container.textContent = 'No recovery copies.';
+    if (result.unreadable) { const warning = document.createElement('p'); warning.textContent = `${result.unreadable} unreadable copies retained on disk.`; container.append(warning); }
+    for (const item of result.items) {
+      const row = document.createElement('div'); row.className = 'recovery-entry';
+      const label = document.createElement('div'); label.className = 'recovery-label'; label.textContent = item.name;
+      const detail = document.createElement('small'); detail.textContent = `${item.dirty ? 'Unsaved draft' : 'Saved workspace'} | ${new Date(item.updated).toLocaleString()}`;
+      label.append(detail);
+      if (item.owner) { const owner = document.createElement('small'); owner.textContent = item.owner; label.append(owner); }
+      const restore = document.createElement('button'); restore.title = restore.ariaLabel = 'Restore ' + item.name; restore.append(createElement(RotateCcw));
+      restore.onclick = async () => {
+        try {
+          const result = await call('folioforge_recovery_restore', {...recoveryScope(), id: item.id});
+          $('recovery-dialog').close();
+          if (state.uri) await restoreCopy(result.recovery);
+          else await load({...result.workspace, recovery: result.recovery});
+        } catch (error) { notice(error.message); }
+      };
+      const remove = document.createElement('button'); remove.title = remove.ariaLabel = 'Delete recovery copy'; remove.append(createElement(Trash2));
+      remove.onclick = async () => {
+        if (!confirm(`Delete the recovery copy of ${item.name}? The original file will not be changed.`)) return;
+        try {
+          await call('folioforge_recovery_forget', {...recoveryScope(), id: item.id, token: item.token});
+          if (item.id === recoveryId) { recoveryId = null; recoveryPending = false; $('recovery-status').textContent = 'Recovery paused'; }
+          await recoveryPicker();
+        } catch (error) { notice(error.message); }
+      };
+      row.append(label, restore, remove); container.append(row);
+    }
+  } catch (error) { container.textContent = error.message; }
+}
+$('recover').onclick = recoveryPicker;
+$('close-recovery').onclick = () => $('recovery-dialog').close();
+async function restoreCopy(record) {
+  if (!record || state.loading || state.saving) return;
+  if (dirty() && !confirm('Replace the current draft with this recovery copy?')) return;
+  await flushRecovery();
+  const sequence = loadSequence;
+  state.loading = true; readSequence++;
+  editor.dispatch({effects: editability.reconfigure(editable(false))});
+  // Re-read disk before restoring so a change during the offer cannot bypass Save checks.
+  try {
+    if (state.uri || state.session) {
+      const current = await resourceRead();
+      if (sequence !== loadSequence) return;
+      state.base = current.text; state.etag = current.etag; state.writable = current.writable;
+    }
+    applyRecovery(record);
+  } catch (error) { notice(error.message); return; }
+  finally {
+    if (sequence === loadSequence) {
+      state.loading = false; editor.dispatch({effects: editability.reconfigure(editable(!demo))});
+    }
+  }
+  notice(state.conflict ? 'Recovered draft differs from the current file. Download it or reload the file; Save is blocked.' : 'Recovered local draft. The source file was not changed.');
+  scheduleRecovery(); refreshControls(); await flushRecovery(); render();
+}
+$('restore-draft').onclick = async () => {
+  if (!recoveryCandidate) return;
+  try {
+    const result = await call('folioforge_recovery_restore', {...recoveryScope(), id: recoveryCandidate.id});
+    await restoreCopy(result.recovery);
+  } catch (error) { notice(error.message); }
+};
+$('dismiss-recovery').onclick = () => { recoveryCandidate = null; $('recovery-banner').hidden = true; scheduleRecovery(); };
+editor.scrollDOM.addEventListener('scroll', scheduleRecovery, {passive: true});
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushRecovery(); });
+window.addEventListener('pagehide', flushRecovery);
+setInterval(() => { if (recoveryPending) flushRecovery(); }, 2000);
 function updateModelContext() {
   if (!demo && app.getHostContext()) app.updateModelContext({structuredContent: {
     file: state.name, layout: state.layout, format: state.format, dirty: dirty(), revision: state.revision,
@@ -346,9 +513,9 @@ function hostContext(context) {
 $('save').onclick = save; $('download').onclick = download;
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
-$('refresh').onclick = event => { state.forceFull ||= event.shiftKey; render(); }; $('auto').onchange = scheduleRender;
-$('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } };
-$('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); };
+$('refresh').onclick = event => { state.forceFull ||= event.shiftKey; render(); }; $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
+$('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };
+$('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); scheduleRecovery(); };
 $('reload').onclick = () => { if (confirm('Discard this editor draft and reload the latest file?')) reload(true); };
 $('open').onclick = () => $('file').click();
 $('file').onchange = async () => {
@@ -360,11 +527,12 @@ $('file').onchange = async () => {
 document.addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); save(); }
 });
-window.addEventListener('beforeunload', event => { if (dirty() && !demo) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { flushRecovery(); if (dirty() && !demo) { event.preventDefault(); event.returnValue = ''; } });
 function resize(value) {
   const percent = Math.max(20, Math.min(80, value));
   document.documentElement.style.setProperty(innerWidth <= 700 ? '--source-height' : '--source-size', percent + '%');
   $('divider').setAttribute('aria-valuenow', String(Math.round(percent))); editor.requestMeasure();
+  scheduleRecovery();
 }
 $('divider').onpointerdown = event => { $('divider').setPointerCapture(event.pointerId); };
 $('divider').onpointermove = event => {
@@ -389,11 +557,11 @@ document.modelContext?.registerTool({name: 'folioforge_replace_source', descript
     return JSON.stringify({revision: state.revision, saved: false});
   }});
 // Expose only the editor model to the isolated local UI test harness.
-window.folioforgeWorkspace = {editor, state, load, render, save, reload};
+window.folioforgeWorkspace = {editor, state, load, render, save, reload, flushRecovery};
 async function boot() {
 if (demo) {
   await load(demo);
-  for (const id of ['open','save','undo','redo','refresh','auto','theme','insert']) $(id).disabled = true;
+  for (const id of ['open','save','undo','redo','refresh','auto','theme','insert','recover']) $(id).disabled = true;
 } else {
   app.addEventListener('toolinput', ({arguments: args}) => {
     if (args?.file && args.file.resourceUri !== state.uri) load(args);

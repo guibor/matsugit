@@ -3,12 +3,17 @@ import {serveStdio} from '@modelcontextprotocol/server/stdio';
 import {OpenAIExtensions} from '@openai/mcp-extensions/server';
 import {getResourcePath, OpenAIFileEntrypointInputSchema} from '@openai/mcp-extensions';
 import {z} from 'zod';
-import {WorkspaceStore, MAX_SOURCE} from './store.mjs';
+import {WorkspaceStore, MAX_SOURCE, checkedPath} from './store.mjs';
 import {PluginRuntime} from './runtime.mjs';
+import {RecoveryStore} from './recovery.mjs';
 
 const uri = 'ui://folioforge/workspace-v1';
 const runtime = new PluginRuntime(__FOLIOFORGE_RUNTIME__);
 const store = new WorkspaceStore(() => runtime.root());
+const recovery = new RecoveryStore();
+const recoveryOwner = (args, context) => args.session || args.resourceUri
+  ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
+const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
 const readOnly = {readOnlyHint: true, destructiveHint: false, openWorldHint: false};
 const viewOptions = {layout: z.enum(['source', 'render', 'split']).optional(), format: z.enum(['document', 'slides']).optional()};
 const appOnly = {_meta: {ui: {visibility: ['app']}}};
@@ -18,7 +23,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'folioforge', version: '0.3.1'});
+  const server = new McpServer({name: 'folioforge', version: '0.4.0'});
   new OpenAIExtensions(server);
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: runtime.app,
@@ -44,6 +49,45 @@ serveStdio(() => {
     inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1)}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
     guard(async ({session, text, etag}) => result(store.save(session, text, etag))));
+  server.registerTool('folioforge_recovery_begin', {description: 'Prepare a private recovery copy for this viewer; does not save the document.', ...appOnly,
+    inputSchema: z.object({...scope, name: z.string().max(512)}), annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
+    guard(async (args, context) => {
+      const data = recovery.begin({...args, owner: recoveryOwner(args, context)});
+      return result({id: data.id}, {candidate: data.candidate});
+    }));
+  server.registerTool('folioforge_recovery_checkpoint', {description: 'Checkpoint workspace text and view settings in private local recovery storage. Never writes the original file or publishes.', ...appOnly,
+    inputSchema: z.object({...scope, id: z.string(), generation: z.number().int().nonnegative(),
+      text: z.string().max(MAX_SOURCE), base: z.string().max(MAX_SOURCE), view: z.record(z.string(), z.unknown())}),
+    annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
+    guard(async (args, context) => result(recovery.checkpoint(args.id, args.generation, args, recoveryOwner(args, context)))));
+  server.registerTool('folioforge_recovery_list', {description: 'List local recovery copies in the workspace recovery picker.', ...appOnly,
+    inputSchema: z.object(scope), annotations: readOnly},
+    guard(async (args, context) => {
+      const owner = recoveryOwner(args, context);
+      return result({}, recovery.list(owner || (args.resourceUri ? 'resource:' + args.resourceUri : undefined)));
+    }));
+  server.registerTool('folioforge_recovery_restore', {description: 'Read the recovery copy explicitly selected in the picker. Does not save or overwrite the source.', ...appOnly,
+    inputSchema: z.object({...scope, id: z.string()}), annotations: readOnly},
+    guard(async (args, context) => {
+      const record = recovery.read(args.id), owner = recoveryOwner(args, context);
+      if ((owner && owner !== record.owner) || (!owner && args.resourceUri && record.identity !== 'resource:' + args.resourceUri)) throw Error('Recovery copy belongs to another document.');
+      let data = {name: record.name, text: '', writable: false};
+      if (record.owner && !args.resourceUri) {
+        try {
+          if (checkedPath(record.owner) !== record.owner) throw Error('Path changed');
+          data = store.open(record.owner);
+        } catch { data.missingSource = true; }
+      }
+      return result({}, {workspace: data, recovery: record});
+    }));
+  server.registerTool('folioforge_recovery_forget', {description: 'Delete only the recovery copy explicitly confirmed in the picker, never its source document.', ...appOnly,
+    inputSchema: z.object({...scope, id: z.string(), token: z.string()}),
+    annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
+    guard(async (args, context) => {
+      const record = recovery.read(args.id), owner = recoveryOwner(args, context);
+      if ((owner && owner !== record.owner) || (!owner && args.resourceUri && record.identity !== 'resource:' + args.resourceUri)) throw Error('Recovery copy belongs to another document.');
+      return result(recovery.forget(args.id, args.token));
+    }));
   server.registerTool('folioforge_preview', {description: 'Render an unsaved snapshot locally with the existing Folioforge engine. Creates temporary output only; does not save or publish.', ...appOnly,
     inputSchema: z.object({text: z.string().max(MAX_SOURCE), name: z.string().optional(), theme: z.string().optional(), session: z.string().optional(),
       format: z.enum(['document', 'slides']).optional(), base: z.string().optional()}), annotations: readOnly},
