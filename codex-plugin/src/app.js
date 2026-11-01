@@ -5,21 +5,23 @@ import {markdown} from '@codemirror/lang-markdown';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
 import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus} from 'lucide';
-import {previewHtml} from './preview.js';
+import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu} from './authoring.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'Folioforge', version: '0.2.0'});
+const app = new App({name: 'Folioforge', version: '0.3.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.FOLIOFORGE_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
+  bases: {}, revisions: {}, forceFull: false,
   positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}};
 let debounce, loadSequence = 0, previewSequence = 0, readSequence = 0, disposeUpdates, previewUrl;
 let previewToken = '', followingPreview = false, followTimer, origin = 'source', outlineRevision = -1, outline;
 let sourceInput = 0;
+let pendingPatch;
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
 const notice = (message = '') => { $('notice').hidden = !message; $('notice-text').textContent = message; $('reload').hidden = !state.conflict; };
@@ -53,7 +55,7 @@ function refreshControls() {
   $('dirty').hidden = !dirty();
   $('save').disabled = !!demo || state.saving || !state.writable || !state.etag || state.conflict || !dirty();
   $('refresh').disabled = !!demo || state.loading;
-  $('refresh').title = state.rendering ? 'Queue latest preview' : 'Render preview';
+  $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh preview (Shift: rebuild)';
   $('filename').textContent = state.name;
   $('filename').title = state.name;
   $('reload').hidden = !state.conflict;
@@ -88,28 +90,37 @@ function changeLayout(layout) {
   $('workspace').dataset.layout = layout;
   for (const button of document.querySelectorAll('[data-layout]')) if (button.tagName === 'BUTTON') button.setAttribute('aria-pressed', String(button.dataset.layout === layout));
   editor.requestMeasure(); updateModelContext();
+  if (!demo && !state.loading && layout !== 'source' && state.renderedRevision !== state.revision) render();
 }
 function showPreview() {
-  if (!state.rendered) return;
+  if (!state.rendered?.[state.format]) return;
   const frame = $('preview');
   // A separate opaque-origin frame runs Reveal/Mermaid, never the editor's bridge.
   // A real blob URL lets Reveal change fragments without navigating to the app itself.
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewToken = crypto.randomUUID();
-  previewUrl = URL.createObjectURL(new Blob([previewHtml(state.rendered[state.format], state.format, state.positions[state.format], previewToken)], {type: 'text/html'}));
+  previewUrl = URL.createObjectURL(new Blob([previewHtml(state.rendered[state.format], state.format, state.positions[state.format], previewToken, state.bases[state.format])], {type: 'text/html'}));
   frame.src = previewUrl + state.positions[state.format].hash;
   frame.title = state.format === 'slides' ? 'Slide preview' : 'Document preview';
   $('empty').hidden = true;
 }
 function changeFormat(format) {
+  if (format === state.format && state.rendered?.[format]) return;
   state.format = format;
+  state.renderedRevision = state.revisions[format] ?? -1;
   for (const button of document.querySelectorAll('[data-format]')) button.setAttribute('aria-pressed', String(button.dataset.format === format));
-  showPreview(); updateModelContext();
+  if (state.rendered?.[format]) showPreview();
+  else { $('preview').src = 'about:blank'; $('empty').hidden = false; }
+  if (!demo && !state.loading && state.renderedRevision !== state.revision) render();
+  refreshControls(); updateModelContext();
 }
 for (const button of document.querySelectorAll('button[data-layout]')) button.onclick = () => changeLayout(button.dataset.layout);
 for (const button of document.querySelectorAll('button[data-format]')) button.onclick = () => changeFormat(button.dataset.format);
 window.addEventListener('message', event => {
   if (event.source !== $('preview').contentWindow || event.data?.folioforgePreview !== previewToken) return;
+  if (event.data.patched && pendingPatch?.id === event.data.patched) {
+    pendingPatch.finish(event.data.patchError); pendingPatch = null;
+  }
   if (event.data.folioforgeReady) followSource();
   if (['slides', 'document'].includes(event.data?.folioforgeFormat)) changeFormat(event.data.folioforgeFormat);
   const position = event.data?.folioforgePosition;
@@ -135,7 +146,7 @@ window.addEventListener('message', event => {
 });
 function scheduleRender() {
   clearTimeout(debounce);
-  if (!demo && $('auto').checked) debounce = setTimeout(() => render(false), 1500);
+  if (!demo && state.layout !== 'source' && $('auto').checked) debounce = setTimeout(() => render(false), 450);
 }
 async function render(manual = true) {
   if (demo || state.loading) return;
@@ -146,40 +157,66 @@ async function render(manual = true) {
     return;
   }
   const revision = state.revision, sequence = ++previewSequence;
+  const format = state.format;
   const session = state.session;
   const owner = session ? {session} : {};
-  const current = () => sequence === previewSequence && revision === state.revision;
+  const current = () => sequence === previewSequence && revision === state.revision && format === state.format;
   const cancel = job => call('folioforge_preview_cancel', {job, ...owner}).catch(() => {});
   state.pendingRender = false;
   state.rendering = true; refreshControls(); status('Preparing preview');
   try {
-    const initial = await call('folioforge_preview', {text: text(), name: state.name,
+    const base = state.forceFull ? undefined : state.bases[format];
+    state.forceFull = false;
+    const initial = await call('folioforge_preview', {text: text(), name: state.name, format, base,
       theme: $('theme').value.trim(), ...owner});
     let job = initial;
     while (job.state === 'rendering') {
       if (!current()) { await cancel(initial.job); return; }
       status(job.phase || 'Rendering');
       if (!state.rendered) $('empty-label').textContent = job.phase || 'Rendering';
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, base ? 100 : 350));
       if (!current()) { await cancel(initial.job); return; }
       job = await call('folioforge_preview_status', {job: initial.job, ...owner});
     }
     if (!current()) return;
     if (job.state !== 'ready') throw Error(job.error || 'Preview failed.');
-    const rendered = {};
     status('Loading preview');
-    for (const format of ['document', 'slides']) {
-      const parts = []; let offset = 0;
-      while (true) {
-        if (!current()) return;
-        const part = await call('folioforge_preview_chunk', {job: initial.job, format, offset, ...owner});
-        parts.push(part.chunk); offset = part.next;
-        if (part.done) break;
-      }
-      rendered[format] = parts.join('');
+    const parts = []; let offset = 0;
+    while (true) {
+      if (!current()) return;
+      const part = await call('folioforge_preview_chunk', {job: initial.job, format, offset, ...owner});
+      parts.push(part.chunk); offset = part.next;
+      if (part.done) break;
     }
     if (current()) {
-      state.rendered = rendered; state.renderedRevision = revision; showPreview();
+      const result = parts.join('');
+      if (job.kind === 'patch') {
+        try {
+          if (job.base !== state.bases[format]) throw Error('Preview base expired');
+          const {changes} = JSON.parse(result);
+          const updated = patchedHtml(state.rendered[format], changes);
+          await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => { pendingPatch = null; reject(Error('Preview did not acknowledge update')); }, 3000);
+            pendingPatch = {id: job.job, finish: error => { clearTimeout(timer); error ? reject(Error(error)) : resolve(); }};
+            $('preview').contentWindow.postMessage({folioforgePreview: previewToken,
+              patch: {base: job.base, next: job.job, changes}}, '*');
+          });
+          // Even if the source changed during the acknowledgement, the iframe
+          // now has this base. Retain it so the next patch uses the correct DOM.
+          if (sequence !== previewSequence || format !== state.format) return;
+          state.rendered[format] = updated;
+        } catch (error) {
+          if (sequence === previewSequence) { state.forceFull = true; state.pendingRender = true; }
+          return;
+        }
+      } else {
+        state.rendered ||= {};
+        state.rendered[format] = result;
+      }
+      state.bases[format] = job.job; state.revisions[format] = revision;
+      state.renderedRevision = revision;
+      state.lastRefresh = {kind: job.kind, changed: job.changed, format};
+      if (job.kind !== 'patch') showPreview();
       state.resolvedTheme = job.theme;
       $('theme').placeholder = job.theme ? `${job.theme} (default)` : 'Project default';
       $('theme').title = job.theme ? `Resolved theme: ${job.theme}` : 'Theme';
@@ -193,7 +230,7 @@ async function render(manual = true) {
     if (sequence === previewSequence) {
       state.rendering = false; refreshControls();
       if (state.pendingRender) { state.pendingRender = false; debounce = setTimeout(() => render(), 0); }
-      else if (revision !== state.revision) scheduleRender();
+      else if (revision !== state.revision || format !== state.format) scheduleRender();
     }
   }
 }
@@ -253,6 +290,7 @@ async function load(data) {
   Object.assign(state, {uri: data.file?.resourceUri || null, session: data.session || null,
     name: data.file?.name || data.name || 'Untitled.md', conflict: false, rendered: null, renderedRevision: -1,
     resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false,
+    bases: {}, revisions: {}, forceFull: false,
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
   $('theme').value = ''; $('theme').placeholder = 'Project default'; $('theme').title = 'Theme';
   if (['source', 'render', 'split'].includes(data.layout)) changeLayout(data.layout);
@@ -308,7 +346,7 @@ function hostContext(context) {
 $('save').onclick = save; $('download').onclick = download;
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
-$('refresh').onclick = () => render(); $('auto').onchange = scheduleRender;
+$('refresh').onclick = event => { state.forceFull ||= event.shiftKey; render(); }; $('auto').onchange = scheduleRender;
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } };
 $('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); };
 $('reload').onclick = () => { if (confirm('Discard this editor draft and reload the latest file?')) reload(true); };

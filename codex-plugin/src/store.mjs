@@ -65,23 +65,29 @@ export class WorkspaceStore {
     if (hostPath) return checkedPath(hostPath);
     return null;
   }
-  start({text, theme, session, name = 'Untitled.md'}, hostPath) {
+  start({text, theme, session, name = 'Untitled.md', format = 'document', base}, hostPath) {
     checkedText(text);
+    if (!['document', 'slides'].includes(format)) throw Error('Unknown preview format.');
     if (theme && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(theme)) throw Error('Invalid theme name.');
     const owner = this.owner(session, hostPath);
+    // Expired bases simply rebuild; never reuse another document's snapshot.
+    const previous = this.jobs.get(base);
+    if (previous && previous.owner !== owner) throw Error('Unknown preview for this document.');
+    const baseline = previous?.state === 'ready' && previous.format === format ? previous : null;
     if ([...this.jobs.values()].filter(j => j.state === 'rendering').length >= 2) throw Error('Two previews are already rendering; wait for one to finish.');
     const worker = path.join(this.root, 'codex-plugin/worker.py');
     if (!fs.existsSync(worker)) throw Error('Folioforge plugin files are no longer available. Save or download your draft, then reload the plugin in Codex and reopen the document.');
     for (const [id, job] of this.jobs) {
-      if (job.state !== 'rendering' && (Date.now() - job.created > 300_000 || this.jobs.size >= 4)) {
+      if (job !== baseline && !job.readers && job.state !== 'rendering' && (Date.now() - job.created > 300_000 || this.jobs.size >= 4)) {
         this.jobs.delete(id); fs.rmSync(job.directory, {recursive: true, force: true});
       }
     }
     const id = randomUUID(), directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-workspace-')));
     const extension = formats.has(path.extname(name).toLowerCase()) ? path.extname(name).toLowerCase() : '.md';
-    const source = owner || path.join(directory, 'Untitled' + extension);
+    const source = owner || baseline?.source || path.join(directory, 'Untitled' + extension);
     const output = path.join(directory, 'render');
-    const job = {id, owner, directory, output, state: 'rendering', phase: 'Preparing', created: Date.now()};
+    const job = {id, owner, source, format, directory, output, state: 'rendering', phase: 'Preparing', created: Date.now()};
+    if (baseline) baseline.readers = (baseline.readers || 0) + 1;
     this.jobs.set(id, job);
     // A long-lived host can retain a deleted cwd. Python/pyenv need a real one
     // before the worker starts; absolute source paths still resolve project assets.
@@ -91,7 +97,7 @@ export class WorkspaceStore {
     job.child = child;
     let stderr = '', stdout = '';
     child.stdin.on('error', () => {});
-    child.stdin.end(JSON.stringify({path: source, output, text, theme: theme || null}));
+    child.stdin.end(JSON.stringify({path: source, output, text, format, base: baseline?.output, theme: theme || null}));
     child.stdout.on('data', chunk => { stdout = (stdout + chunk).slice(-10000); });
     child.stderr.on('data', chunk => {
       stderr = (stderr + chunk).slice(-16000);
@@ -106,15 +112,17 @@ export class WorkspaceStore {
     child.on('error', error => { job.state = 'error'; job.error = `Cannot start renderer: ${error.message}`; clearTimeout(timeout); });
     child.on('close', code => {
       clearTimeout(timeout);
+      if (baseline) baseline.readers--;
       if (job.state !== 'rendering') return;
       if (code !== 0) {
         job.state = 'error'; job.error = stderr.replaceAll(this.root, '<folioforge>').replaceAll(directory, '<preview>').slice(-4000) || 'Rendering failed.';
       } else {
         try {
-          const files = ['index.html', 'slides.html'].map(file => path.join(output, file));
-          if (files.some(file => fs.statSync(file).size > 20 * 1024 * 1024)) throw Error('Preview exceeds 20 MiB per view; reduce embedded media.');
-          job.rendered = {document: fs.readFileSync(files[0], 'utf8'), slides: fs.readFileSync(files[1], 'utf8')};
-          job.theme = JSON.parse(stdout).theme; job.state = 'ready';
+          const result = JSON.parse(stdout);
+          const file = path.join(output, result.kind === 'patch' ? 'patch.json' : format === 'slides' ? 'slides.html' : 'index.html');
+          if (fs.statSync(file).size > 20 * 1024 * 1024) throw Error('Preview exceeds 20 MiB per view; reduce embedded media.');
+          job.rendered = {[format]: fs.readFileSync(file, 'utf8')};
+          Object.assign(job, result, {base: result.kind === 'patch' ? baseline.id : null, state: 'ready'});
         } catch (error) { job.state = 'error'; job.error = error.message; }
       }
     });
@@ -132,12 +140,14 @@ export class WorkspaceStore {
   status(id, session, hostPath) {
     const job = this.jobs.get(id);
     if (!job || job.owner !== this.owner(session, hostPath)) throw Error('Unknown preview for this document.');
-    return {job: id, state: job.state, phase: job.phase, error: job.error, theme: job.theme};
+    return {job: id, state: job.state, phase: job.phase, error: job.error, theme: job.theme,
+      kind: job.kind, format: job.format, base: job.base, changed: job.changed};
   }
   chunk(id, format, offset, session, hostPath) {
     if (this.status(id, session, hostPath).state !== 'ready') throw Error('Preview is not ready.');
     if (!['document', 'slides'].includes(format)) throw Error('Unknown preview format.');
     const html = this.jobs.get(id).rendered[format];
+    if (typeof html !== 'string') throw Error('This format has not been rendered.');
     if (!Number.isInteger(offset) || offset < 0 || offset > html.length) throw Error('Invalid preview offset.');
     const chunk = html.slice(offset, offset + 256 * 1024), next = offset + chunk.length;
     return {chunk, next, done: next === html.length};

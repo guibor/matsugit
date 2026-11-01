@@ -42,6 +42,7 @@ try:
         wait_until(frame, '!!window.folioforgeWorkspace?.state.rendered')
         assert source.read_text() == original
         print('Initial preview rendered', flush=True)
+        assert frame.evaluate('Object.keys(folioforgeWorkspace.state.rendered)') == ['document']
         ui.frame_locator('#preview').locator('h1').first.wait_for()
         assert ui.frame_locator('#preview').locator('table').count() >= 1
         assert 'createHTML' not in ui.frame_locator('#preview').locator('body').inner_text()
@@ -52,7 +53,7 @@ try:
         print('Browser errors: ' + str(errors)[:1000], flush=True)
         ui.frame_locator('#preview').locator('svg.mermaid-js').first.wait_for(timeout=30000)
         ui.locator('[data-format="slides"]').click()
-        ui.frame_locator('#preview').locator('.reveal.ready').wait_for(timeout=30000)
+        ui.frame_locator('#preview').locator('.reveal.ready').wait_for(timeout=120000)
         assert 'createHTML' not in ui.frame_locator('#preview').locator('body').inner_text()
         preview = ui.locator('#preview').element_handle().content_frame()
         frame.evaluate('''() => {
@@ -77,6 +78,41 @@ try:
         wait_until(preview, 'Reveal.getIndices().h === 1', 15)
         page.screenshot(path=str(shots / 'split-slides.png'))
         print('Document, slides and two-way position sync verified', flush=True)
+        # Text refresh preserves the iframe, slide selection and existing Mermaid.
+        ui.locator('#auto').uncheck()
+        ui.locator('#sync').uncheck()
+        before_url = ui.locator('#preview').get_attribute('src')
+        preview.evaluate('window.keptDiagram = document.querySelector("svg.mermaid-js")')
+        started = time.monotonic()
+        frame.evaluate('''() => {
+          const w = folioforgeWorkspace, at = w.editor.state.doc.toString().indexOf('12 days');
+          w.editor.dispatch({changes:{from:at,to:at+7,insert:'10 days'}});
+          void w.render();
+        }''')
+        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.renderedRevision === folioforgeWorkspace.state.revision')
+        warm = time.monotonic() - started
+        assert frame.evaluate('folioforgeWorkspace.state.lastRefresh.kind') == 'patch'
+        assert frame.evaluate('folioforgeWorkspace.state.lastRefresh.changed') == 1
+        assert ui.locator('#preview').get_attribute('src') == before_url
+        assert preview.evaluate('window.keptDiagram === document.querySelector("svg.mermaid-js")')
+        assert preview.locator('[data-ff-preview]').count() == 0, 'Preview markers must not alter theme selectors'
+        assert preview.evaluate('Reveal.getIndices().h') == 1
+        assert '10 days' in preview.locator('section.present table').inner_text()
+        assert source.read_text() == original
+        print(f'Warm table-cell refresh: {warm:.3f}s; iframe, current slide and Mermaid preserved', flush=True)
+        # The hidden document is stale until selected, then gets its own patch.
+        ui.locator('[data-format="document"]').click()
+        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.renderedRevision === folioforgeWorkspace.state.revision')
+        assert frame.evaluate('folioforgeWorkspace.state.lastRefresh.kind') == 'patch'
+        assert '10 days' in ui.frame_locator('#preview').locator('table').inner_text()
+        ui.locator('[data-format="slides"]').click()
+        ui.frame_locator('#preview').locator('.reveal.ready').wait_for(timeout=30000)
+        # Explicit full rebuild remains available, even for unchanged source.
+        before_rebuild = ui.locator('#preview').get_attribute('src')
+        ui.locator('#refresh').click(modifiers=['Shift'])
+        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.lastRefresh.kind === "full"')
+        assert ui.locator('#preview').get_attribute('src') != before_rebuild
+        ui.locator('#auto').check()
         ui.locator('[data-layout="render"]').click()
         assert not ui.locator('#source-pane').is_visible()
         ui.locator('[data-layout="source"]').click()

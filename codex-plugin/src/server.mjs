@@ -20,7 +20,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'folioforge', version: '0.2.0'});
+  const server = new McpServer({name: 'folioforge', version: '0.3.0'});
   new OpenAIExtensions(server);
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: fs.readFileSync(path.join(root, 'codex-plugin/bundle/app.html'), 'utf8'),
@@ -47,7 +47,8 @@ serveStdio(() => {
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
     guard(async ({session, text, etag}) => result(store.save(session, text, etag))));
   server.registerTool('folioforge_preview', {description: 'Render an unsaved snapshot locally with the existing Folioforge engine. Creates temporary output only; does not save or publish.', ...appOnly,
-    inputSchema: z.object({text: z.string().max(MAX_SOURCE), name: z.string().optional(), theme: z.string().optional(), session: z.string().optional()}), annotations: readOnly},
+    inputSchema: z.object({text: z.string().max(MAX_SOURCE), name: z.string().optional(), theme: z.string().optional(), session: z.string().optional(),
+      format: z.enum(['document', 'slides']).optional(), base: z.string().optional()}), annotations: readOnly},
     guard(async (args, context) => result(store.start(args, getResourcePath(context.mcpReq?._meta)))));
   server.registerTool('folioforge_preview_status', {description: 'Read render progress and completed preview for the opened document.', ...appOnly,
     inputSchema: z.object({job: z.string(), session: z.string().optional()}), annotations: readOnly},

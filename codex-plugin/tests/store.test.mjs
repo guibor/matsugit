@@ -35,6 +35,7 @@ test('paths, document size, source text and theme options are constrained', () =
   assert.throws(() => checkedText('bad\0text'));
   const store = new WorkspaceStore('/tmp');
   assert.throws(() => store.start({text: '# X', theme: '../private', name: 'x.md'}));
+  assert.throws(() => store.start({text: '# X', format: 'other'}));
   assert.throws(() => store.status('unknown'));
 });
 test('large preview transfers are bounded and preserve Unicode across chunks', () => {
@@ -78,5 +79,6 @@ test('cancel is scoped to its document and cannot cancel a completed render', ()
     assert.deepEqual(stopped, ['owned-process']);
     store.jobs.set('ready', {owner: file, state: 'ready'});
     assert.equal(store.cancel('ready', a.session).state, 'ready');
+    assert.throws(() => store.start({text: '# B', session: b.session, base: 'ready'}), /Unknown preview/);
   } finally { store.jobs.clear(); store.close(); fs.rmSync(directory, {recursive: true, force: true}); }
 });

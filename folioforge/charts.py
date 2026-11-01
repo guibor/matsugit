@@ -201,8 +201,16 @@ def contains_chart(node):
     return isinstance(node, dict) and (is_chart(node) or any(contains_chart(v) for v in node.values()))
 
 
-def save_chart(data, output, colours=None, width=960):
-    result = render_chart(data, colours or {}, width)
+def save_chart(data, output, colours=None, width=960, cache=None):
+    key = hashlib.sha256(json.dumps([data, colours, width], sort_keys=True).encode()).hexdigest()
+    cached = Path(cache) / (key + '.json') if cache else None
+    if cached and cached.is_file():
+        result = json.loads(cached.read_text(encoding='utf-8'))
+    else:
+        result = render_chart(data, colours or {}, width)
+        if cached:
+            cached.parent.mkdir(parents=True, exist_ok=True)
+            cached.write_text(json.dumps(result), encoding='utf-8')
     name = hashlib.sha256(result['svg'].encode()).hexdigest()[:16] + '-chart'
     assets = Path(output) / 'assets'
     assets.mkdir(parents=True, exist_ok=True)
@@ -213,15 +221,15 @@ def save_chart(data, output, colours=None, width=960):
     return name + '.svg', title
 
 
-def prepare(node, output, colours=None, width=960):
+def prepare(node, output, colours=None, width=960, cache=None):
     if isinstance(node, list):
-        return [prepare(n, output, colours, width) for n in node]
+        return [prepare(n, output, colours, width, cache) for n in node]
     if not isinstance(node, dict):
         return node
     node = deepcopy(node)
     if is_chart(node):
         data = dataset(node)
-        name, title = save_chart(data, output, colours, width)
+        name, title = save_chart(data, output, colours, width, cache)
         image = {'t':'Image', 'c':[['',[],[]],[{'t':'Str','c':title}],['assets/'+name,'']]}
         figure = {'t':'Figure', 'c':[['',[],[]],[None,[{'t':'Plain','c':[{'t':'Str','c':title}]}]],
                                    [{'t':'Plain','c':[image]}]]}
@@ -231,7 +239,7 @@ def prepare(node, output, colours=None, width=960):
         weights = [float(dict(p['c'][0][2]).get('width', '1').rstrip('%')) for p in parts]
         if any(w <= 0 or not math.isfinite(w) for w in weights):
             raise ValueError('Column widths must be positive finite values')
-        node['c'][1] = [prepare(p, output, colours, (width - 28 * (len(parts)-1)) * w / sum(weights))
+        node['c'][1] = [prepare(p, output, colours, (width - 28 * (len(parts)-1)) * w / sum(weights), cache)
                         for p, w in zip(parts, weights)]
         return node
     if set(classes(node)) & {'metrics', 'comparison', 'timeline', 'decision'}:
@@ -241,7 +249,7 @@ def prepare(node, output, colours=None, width=960):
         width = (width - 120) / 2
     if 'annotated' in classes(node):
         width = (width - 80) * 2 / 3
-    return {k: prepare(v, output, colours, width) for k, v in node.items()}
+    return {k: prepare(v, output, colours, width, cache) for k, v in node.items()}
 
 
 def setup():

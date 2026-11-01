@@ -6,7 +6,8 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from folioforge.core import config, render
+from folioforge.core import config
+from folioforge.preview import render
 
 
 def main():
@@ -18,8 +19,9 @@ def main():
     overrides = {'theme': request.get('theme'), 'quarto': os.environ.get('QUARTO', 'quarto')}
     settings = config(source, overrides)
     with contextlib.redirect_stdout(sys.stderr):
-        render(settings, Path(request['output']), source_text=request['text'])
-    print(json.dumps({'theme': settings['theme']}))
+        result = render(settings, Path(request['output']), request['text'],
+                        request.get('format', 'document'), request.get('base'))
+    print(json.dumps(result))
 
 
 if __name__ == '__main__':

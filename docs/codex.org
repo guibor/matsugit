@@ -50,6 +50,7 @@ open the global Folioforge workspace to start an unsaved draft.
 - =Document= / =Slides=: choose the rendered output independently of layout.
 - The selected slide is retained across preview refreshes when it still exists.
 - =Auto=: render after a pause in editing. The refresh icon renders manually.
+  Shift-click the refresh icon to force a complete rebuild of the selected view.
 - =Sync=: follow the edited heading in the document/slide preview, and follow
   preview navigation back to its source heading. Turn it off to browse panes
   independently. Matching uses heading text and hierarchy, not guessed pixels;
@@ -132,6 +133,38 @@ If the host does not expose these tools, coordinate disk edits with the user
 rather than overwriting an unsaved draft.
 
 * Rendering boundaries
+
+** Smart refresh
+
+Only the selected Document or Slides view is rendered. The other view is
+updated when selected; switching to an already-current view reuses its HTML.
+After the first full render, ordinary prose, emphasis, link, list-item and
+table-cell edits update their text regions in place. Unchanged slides, diagrams,
+images, fonts and compiled theme styles stay loaded. The current slide and
+scroll position are preserved; source/preview following remains controlled by
+=Sync=.
+
+This is deliberately not a second, approximate Markdown renderer. The complete
+source is reparsed with Quarto's bundled Pandoc, shared references are resolved,
+and the usual Folioforge conversions run. Only inert inline regions with
+unchanged surrounding structure qualify for patches. Headings (including TOC
+and menu dependencies), YAML, inserted/deleted blocks, table geometry, code,
+math, diagrams, images and theme changes take the full-render path. Merged-table
+edits currently use that path too. A patch with the wrong base revision or a
+missing DOM target falls back to a rebuild, never a partial stale update.
+
+Chart generation is cached by its parsed data, theme palette and available
+width within the preview history. Local asset content and resolved theme files
+are checked on every refresh. A remote image changed at the same URL cannot be
+detected from the source alone; use Shift-refresh to rebuild it. Temporary
+preview history is bounded and is removed when the plugin process closes.
+
+Exports and CI continue to use the authoritative full renderer. They contain
+no preview anchors and do not depend on the editor cache. The first render and
+structural rebuilds still take longer than warm text edits. The cache is not
+crash recovery and never saves the source file.
+
+** Worker execution
 
 Rendering uses a temporary directory, the existing Folioforge parser and
 trusted local themes. Document code is not executed. Project configuration may

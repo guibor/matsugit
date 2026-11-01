@@ -199,12 +199,12 @@ def mermaid_block(attributes, code):
     return {"t": "Div", "c": [[identifier, ["ff-media", "ff-diagram", *[c for c in classes if c != "mermaid"]], values], [cell]]}
 
 
-def normalize(settings, output, *, source_text=None):
+def normalize(settings, output, *, source_text=None, editable_source=True):
     source = settings["source"]
     fmt = {".md": "markdown", ".markdown": "markdown", ".qmd": "markdown", ".org": "org"}.get(source.suffix.lower())
     if not fmt:
         raise Error("Supported sources: .md, .markdown, .qmd and .org")
-    pandoc = [settings["quarto"], "pandoc"]
+    pandoc = settings.get('_preview_pandoc', [settings["quarto"], "pandoc"])
     text = source.read_text(encoding="utf-8") if source_text is None else source_text
     if fmt == "markdown":
         text = diagram_fences(text)
@@ -271,7 +271,7 @@ def normalize(settings, output, *, source_text=None):
         return node
 
     ast = visit(ast)
-    if fmt == 'org':
+    if fmt == 'org' and editable_source:
         (output / 'source.org').write_text(write_org(ast, pandoc), encoding='utf-8')
 
     def span_tables(node):
@@ -288,34 +288,45 @@ def normalize(settings, output, *, source_text=None):
         return {key: span_tables(value) for key, value in node.items()}
 
     ast = span_tables(ast)
-    markdown = run([*pandoc, "-f", "json", "-t", "markdown", "--standalone", "--wrap=none"], text=json.dumps(ast))
-    (output / "source.md").write_text(markdown, encoding="utf-8")
+    if editable_source:
+        markdown = run([*pandoc, "-f", "json", "-t", "markdown", "--standalone", "--wrap=none"], text=json.dumps(ast))
+        (output / "source.md").write_text(markdown, encoding="utf-8")
     return ast
 
 
-def render(settings, output, edit_url=None, *, source_text=None):
+def render(settings, output, edit_url=None, *, source_text=None,
+           formats=('document', 'slides'), _prepared=None, _transform=None):
     output = Path(output).resolve()
-    if output.exists() and any(output.iterdir()):
+    if not formats or any(fmt not in ('document', 'slides') for fmt in formats):
+        raise Error('Unknown render format')
+    if _prepared is None and output.exists() and any(output.iterdir()):
         raise Error(f"Output must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
-    theme = install_theme(settings, output)
-    ast = normalize(settings, output, source_text=source_text)
-    colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
-    display_ast = evidence_components(chart_components(ast, output, colours))
+    pandoc = settings.get('_preview_pandoc', [settings['quarto'], 'pandoc'])
+    if _prepared is None:
+        theme = install_theme(settings, output)
+        ast = normalize(settings, output, source_text=source_text)
+        colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
+        display_ast = evidence_components(chart_components(ast, output, colours))
+    else:
+        theme, ast, display_ast = _prepared
+    document_ast = _transform(display_ast, 'document') if _transform else display_ast
     print(f"Theme: {settings['theme']}; slide layout: {plain(ast['meta'].get('slide-layout')) or 'default'}", flush=True)
     # Quarto requires .qmd for Mermaid cells, even with the inert markdown engine.
     # Keep the published editable source in Markdown; this is a generated input.
     # Enable only native Mermaid display, not programming-language execution.
     (output / "render.qmd").write_text(
-        diagram_fences(run([settings['quarto'], 'pandoc', '-f', 'json', '-t', 'markdown',
-                           '--standalone', '--wrap=none'], text=json.dumps(display_ast)), render=True), encoding="utf-8")
+        diagram_fences(run([*pandoc, '-f', 'json', '-t', 'markdown',
+                           '--standalone', '--wrap=none'], text=json.dumps(document_ast)), render=True), encoding="utf-8")
     slide_ast = slide_layout(display_ast)
+    if _transform:
+        slide_ast = _transform(slide_ast, 'slides')
     slide_render_ast = slide_ast
     if not ast['meta'].get('slide-title-page', {'c':True})['c']:
         # Pandoc generates its cover from title metadata; keep the reading title intact.
         slide_render_ast = dict(slide_ast, meta={k:v for k,v in slide_ast['meta'].items()
                                                 if k not in ('title', 'subtitle')})
-    slide_source = run([settings["quarto"], "pandoc", "-f", "json", "-t", "markdown",
+    slide_source = run([*pandoc, "-f", "json", "-t", "markdown",
                         "--standalone", "--wrap=none"], text=json.dumps(slide_render_ast))
     (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
@@ -329,7 +340,7 @@ def render(settings, output, edit_url=None, *, source_text=None):
     links = f'<a href="slides.html">Slides</a> <a href="{source_name}">Source</a>'
     if settings.get('handout'):
         links += ' <a href="handout.html">Presenter handout</a>'
-        handout = run([settings['quarto'], 'pandoc', '-f', 'json', '-t', 'markdown',
+        handout = run([*pandoc, '-f', 'json', '-t', 'markdown',
                        '--standalone', '--wrap=none'], text=json.dumps(handout_layout(slide_ast)))
         (output / 'handout.qmd').write_text(diagram_fences(handout, render=True), encoding='utf-8')
     if edit_url:
@@ -361,6 +372,8 @@ def render(settings, output, edit_url=None, *, source_text=None):
         metadata['project']['render'].append('handout.qmd')
     write_json(output / "_quarto.yml", metadata)
     for fmt, filename in (("html", "index.html"), ("revealjs", "slides.html")):
+        if ('document' if fmt == 'html' else 'slides') not in formats:
+            continue
         print(f"Rendering {fmt}: {filename}", flush=True)
         source = "render.qmd" if fmt == "html" else "slides.qmd"
         run([settings["quarto"], "render", source, "--to", fmt, "--output", filename, "--no-execute"], cwd=output)
