@@ -14,14 +14,59 @@ function ephemeralStorage() {
     }
   }
 }
-function navigation(format, position) {
+import {headingKey} from './structure.mjs';
+
+function navigation(format, position, token, headingKey) {
+  let lastInput = 0, suppressUntil = 0, currentTarget;
+  const post = data => parent.postMessage({...data, folioforgePreview: token}, '*');
+  const headings = () => [...document.querySelectorAll(format === 'slides'
+    ? '.reveal .slides h1,.reveal .slides h2,.reveal .slides h3,.reveal .slides [role="heading"]'
+    : 'main h1,main h2,main h3,main h4,main h5,main h6,main [role="heading"]')]
+    .filter(el => !el.closest('.notes,.slide-menu'));
+  const info = el => {
+    if (!el) return null;
+    const copy = el.cloneNode(true); copy.querySelectorAll('.anchorjs-link,.anchor').forEach(a => a.remove());
+    return {key: headingKey(copy.textContent), level: Number(el.getAttribute('aria-level') || el.tagName.slice(1))};
+  };
+  const currentHeading = () => {
+    const list = headings();
+    const el = format === 'slides' ? window.Reveal?.getCurrentSlide()?.querySelector('h1,h2,h3,[role="heading"]')
+      : list.filter(el => el.getBoundingClientRect().top <= 120).at(-1) || list[0];
+    const current = info(el);
+    if (!current) return null;
+    return {...current, occurrence: list.filter(item => {
+      const other = info(item); return other.key === current.key && other.level === current.level;
+    }).indexOf(el)};
+  };
+  for (const name of ['pointerdown', 'wheel', 'keydown', 'touchstart']) document.addEventListener(name, () => {
+    lastInput = Date.now(); currentTarget = null; suppressUntil = 0;
+  }, {passive: true, capture: true});
+  window.addEventListener('message', event => {
+    if (event.source !== parent || event.data?.folioforgePreview !== token || !Array.isArray(event.data.targets)) return;
+    const list = headings();
+    for (const target of event.data.targets.slice(0, 8)) {
+      if (typeof target.key !== 'string' || target.key.length > 4096) continue;
+      let matches = list.filter(el => info(el).key === target.key && info(el).level === target.level);
+      if (!matches.length) matches = list.filter(el => info(el).key === target.key);
+      const el = matches[target.occurrence] || matches[0];
+      if (!el) continue;
+      if (el === currentTarget) break;
+      currentTarget = el;
+      suppressUntil = Date.now() + 1000;
+      if (format === 'slides' && window.Reveal?.isReady()) {
+        const indices = Reveal.getIndices(el.closest('section'));
+        Reveal.slide(indices.h, indices.v);
+      } else if (format === 'document') el.scrollIntoView({block: 'start'});
+      break;
+    }
+  });
   document.addEventListener('click', event => {
     const anchor = event.target.closest('a');
     if (!anchor) return;
     const href = anchor.getAttribute('href') || '';
     if (/^(slides|index)\.html(?:#.*)?$/.test(href)) {
       event.preventDefault();
-      parent.postMessage({folioforgeFormat: href.startsWith('slides') ? 'slides' : 'document'}, '*');
+      post({folioforgeFormat: href.startsWith('slides') ? 'slides' : 'document'});
     } else {
       event.preventDefault();
       if (href.startsWith('#')) {
@@ -35,10 +80,12 @@ function navigation(format, position) {
   let pending;
   const report = () => {
     clearTimeout(pending);
-    pending = setTimeout(() => parent.postMessage({folioforgePosition: {
+    pending = setTimeout(() => post({folioforgePosition: {
       format, hash: location.hash, scroll: window.scrollY,
+      heading: currentHeading(), inputTime: lastInput,
+      userNavigation: Date.now() - lastInput < 1500 && Date.now() > suppressUntil,
       ...(format === 'slides' && window.Reveal ? {...Reveal.getIndices(), slideId: Reveal.getCurrentSlide()?.id || ''} : {}),
-    }}, '*'), 100);
+    }}), 100);
   };
   window.addEventListener('hashchange', report);
   window.addEventListener('scroll', report, {passive: true});
@@ -54,14 +101,15 @@ function navigation(format, position) {
         const slide = position.slideId && document.getElementById(position.slideId);
         const indices = slide ? Reveal.getIndices(slide) : position;
         Reveal.slide(indices.h || 0, indices.v || 0);
+        post({folioforgeReady: true});
       };
       if (Reveal.isReady()) restore(); else Reveal.on('ready', restore);
     };
     attach();
-  }
+  } else window.addEventListener('load', () => post({folioforgeReady: true}));
 }
 
-export function previewHtml(html, format, position) {
+export function previewHtml(html, format, position, token = '') {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   // Reveal's embedded menu resolves a relative script URL even when all assets
   // are inline. Blob URLs are not hierarchical; this reserved base grants no network access.
@@ -73,7 +121,7 @@ export function previewHtml(html, format, position) {
   storage.textContent = `(${ephemeralStorage.toString()})();`;
   parsed.head.prepend(storage);
   const bridge = parsed.createElement('script');
-  bridge.textContent = `(${navigation.toString()})(${JSON.stringify(format)},${JSON.stringify(position).replaceAll('<', '\\u003c')});`;
+  bridge.textContent = `(${navigation.toString()})(${JSON.stringify(format)},${JSON.stringify(position).replaceAll('<', '\\u003c')},${JSON.stringify(token)},${headingKey.toString()});`;
   parsed.body.append(bridge);
   return '<!doctype html>' + parsed.documentElement.outerHTML;
 }

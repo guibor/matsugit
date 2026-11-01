@@ -2,12 +2,17 @@ import {build} from 'esbuild';
 import {mkdir, readFile, writeFile, readdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(root, 'bundle');
 await mkdir(out, {recursive: true});
+const templates = execFileSync(process.env.FOLIOFORGE_PYTHON || 'python3', ['-c',
+  'import json; from folioforge.authoring import editor_templates; print(json.dumps(editor_templates()))'],
+  {cwd: path.dirname(root), encoding: 'utf8'});
 const browser = await build({entryPoints: [path.join(root, 'src/app.js')], bundle: true,
-  write: false, minify: true, format: 'iife', target: 'es2022', legalComments: 'inline', metafile: true});
+  write: false, minify: true, format: 'iife', target: 'es2022', legalComments: 'inline', metafile: true,
+  define: {__FOLIOFORGE_TEMPLATES__: templates}});
 const html = await readFile(path.join(root, 'src/index.html'), 'utf8');
 const css = await readFile(path.join(root, 'src/style.css'), 'utf8');
 const hostCss = await readFile(fileURLToPath(import.meta.resolve('@openai/mcp-extensions/app/styles.css')), 'utf8');

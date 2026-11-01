@@ -99,13 +99,14 @@ export class WorkspaceStore {
       if (String(chunk).includes('Rendering revealjs:')) job.phase = 'Rendering slides';
     });
     const timeout = setTimeout(() => {
+      if (job.state !== 'rendering') return;
       job.state = 'error'; job.error = 'Rendering exceeded four minutes. The source was not changed.';
       this.stopChild(child);
     }, 240_000);
     child.on('error', error => { job.state = 'error'; job.error = `Cannot start renderer: ${error.message}`; clearTimeout(timeout); });
     child.on('close', code => {
       clearTimeout(timeout);
-      if (job.state === 'error') return;
+      if (job.state !== 'rendering') return;
       if (code !== 0) {
         job.state = 'error'; job.error = stderr.replaceAll(this.root, '<folioforge>').replaceAll(directory, '<preview>').slice(-4000) || 'Rendering failed.';
       } else {
@@ -118,6 +119,15 @@ export class WorkspaceStore {
       }
     });
     return {job: id, state: job.state, phase: job.phase};
+  }
+  cancel(id, session, hostPath) {
+    this.status(id, session, hostPath);
+    const job = this.jobs.get(id);
+    if (job.state === 'rendering') {
+      job.state = 'canceled';
+      this.stopChild(job.child);
+    }
+    return {job: id, state: job.state};
   }
   status(id, session, hostPath) {
     const job = this.jobs.get(id);

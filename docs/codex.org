@@ -50,8 +50,13 @@ open the global Folioforge workspace to start an unsaved draft.
 - =Document= / =Slides=: choose the rendered output independently of layout.
 - The selected slide is retained across preview refreshes when it still exists.
 - =Auto=: render after a pause in editing. The refresh icon renders manually.
+- =Sync=: follow the edited heading in the document/slide preview, and follow
+  preview navigation back to its source heading. Turn it off to browse panes
+  independently. Matching uses heading text and hierarchy, not guessed pixels;
+  body paragraphs follow their containing heading, not an exact scroll fraction.
 - =Theme=: blank uses project defaults; enter the name of an installed theme
   to try it for this preview. This does not change your source or project settings.
+  Its placeholder shows the resolved theme after a successful render.
 - Save icon or =Ctrl/Cmd-S=: save explicitly. Rendering never saves the source.
 - Download icon: download the current source, including unsaved edits.
 
@@ -62,6 +67,46 @@ file is opened. The file-picker button imports a browser copy: it has no
 write-back permission or access to adjacent assets. Download that copy, or open
 the actual repository file through Codex.
 
+** Source hints and insertion
+
+The source remains normal editable text. Subtle line colours and gutter markers
+identify sections (=S=), slide titles (=T=), claims (=C=), body regions (=R=),
+takeaways (=!=) and agent reviews (=A=). Hover a marker for its name. Markdown
+semantic blocks have matching start/end handles and can be folded with the
+editor's fold gutter. Code examples are not interpreted as slide structure.
+These heading roles describe =slide-layout: structured=; they do not silently
+change the layout setting of an existing document.
+
+Type =/= at the start of a blank source line, then choose an insertion, or use
+the =+= toolbar button. Filter by typing, choose with the arrow keys and Enter,
+and dismiss with Escape. This inserts source locally; it is not a Codex chat
+slash command, does not call an agent, and does not save or publish.
+
+| Insert | Purpose |
+|--------+---------|
+| =/slide=, =/section=, =/claim=, =/region= | Heading hierarchy |
+| =/columns=, =/columns-3=, =/rows= | Explicit supporting-content layout |
+| =/takeaway=, =/source=, =/notes= | Conclusion, citation, presenter notes |
+| =/table-block= | Small editable Markdown table |
+| =/break= | Explicit slide break |
+| =/agent-comment= | Hidden review request with a fresh stable ID |
+| =/metrics=, =/comparison=, =/mapping=, =/implication= | Complete slide recipes |
+| =/evidence=, =/annotated=, =/chart= | Evidence and diagram recipes |
+
+The complete menu also includes the other =folioforge template= recipes. They
+come from the same Python catalogue, not an independent copy of the syntax.
+In an Org file, insertions use native Org headings and blocks. Each insertion
+can be undone. The menu avoids Markdown code fences and hidden review bodies.
+
+** Theme defaults
+
+Explicit preview overrides win over the nearest project's =folioforge.json=,
+then user settings in =~/.config/folioforge/config.json=, then the built-in
+default. For example, set =theme= and =themes_dir= in that JSON file to use a
+trusted local theme pack. A theme in a shell wrapper alone is not inherited by
+an already-running Codex desktop process. Project settings remain authoritative;
+changing the machine default does not override an explicit project choice.
+
 * Saving and concurrent edits
 
 Host-selected files use Codex resource permissions and version tokens. Files
@@ -71,6 +116,10 @@ version originally read; the plugin does not offer force overwrite.
 
 When an agent or editor changes a file, a clean workspace reloads it. A dirty
 workspace retains the draft and blocks saving until you reconcile the conflict.
+Both file-entrypoint and tool-opened workspaces poll for changes every three
+seconds, in addition to supported host notifications. Superseded renders are
+canceled; they cannot replace a newer preview. Clicking refresh during a render
+queues the latest draft, including when =Auto= is off.
 Download the draft before choosing =Reload file= if you need both versions.
 The text editor uses UTF-8 and may normalize line endings when you explicitly save.
 There is no automatic crash-recovery storage: save or download before closing
@@ -128,6 +177,9 @@ source here, or with the existing standalone Folioforge table editor.
 
 The committed =codex-plugin/bundle/= contains the actual runtime and UI; users
 do not run npm during plugin installation. After changing source:
+
+Building also requires Python and Pandoc (or Quarto's Pandoc) to generate the
+shared Markdown/Org insertion catalogue. No conversion runs on each keystroke.
 
 #+begin_src sh
 cd codex-plugin

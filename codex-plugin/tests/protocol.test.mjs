@@ -22,6 +22,7 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     const handler = tools.find(tool => tool.name === 'folioforge_file');
     assert.deepEqual(handler._meta['openai/ui'].entrypoints[0].extensions, ['.md', '.markdown', '.qmd', '.org']);
     assert.deepEqual(tools.find(tool => tool.name === 'folioforge_save')._meta.ui.visibility, ['app']);
+    assert.deepEqual(tools.find(tool => tool.name === 'folioforge_preview_cancel')._meta.ui.visibility, ['app']);
     const app = await client.readResource({uri: 'ui://folioforge/workspace-v1'});
     assert.match(app.contents[0].text, /Markdown/);
     assert.equal(app.contents[0].mimeType, 'text/html;profile=mcp-app');

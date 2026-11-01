@@ -7,6 +7,7 @@
   <header>
     <div class="identity"><span id="brand-icon"></span><strong>Folioforge</strong><span id="filename">Untitled.md</span><span id="dirty" hidden>*</span></div>
     <div class="actions">
+      <button id="insert" title="Insert slide or element" aria-label="Insert slide or element"></button>
       <button id="open" title="Open Markdown file" aria-label="Open Markdown file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
@@ -26,6 +27,7 @@
     <div class="render-actions">
       <label for="theme">Theme</label><input id="theme" list="themes" placeholder="Project default" aria-label="Theme" maxlength="80"><datalist id="themes"><option value="default"></datalist>
       <label class="auto"><input id="auto" type="checkbox" checked>Auto</label>
+      <label class="auto" title="Follow the current heading between source and preview"><input id="sync" type="checkbox" checked>Sync</label>
       <button id="refresh" title="Render preview" aria-label="Render preview"></button>
     </div>
   </nav>

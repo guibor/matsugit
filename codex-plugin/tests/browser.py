@@ -55,10 +55,28 @@ try:
         ui.frame_locator('#preview').locator('.reveal.ready').wait_for(timeout=30000)
         assert 'createHTML' not in ui.frame_locator('#preview').locator('body').inner_text()
         preview = ui.locator('#preview').element_handle().content_frame()
-        preview.evaluate('Reveal.slide(1)')
+        frame.evaluate('''() => {
+          const w = folioforgeWorkspace;
+          w.editor.focus();
+          w.editor.dispatch({selection:{anchor:w.editor.state.doc.toString().indexOf('## Make the decision')}});
+        }''')
+        wait_until(preview, 'Reveal.getIndices().h === 2', 15)
+        # A real keyboard navigation is followed back to source without a loop.
+        page.wait_for_timeout(1200)
+        preview.locator('body').click(position={'x': 15, 'y': 15})
+        page.keyboard.press('ArrowLeft')
         wait_until(frame, 'folioforgeWorkspace.state.positions.slides.h === 1', 15)
+        wait_until(frame, 'folioforgeWorkspace.editor.state.doc.lineAt(folioforgeWorkspace.editor.state.selection.main.head).text.startsWith("## Prove")', 15)
+        ui.locator('#sync').uncheck()
+        frame.evaluate('folioforgeWorkspace.editor.dispatch({selection:{anchor:folioforgeWorkspace.editor.state.doc.toString().indexOf("## Make")}})')
+        page.wait_for_timeout(500)
+        assert preview.evaluate('Reveal.getIndices().h') == 1
+        ui.locator('#sync').check()
+        wait_until(preview, 'Reveal.getIndices().h === 2', 15)
+        frame.evaluate('folioforgeWorkspace.editor.dispatch({selection:{anchor:folioforgeWorkspace.editor.state.doc.toString().indexOf("## Prove")}})')
+        wait_until(preview, 'Reveal.getIndices().h === 1', 15)
         page.screenshot(path=str(shots / 'split-slides.png'))
-        print('Document and slides verified', flush=True)
+        print('Document, slides and two-way position sync verified', flush=True)
         ui.locator('[data-layout="render"]').click()
         assert not ui.locator('#source-pane').is_visible()
         ui.locator('[data-layout="source"]').click()
@@ -84,6 +102,14 @@ try:
         assert source.read_text().startswith('<!-- unsaved edit -->')
         print('Explicit save verified', flush=True)
         ui.locator('#auto').uncheck()
+        # A busy manual refresh queues the latest text even with Auto off.
+        frame.evaluate('void folioforgeWorkspace.render()')
+        wait_until(frame, 'folioforgeWorkspace.state.rendering', 10)
+        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'<!-- latest revision -->\\n'}})")
+        ui.locator('#refresh').click()
+        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.renderedRevision === folioforgeWorkspace.state.revision')
+        assert source.read_text().startswith('<!-- unsaved edit -->')
+        print('Superseded render canceled; queued manual refresh verified', flush=True)
         frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Local draft\\n'}})")
         source.write_text('# External agent edit\n')
         frame.evaluate('folioforgeWorkspace.reload()')
@@ -91,6 +117,21 @@ try:
         assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString().startsWith("Local draft")')
         assert source.read_text() == '# External agent edit\n'
         print('External edit conflict retained', flush=True)
+        # Semantic hints and slash insertions use the same authoring catalogue.
+        assert ui.locator('.ff-gutter-marker[title="Slide"]').count() >= 2
+        frame.evaluate('folioforgeWorkspace.editor.dispatch({selection:{anchor:folioforgeWorkspace.editor.state.doc.length},changes:{from:folioforgeWorkspace.editor.state.doc.length,insert:"\\n\\n"}})')
+        ui.locator('.cm-content').focus()
+        page.keyboard.press('Control+End')
+        page.keyboard.type('/takeaway')
+        option = ui.locator('.cm-completionLabel').filter(has_text='/takeaway')
+        option.wait_for()
+        page.screenshot(path=str(shots / 'insert-menu.png'))
+        option.click()
+        wait_until(frame, 'folioforgeWorkspace.editor.state.doc.toString().endsWith("::: takeaway\\nKey takeaway.\\n:::\\n")', 10)
+        before_undo = frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()')
+        ui.locator('#undo').click()
+        assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()') != before_undo
+        print('Semantic handles, slash insertion and undo verified', flush=True)
         for width, height in [(390, 844), (768, 1024)]:
             page.set_viewport_size({'width': width, 'height': height})
             page.screenshot(path=str(shots / f'workspace-{width}.png'))
@@ -112,6 +153,8 @@ try:
         ui = page.frame_locator('#app')
         ui.locator('#auto').uncheck()
         assert frame.evaluate('folioforgeWorkspace.state.uri') == 'host://selected/pilot'
+        source.write_text('# Clean external edit without a notification\n')
+        wait_until(frame, 'folioforgeWorkspace.state.base.startsWith("# Clean external edit")', 15)
         frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Host draft\\n'}})")
         frame.evaluate('folioforgeWorkspace.save()')
         assert source.read_text().startswith('Host draft\n')

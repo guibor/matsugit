@@ -240,6 +240,40 @@ The implication that follows from this cluster.
 ''',
 }
 
+# Small authoring elements share the renderer's existing syntax, not a new DSL.
+ELEMENTS = {
+    'slide': '## Slide title\n### Main claim\n\n- Supporting evidence.\n',
+    'section': '# Section title\n',
+    'claim': '### Main claim\n',
+    'region': '#### Region title\n\n- Supporting point.\n',
+    'takeaway': '::: takeaway\nKey takeaway.\n:::\n',
+    'columns': ':::: columns\n#### First column\n\n- Supporting point.\n\n#### Second column\n\n- Supporting point.\n::::\n',
+    'columns-3': ':::: columns\n#### First column\n\n- Supporting point.\n\n#### Second column\n\n- Supporting point.\n\n#### Third column\n\n- Supporting point.\n::::\n',
+    'rows': '::::: rows\n:::: row\nFirst block of evidence.\n::::\n\n:::: row\nSecond block of evidence.\n::::\n:::::\n',
+    'notes': '::: notes\nPresenter notes.\n:::\n',
+    'source': '::: source\nSource, date, page or link.\n:::\n',
+    'break': '\n---\n\n',
+    'table-block': '| Measure | Value |\n| :--- | ---: |\n| Example | 0 |\n',
+    'agent-comment': ':::: {.agent-comment #review-INSERT_ID status="open"}\nRequest:\nDescribe the change or question for this slide.\n\nResponse:\nPending.\n::::\n',
+}
+
+
+def editor_templates():
+    """Build the editor catalogue using the same Markdown/Org conversion as CLI."""
+    from .source import convert
+    from .converter import converter
+    command = converter()
+    entries = {}
+    for kind, group in [('Slide', TEMPLATES), ('Element', ELEMENTS)]:
+        for name, text in group.items():
+            key = 'section-deck' if kind == 'Slide' and name == 'section' else name
+            # The shared converter intentionally removes hidden agent comments.
+            org = ('#+begin_agent-comment :id "review-INSERT_ID" :status "open"\n'
+                   'Request:\nDescribe the change or question for this slide.\n\n'
+                   'Response:\nPending.\n#+end_agent-comment\n') if name == 'agent-comment' else convert(text, 'markdown', 'org', command)
+            entries[key] = {'kind': kind, 'markdown': text, 'org': org}
+    return entries
+
 
 def template(name, output=None, fragment=False, fmt='markdown'):
     if name not in TEMPLATES:

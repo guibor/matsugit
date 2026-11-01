@@ -60,3 +60,23 @@ test('a removed plugin cache asks for a reload before allocating a render job', 
   assert.throws(() => store.start({text: '# Draft'}), /plugin files.*Save or download.*reload/);
   assert.equal(store.jobs.size, 0);
 });
+
+test('cancel is scoped to its document and cannot cancel a completed render', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-cancel-test-'));
+  const store = new WorkspaceStore(directory);
+  try {
+    const file = path.join(directory, 'a.md'), other = path.join(directory, 'b.md');
+    fs.writeFileSync(file, '# A'); fs.writeFileSync(other, '# B');
+    const a = store.open(file), b = store.open(other);
+    const stopped = [];
+    store.stopChild = child => stopped.push(child);
+    store.jobs.set('job', {owner: file, state: 'rendering', child: 'owned-process'});
+    assert.throws(() => store.cancel('job', b.session), /Unknown preview/);
+    assert.equal(store.status('job', a.session).state, 'rendering');
+    assert.equal(store.cancel('job', a.session).state, 'canceled');
+    store.cancel('job', a.session);
+    assert.deepEqual(stopped, ['owned-process']);
+    store.jobs.set('ready', {owner: file, state: 'ready'});
+    assert.equal(store.cancel('ready', a.session).state, 'ready');
+  } finally { store.jobs.clear(); store.close(); fs.rmSync(directory, {recursive: true, force: true}); }
+});

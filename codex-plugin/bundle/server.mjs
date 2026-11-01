@@ -51318,6 +51318,7 @@ var WorkspaceStore = class {
       if (String(chunk).includes("Rendering revealjs:")) job.phase = "Rendering slides";
     });
     const timeout = setTimeout(() => {
+      if (job.state !== "rendering") return;
       job.state = "error";
       job.error = "Rendering exceeded four minutes. The source was not changed.";
       this.stopChild(child);
@@ -51329,7 +51330,7 @@ var WorkspaceStore = class {
     });
     child.on("close", (code) => {
       clearTimeout(timeout);
-      if (job.state === "error") return;
+      if (job.state !== "rendering") return;
       if (code !== 0) {
         job.state = "error";
         job.error = stderr.replaceAll(this.root, "<folioforge>").replaceAll(directory, "<preview>").slice(-4e3) || "Rendering failed.";
@@ -51347,6 +51348,15 @@ var WorkspaceStore = class {
       }
     });
     return { job: id, state: job.state, phase: job.phase };
+  }
+  cancel(id, session, hostPath) {
+    this.status(id, session, hostPath);
+    const job = this.jobs.get(id);
+    if (job.state === "rendering") {
+      job.state = "canceled";
+      this.stopChild(job.child);
+    }
+    return { job: id, state: job.state };
   }
   status(id, session, hostPath) {
     const job = this.jobs.get(id);
@@ -51394,7 +51404,7 @@ var guard = (fn) => async (...args) => {
   }
 };
 serveStdio(() => {
-  const server = new McpServer({ name: "folioforge", version: "0.1.2" });
+  const server = new McpServer({ name: "folioforge", version: "0.2.0" });
   new OpenAIExtensions(server);
   server.registerResource("workspace", uri2, { mimeType: "text/html;profile=mcp-app" }, async () => ({ contents: [{
     uri: uri2,
@@ -51484,6 +51494,16 @@ serveStdio(() => {
       annotations: readOnly
     },
     guard(async ({ job, session }, context) => result(store.status(job, session, getResourcePath(context.mcpReq?._meta))))
+  );
+  server.registerTool(
+    "folioforge_preview_cancel",
+    {
+      description: "Cancel only this workspace preview job. Does not change or save the source.",
+      ...appOnly,
+      inputSchema: external_exports.object({ job: external_exports.string(), session: external_exports.string().optional() }),
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+    },
+    guard(async ({ job, session }, context) => result(store.cancel(job, session, getResourcePath(context.mcpReq?._meta))))
   );
   server.registerTool(
     "folioforge_preview_chunk",

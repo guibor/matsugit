@@ -20,7 +20,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'folioforge', version: '0.1.2'});
+  const server = new McpServer({name: 'folioforge', version: '0.2.0'});
   new OpenAIExtensions(server);
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: fs.readFileSync(path.join(root, 'codex-plugin/bundle/app.html'), 'utf8'),
@@ -52,6 +52,10 @@ serveStdio(() => {
   server.registerTool('folioforge_preview_status', {description: 'Read render progress and completed preview for the opened document.', ...appOnly,
     inputSchema: z.object({job: z.string(), session: z.string().optional()}), annotations: readOnly},
     guard(async ({job, session}, context) => result(store.status(job, session, getResourcePath(context.mcpReq?._meta)))));
+  server.registerTool('folioforge_preview_cancel', {description: 'Cancel only this workspace preview job. Does not change or save the source.', ...appOnly,
+    inputSchema: z.object({job: z.string(), session: z.string().optional()}),
+    annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
+    guard(async ({job, session}, context) => result(store.cancel(job, session, getResourcePath(context.mcpReq?._meta)))));
   server.registerTool('folioforge_preview_chunk', {description: 'Read a bounded part of a completed preview, only for this document.', ...appOnly,
     inputSchema: z.object({job: z.string(), format: z.enum(['document', 'slides']), offset: z.number().int().nonnegative(), session: z.string().optional()}), annotations: readOnly},
     guard(async ({job, format, offset, session}, context) => {
