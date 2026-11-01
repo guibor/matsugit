@@ -8,10 +8,11 @@ import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-browser-test-'));
-const source = path.join(temporary, 'pilot.md');
+const fixture = process.env.FOLIOFORGE_SHOWCASE_SOURCE;
+const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
 const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
-fs.copyFileSync(new URL('./workspace.md', import.meta.url), source);
+fs.copyFileSync(fixture || new URL('./workspace.md', import.meta.url), source);
 const client = new Client({name: 'folioforge-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
   args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,

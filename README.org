@@ -42,6 +42,12 @@ existing Git access. No new account or hosted service is required.
 See the [[file:docs/codex.org][Codex workspace guide]] for setup, saving, concurrent edits, local theme
 configuration, prerequisites and validation boundaries.
 
+[[file:docs/images/codex/02-evidence-and-takeaway.png]]
+
+The actual workspace, using an illustrative product review and the bundled
+theme. See the [[file:docs/codex-workflows.org][workflow gallery]] for documents, comparisons, diagrams and
+agent review. Captures use an isolated MCP host, not simulated Codex chrome.
+
 * Use it in Cursor
 
 Install the native skill, then ask Agent to set up a local preview:

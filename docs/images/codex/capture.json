@@ -1,0 +1,16 @@
+{
+  "theme": "default",
+  "fixture": "codex-plugin/tests/product-review.md",
+  "host": "isolated MCP host, actual plugin UI; not Codex desktop chrome",
+  "screenshots": [
+    "01-document-and-source.png",
+    "02-evidence-and-takeaway.png",
+    "03-options-comparison.png",
+    "04-diagram-and-source.png",
+    "05-presentation-view.png",
+    "06-agent-review-in-source.png",
+    "07-insert-menu.png"
+  ],
+  "synthetic": true,
+  "browser_errors": []
+}
