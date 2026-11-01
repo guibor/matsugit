@@ -3,8 +3,15 @@ import unittest
 from folioforge.authoring import ELEMENTS, TEMPLATES, editor_templates
 from folioforge.source import convert
 from folioforge.converter import converter
+from folioforge.core import Error
+
+try:
+    COMMAND = converter()
+except Error:
+    COMMAND = None
 
 
+@unittest.skipUnless(COMMAND, 'Requires Pandoc; run folioforge setup-editor')
 class EditorTemplatesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
