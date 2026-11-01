@@ -51387,7 +51387,7 @@ var guard = (fn) => async (...args) => {
   }
 };
 serveStdio(() => {
-  const server = new McpServer({ name: "folioforge", version: "0.1.0" });
+  const server = new McpServer({ name: "folioforge", version: "0.1.1" });
   new OpenAIExtensions(server);
   server.registerResource("workspace", uri2, { mimeType: "text/html;profile=mcp-app" }, async () => ({ contents: [{
     uri: uri2,

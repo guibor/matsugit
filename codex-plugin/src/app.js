@@ -8,7 +8,7 @@ import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, Refre
 import {previewHtml} from './preview.js';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'Folioforge', version: '0.1.0'});
+const app = new App({name: 'Folioforge', version: '0.1.1'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.FOLIOFORGE_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,

@@ -95,6 +95,11 @@ try:
             page.set_viewport_size({'width': width, 'height': height})
             page.screenshot(path=str(shots / f'workspace-{width}.png'))
             assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Horizontal overflow'
+            overlaps = frame.evaluate('''() => {
+              const boxes = [...document.querySelectorAll('nav button, #theme, nav label[for=theme], .auto')].map(e => ({name:e.textContent || e.id, r:e.getBoundingClientRect()}));
+              return boxes.flatMap((a,i) => boxes.slice(i+1).filter(b => Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left)>1 && Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top)>1).map(b => [a.name,b.name]));
+            }''')
+            assert not overlaps, overlaps
             for selector in ['#source-pane', '#preview-pane']:
                 box = ui.locator(selector).bounding_box()
                 assert box['width'] > 50 and box['height'] > 50, box
