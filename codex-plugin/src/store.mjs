@@ -75,7 +75,8 @@ export class WorkspaceStore {
     if (previous && previous.owner !== owner) throw Error('Unknown preview for this document.');
     const baseline = previous?.state === 'ready' && previous.format === format ? previous : null;
     if ([...this.jobs.values()].filter(j => j.state === 'rendering').length >= 2) throw Error('Two previews are already rendering; wait for one to finish.');
-    const worker = path.join(this.root, 'codex-plugin/worker.py');
+    const root = typeof this.root === 'function' ? this.root() : this.root;
+    const worker = path.join(root, 'codex-plugin/worker.py');
     if (!fs.existsSync(worker)) throw Error('Folioforge plugin files are no longer available. Save or download your draft, then reload the plugin in Codex and reopen the document.');
     for (const [id, job] of this.jobs) {
       if (job !== baseline && !job.readers && job.state !== 'rendering' && (Date.now() - job.created > 300_000 || this.jobs.size >= 4)) {
@@ -115,7 +116,7 @@ export class WorkspaceStore {
       if (baseline) baseline.readers--;
       if (job.state !== 'rendering') return;
       if (code !== 0) {
-        job.state = 'error'; job.error = stderr.replaceAll(this.root, '<folioforge>').replaceAll(directory, '<preview>').slice(-4000) || 'Rendering failed.';
+        job.state = 'error'; job.error = stderr.replaceAll(root, '<folioforge>').replaceAll(directory, '<preview>').slice(-4000) || 'Rendering failed.';
       } else {
         try {
           const result = JSON.parse(stdout);

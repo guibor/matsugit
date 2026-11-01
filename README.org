@@ -28,6 +28,10 @@ table-cell edits update in place without reloading the deck or its unchanged
 diagrams. Structural and theme changes safely rebuild; export and CI keep the
 same full renderer. See the Codex guide for the incremental-preview boundaries.
 
+Running workspaces retain their version-matched renderer across plugin-cache
+updates. Save drafts and reload to adopt a new version; updating the installed
+files no longer removes the renderer from an already-open workspace (0.3.1+).
+
 Requires Codex Desktop with MCP Apps, Node 22+, Python 3.10+, Git and Quarto:
 #+begin_src sh
 codex plugin marketplace add guibor/folioforge

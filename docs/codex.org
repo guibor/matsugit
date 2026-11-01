@@ -29,8 +29,10 @@ codex plugin marketplace upgrade folioforge
 codex plugin add folioforge@folioforge
 #+end_src
 Save or download unsaved workspace text first, then reload the plugin or restart
-Codex to stop using the old MCP process. This does not require reinstalling
-Python, pyenv, Quarto or Emacs.
+Codex to stop using the old MCP process. From 0.3.1, an already-running workspace
+retains its own renderer when an update replaces the installed cache. It continues
+using that version until reloaded, rather than switching code under a draft.
+This does not require reinstalling Python, pyenv, Quarto or Emacs.
 
 The interactive workspace needs Codex Desktop with MCP Apps support. File
 handlers need a desktop build supporting OpenAI Extensions file entrypoints;
@@ -175,14 +177,39 @@ Each Python worker starts in its own temporary render directory with a matching
 =PWD=, never the host's inherited working directory. Source-relative assets and
 project settings still resolve against the explicitly opened source file.
 
+** Plugin cache replacement
+
+Before 0.3.1, a running MCP process read its Python worker and UI from the
+installed plugin directory on every use. If a plugin update or cache cleanup
+removed that directory while the process stayed alive, preview reported
+"Folioforge plugin files are no longer available". That warning concerns the
+plugin installation, not the user's source document.
+
+Version 0.3.1 embeds the UI and a version-matched renderer payload in the server
+bundle. A running process materializes its renderer into a private, process-owned
+temporary directory. Removing or replacing the installed cache does not affect
+its UI, worker imports, default theme or renderer assets. If that temporary
+runtime is removed or modified, it is recreated from the same in-memory payload;
+the plugin never searches for another installed version or downloads code.
+External themes, source-relative assets, Python and Quarto remain external.
+
+Only bundled program files go into this runtime, not source documents, credentials
+or private themes. It is removed on normal process exit; an abrupt OS termination
+can leave temporary program files for normal OS cleanup. Existing preview jobs
+retain their own lifecycle. This is runtime protection, not draft crash recovery.
+
+Older already-running processes cannot acquire this fix without a reload. Save
+or download their unsaved text before updating/reloading. Do not delete a cache
+manually, force-kill a session, or reinstall Python to repair this condition.
+
 ** Deleted working directory
 
 =shell-init: error retrieving current directory= followed by
 =pyenv: cannot change working directory= means a process retained a directory
 that was removed. Version =0.1.2= fixes this in the preview worker. It also gives
-a reload instruction if the plugin files themselves disappeared, rather than
-attempting to run a missing worker. The editor text is retained after a failed
-render. Save or download it before restarting Codex.
+a reload instruction if the plugin files themselves disappeared; version =0.3.1=
+adds the cache-replacement protection described above. The editor text is retained
+after a failed render. Save or download it before restarting Codex.
 
 If the error occurs in Terminal, =cd "$HOME"= repairs that shell's current
 directory before updating. If it happens before Folioforge's tools load, use
@@ -211,6 +238,10 @@ source here, or with the existing standalone Folioforge table editor.
 The committed =codex-plugin/bundle/= contains the actual runtime and UI; users
 do not run npm during plugin installation. After changing source:
 
+Rebuild after changing Python renderer modules, =worker.py=, the bundled default
+theme or runtime CSS/JS too: these are now embedded in =server.mjs=. The cache
+removal tests check the bundled payload against the current source files.
+
 Building also requires Python and Pandoc (or Quarto's Pandoc) to generate the
 shared Markdown/Org insertion catalogue. No conversion runs on each keystroke.
 
@@ -219,6 +250,7 @@ cd codex-plugin
 npm ci
 npm run build
 npm test
+QUARTO=/path/to/quarto node --test tests/cache-render.test.mjs
 QUARTO=/path/to/quarto /path/to/playwright-python tests/browser.py
 #+end_src
 

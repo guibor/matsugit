@@ -3,6 +3,7 @@ import {mkdir, readFile, writeFile, readdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {gzipSync} from 'node:zlib';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(root, 'bundle');
@@ -16,10 +17,33 @@ const browser = await build({entryPoints: [path.join(root, 'src/app.js')], bundl
 const html = await readFile(path.join(root, 'src/index.html'), 'utf8');
 const css = await readFile(path.join(root, 'src/style.css'), 'utf8');
 const hostCss = await readFile(fileURLToPath(import.meta.resolve('@openai/mcp-extensions/app/styles.css')), 'utf8');
-await writeFile(path.join(out, 'app.html'), html.replace('/* APP_STYLES */', () => hostCss + '\n' + css)
-  .replace('/* APP_SCRIPT */', () => browser.outputFiles[0].text.replaceAll('</script', '<\\/script')));
+const app = html.replace('/* APP_STYLES */', () => hostCss + '\n' + css)
+  .replace('/* APP_SCRIPT */', () => browser.outputFiles[0].text.replaceAll('</script', '<\\/script'));
+await writeFile(path.join(out, 'app.html'), app);
+// Freeze the UI, Python modules and renderer assets into this server version.
+// Codex may replace its installed cache while the process still serves viewers.
+const files = {};
+async function include(relative) {
+  files[relative] = (await readFile(path.join(root, '..', relative))).toString('base64');
+}
+async function includeTree(relative) {
+  for (const item of (await readdir(path.join(root, '..', relative), {withFileTypes: true})).sort((a, b) => a.name.localeCompare(b.name))) {
+    const name = relative + '/' + item.name;
+    if (item.isDirectory()) await includeTree(name);
+    else if (item.isFile()) await include(name);
+    else throw Error('Unexpected renderer asset: ' + name);
+  }
+}
+await include('codex-plugin/worker.py');
+for (const name of (await readdir(path.join(root, '../folioforge'))).sort().filter(name => name.endsWith('.py'))) {
+  await include('folioforge/' + name);
+}
+await includeTree('folioforge/runtime');
+await includeTree('folioforge/themes/default');
+const runtime = gzipSync(JSON.stringify({app, files})).toString('base64');
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
+  define: {__FOLIOFORGE_RUNTIME__: JSON.stringify(runtime)},
   legalComments: 'inline', metafile: true, banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
 const packages = new Set();
 for (const file of [...Object.keys(browser.metafile.inputs), ...Object.keys(server.metafile.inputs)]) {

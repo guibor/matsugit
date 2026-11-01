@@ -3,14 +3,12 @@ import {serveStdio} from '@modelcontextprotocol/server/stdio';
 import {OpenAIExtensions} from '@openai/mcp-extensions/server';
 import {getResourcePath, OpenAIFileEntrypointInputSchema} from '@openai/mcp-extensions';
 import {z} from 'zod';
-import fs from 'node:fs';
-import path from 'node:path';
-import {fileURLToPath} from 'node:url';
 import {WorkspaceStore, MAX_SOURCE} from './store.mjs';
+import {PluginRuntime} from './runtime.mjs';
 
-const root = fileURLToPath(new URL('../../', import.meta.url));
 const uri = 'ui://folioforge/workspace-v1';
-const store = new WorkspaceStore(root);
+const runtime = new PluginRuntime(__FOLIOFORGE_RUNTIME__);
+const store = new WorkspaceStore(() => runtime.root());
 const readOnly = {readOnlyHint: true, destructiveHint: false, openWorldHint: false};
 const viewOptions = {layout: z.enum(['source', 'render', 'split']).optional(), format: z.enum(['document', 'slides']).optional()};
 const appOnly = {_meta: {ui: {visibility: ['app']}}};
@@ -20,10 +18,10 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'folioforge', version: '0.3.0'});
+  const server = new McpServer({name: 'folioforge', version: '0.3.1'});
   new OpenAIExtensions(server);
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
-    uri, mimeType: 'text/html;profile=mcp-app', text: fs.readFileSync(path.join(root, 'codex-plugin/bundle/app.html'), 'utf8'),
+    uri, mimeType: 'text/html;profile=mcp-app', text: runtime.app,
     _meta: {'openai/ui': {preferredDisplayMode: 'fullscreen', availableDisplayModes: ['fullscreen']},
       ui: {csp: {frameDomains: ['blob:'], resourceDomains: ['data:', 'blob:'], baseUriDomains: ['https://folioforge.invalid']}}},
   }]}));
@@ -67,4 +65,4 @@ serveStdio(() => {
 }, {onerror: error => console.error(error)});
 process.once('SIGTERM', () => { store.close(); process.exit(0); });
 process.once('SIGINT', () => { store.close(); process.exit(0); });
-process.once('exit', () => store.close());
+process.once('exit', () => { store.close(); runtime.close(); });
