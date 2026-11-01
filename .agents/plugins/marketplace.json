@@ -1,0 +1,5 @@
+{
+  "name": "folioforge",
+  "interface": {"displayName": "Folioforge"},
+  "plugins": [{"name": "folioforge", "source": {"source": "local", "path": "./"}}]
+}

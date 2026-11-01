@@ -199,13 +199,13 @@ def mermaid_block(attributes, code):
     return {"t": "Div", "c": [[identifier, ["ff-media", "ff-diagram", *[c for c in classes if c != "mermaid"]], values], [cell]]}
 
 
-def normalize(settings, output):
+def normalize(settings, output, *, source_text=None):
     source = settings["source"]
     fmt = {".md": "markdown", ".markdown": "markdown", ".qmd": "markdown", ".org": "org"}.get(source.suffix.lower())
     if not fmt:
         raise Error("Supported sources: .md, .markdown, .qmd and .org")
     pandoc = [settings["quarto"], "pandoc"]
-    text = source.read_text(encoding="utf-8")
+    text = source.read_text(encoding="utf-8") if source_text is None else source_text
     if fmt == "markdown":
         text = diagram_fences(text)
     if __package__:
@@ -293,13 +293,13 @@ def normalize(settings, output):
     return ast
 
 
-def render(settings, output, edit_url=None):
+def render(settings, output, edit_url=None, *, source_text=None):
     output = Path(output).resolve()
     if output.exists() and any(output.iterdir()):
         raise Error(f"Output must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
     theme = install_theme(settings, output)
-    ast = normalize(settings, output)
+    ast = normalize(settings, output, source_text=source_text)
     colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
     display_ast = evidence_components(chart_components(ast, output, colours))
     print(f"Theme: {settings['theme']}; slide layout: {plain(ast['meta'].get('slide-layout')) or 'default'}", flush=True)

@@ -1,0 +1,14 @@
+{
+  "name": "folioforge",
+  "version": "0.1.0",
+  "description": "Edit Markdown and Org with Folioforge document and slide previews in Codex.",
+  "skills": "./skills/", "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Folioforge",
+    "shortDescription": "Markdown, documents and slides",
+    "longDescription": "A local editing workspace with source, rendered and split views, document and slide previews, explicit version-checked saving, and the Folioforge authoring skill. Requires Node 22+, Python 3.10+ and Quarto. Does not publish documents.",
+    "developerName": "Folioforge", "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": "Open my Markdown document in the Folioforge workspace with a split slide preview."
+  }
+}

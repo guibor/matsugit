@@ -1,0 +1,21 @@
+{
+  "name": "folioforge-codex-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22"},
+  "scripts": {"build": "node build.mjs", "test": "node --test tests/*.test.mjs"},
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/ext-apps": "^1.7.5",
+    "@openai/mcp-extensions": "^0.2.1",
+    "codemirror": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.3.4",
+    "@codemirror/commands": "^6.10.0",
+    "@codemirror/state": "^6.5.0",
+    "lucide": "^0.468.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {"esbuild": "^0.28.1"}
+}

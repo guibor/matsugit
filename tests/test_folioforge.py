@@ -80,6 +80,19 @@ QUARTO = os.environ.get("QUARTO", shutil.which("quarto"))
 
 @unittest.skipUnless(QUARTO, "Set QUARTO for real rendering tests")
 class RenderTests(CoreTests):
+    def test_unsaved_snapshot_keeps_original_and_relative_assets(self):
+        original = self.source.read_text()
+        (self.root / 'image.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="80" height="40" fill="blue"/></svg>')
+        draft = '---\ntitle: Unsaved\n---\n\n## Draft evidence\n\n![Local image](image.svg)\n'
+        out = self.root / 'snapshot'
+        render(config(self.source, {'quarto': QUARTO, 'theme': 'default'}), out, source_text=draft)
+        self.assertEqual(self.source.read_text(), original)
+        for name in ('index.html', 'slides.html'):
+            html = (out / name).read_text()
+            self.assertIn('Draft evidence', html)
+            self.assertIn('data:image/svg+xml', html)
+        self.assertIn('Unsaved', (out / 'source.md').read_text())
+
     def test_handout_keeps_theme_and_embedded_assets_after_cleanup(self):
         theme = self.root / 'themes/handout-test'
         theme.mkdir(parents=True)

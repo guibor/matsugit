@@ -1,0 +1,2 @@
+# Built dependencies contain intentional whitespace in generated template strings.
+codex-plugin/bundle/* linguist-generated=true -whitespace

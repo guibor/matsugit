@@ -1,0 +1,118 @@
+#+title: Folioforge in Codex
+
+* Install
+
+This is a local MCP App plugin, not a hosted editor. Install on the machine
+where Codex can read the source files. It requires Node 22+, Python 3.10+,
+Git and Quarto on the Codex process's PATH. The renderer is included; a separate
+pip install of Folioforge is not required. Chart preparation still needs
+Folioforge's optional chart environment.
+
+#+begin_src sh
+codex plugin marketplace add guibor/folioforge
+codex plugin add folioforge@folioforge
+#+end_src
+
+The repository currently requires authorized Git access. These commands neither
+change repository visibility nor publish documents. For a local checkout, use
+its absolute path in the first command instead of =guibor/folioforge=.
+Start a new Codex session after installation. Use Codex's plugin manager to
+refresh an installed plugin after a release; the plugin cache is separate from
+your ordinary source checkout, so a checkout's =git pull= alone does not update
+that cache.
+
+The interactive workspace needs Codex Desktop with MCP Apps support. File
+handlers need a desktop build supporting OpenAI Extensions file entrypoints;
+the CLI alone cannot display the workspace. If the file action is absent, ask
+the agent to open the file through =folioforge_open=. This still requires an
+MCP Apps-capable UI, and is not a workaround for a terminal-only host.
+
+* Open and work
+
+Ask Codex: "Open /absolute/path/deck.md in Folioforge with a split slide preview."
+Alternatively choose the Folioforge action for a supported file in Codex, or
+open the global Folioforge workspace to start an unsaved draft.
+
+- =Markdown=: source only, with highlighting, undo, search and line wrapping.
+- =Render=: preview only.
+- =Split=: source and preview, with a draggable/keyboard-resizable divider.
+- =Document= / =Slides=: choose the rendered output independently of layout.
+- The selected slide is retained across preview refreshes when it still exists.
+- =Auto=: render after a pause in editing. The refresh icon renders manually.
+- =Theme=: blank uses project defaults; enter the name of an installed theme
+  to try it for this preview. This does not change your source or project settings.
+- Save icon or =Ctrl/Cmd-S=: save explicitly. Rendering never saves the source.
+- Download icon: download the current source, including unsaved edits.
+
+The renderer supports Markdown, Quarto Markdown and Org. The editor currently
+provides Markdown highlighting; Org source still renders through Folioforge's
+native conversion path. Existing source-relative images work when a repository
+file is opened. The file-picker button imports a browser copy: it has no
+write-back permission or access to adjacent assets. Download that copy, or open
+the actual repository file through Codex.
+
+* Saving and concurrent edits
+
+Host-selected files use Codex resource permissions and version tokens. Files
+opened through =folioforge_open= use opaque sessions scoped to the selected
+file, SHA-256 version checks and an atomic replacement. Saving requires the
+version originally read; the plugin does not offer force overwrite.
+
+When an agent or editor changes a file, a clean workspace reloads it. A dirty
+workspace retains the draft and blocks saving until you reconcile the conflict.
+Download the draft before choosing =Reload file= if you need both versions.
+The text editor uses UTF-8 and may normalize line endings when you explicitly save.
+There is no automatic crash-recovery storage: save or download before closing
+the workspace. An ordinary browser unload warning is not a guarantee that the
+Codex host will prompt on every close.
+
+Agent edits through the workspace's model-context tools target the current draft
+with an expected revision, not a stale disk copy. They do not save or publish.
+If the host does not expose these tools, coordinate disk edits with the user
+rather than overwriting an unsaved draft.
+
+* Rendering boundaries
+
+Rendering uses a temporary directory, the existing Folioforge parser and
+trusted local themes. Document code is not executed. Project configuration may
+select a theme, but cannot select an executable for the plugin worker: Quarto
+comes from PATH or the explicit =QUARTO= environment variable.
+=FOLIOFORGE_PYTHON= can select the Python executable at plugin launch.
+
+The document and slide HTML run in a separate opaque-origin sandbox iframe.
+An inert =https://folioforge.invalid/= base lets Reveal resolve its embedded menu
+URLs inside a blob document; it grants no network connection to that domain.
+The plugin has no HTTP listener or deployment tool. Source text and rendered
+HTML are carried in app-only MCP metadata rather than echoed into the tool's
+model-facing result. This is not a promise that Codex cannot read a file when
+the user asks the agent to edit it.
+
+The initial limits are 2 MiB of source, two concurrent renders, four minutes
+per render and 20 MiB of embedded HTML per output. A failed render retains the
+last successful preview and the editor text. Preview links switch between
+document and slides; external navigation is disabled inside the preview frame.
+No renderer-specific table-grid UI is embedded yet: tables can be edited as
+source here, or with the existing standalone Folioforge table editor.
+
+* Develop and verify
+
+The committed =codex-plugin/bundle/= contains the actual runtime and UI; users
+do not run npm during plugin installation. After changing source:
+
+#+begin_src sh
+cd codex-plugin
+npm ci
+npm run build
+npm test
+QUARTO=/path/to/quarto /path/to/playwright-python tests/browser.py
+#+end_src
+
+Set =PLAYWRIGHT_CHROMIUM_EXECUTABLE= when using an existing Chromium binary.
+The browser test uses an isolated loopback host, real stdio MCP and a synthetic
+deck. It checks layouts, rendering, editing, saving, conflict retention and the
+file-handler resource flow. It does not publish or open personal files.
+Also run =python3 -m unittest discover -s tests= from the repository root.
+
+Passing protocol/browser tests does not prove integration in every Codex Desktop
+release. Check installation, tool discovery and opening/saving a synthetic file
+in the actual target desktop before relying on it for important unsaved work.

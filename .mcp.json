@@ -1,0 +1,5 @@
+{
+  "mcpServers": {"folioforge": {
+    "command": "node", "args": ["${PLUGIN_ROOT}/codex-plugin/bundle/server.mjs"], "cwd": "${PLUGIN_ROOT}"
+  }}
+}

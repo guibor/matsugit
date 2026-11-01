@@ -1,6 +1,6 @@
 ---
 name: folioforge
-description: Set up Folioforge, author composable Markdown or Org decks, address slide agent-comments, or validate theme packs. Use for Folioforge syntax, layouts, charts, previews and Cursor setup; not arbitrary PowerPoint editing.
+description: Set up Folioforge, author composable Markdown or Org decks, address slide agent-comments, or validate theme packs. Use for Folioforge syntax, layouts, charts, previews, the Codex workspace and Cursor setup; not arbitrary PowerPoint editing.
 ---
 
 # Folioforge
@@ -17,6 +17,9 @@ one slide.
 
 ## Choose the workflow
 
+- **Edit/preview in the Codex workspace:** read [codex-workspace.md](references/codex-workspace.md).
+  Prefer the available plugin tools when the user asks for an interactive split
+  preview. Keep unsaved workspace edits separate from disk saves and publication.
 - **First-time setup or missing commands:** read [setup.md](references/setup.md).
   Check the existing environment, install only approved missing prerequisites,
   then verify a local document and slide preview. In Cursor invoke `/folioforge`;

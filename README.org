@@ -10,6 +10,28 @@ Folioforge is for people who want their presentation to remain a document they
 can edit, review and version. No manual positioning of every box. No mandatory
 AI service. No separate slide copy drifting away from the source.
 
+* Edit and preview inside Codex
+
+The local Codex plugin puts the source and both outputs in one workspace:
+=Markdown=, =Render= or =Split=, with =Document= and =Slides= previews. Edit with
+CodeMirror, preview an unsaved draft, and save explicitly with file-version
+checks. The same Folioforge renderer handles themes, tables, Mermaid and
+semantic slide blocks; previewing never publishes.
+
+Requires Codex Desktop with MCP Apps, Node 22+, Python 3.10+, Git and Quarto:
+#+begin_src sh
+codex plugin marketplace add guibor/folioforge
+codex plugin add folioforge@folioforge
+#+end_src
+
+Start a new Codex session and ask: "Open =/absolute/path/deck.md= in Folioforge
+with a split slide preview." Supported desktop builds also offer Folioforge as
+a file-opening action. The repository remains private; installation uses your
+existing Git access. No new account or hosted service is required.
+
+See the [[file:docs/codex.org][Codex workspace guide]] for setup, saving, concurrent edits, local theme
+configuration, prerequisites and validation boundaries.
+
 * Use it in Cursor
 
 Install the native skill, then ask Agent to set up a local preview:
