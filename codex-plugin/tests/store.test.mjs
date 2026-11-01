@@ -53,3 +53,10 @@ test('large preview transfers are bounded and preserve Unicode across chunks', (
   assert.throws(() => store.chunk('preview', 'document', -1));
   assert.throws(() => store.chunk('preview', 'other', 0));
 });
+test('a removed plugin cache asks for a reload before allocating a render job', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-missing-plugin-'));
+  fs.rmdirSync(directory);
+  const store = new WorkspaceStore(directory);
+  assert.throws(() => store.start({text: '# Draft'}), /plugin files.*Save or download.*reload/);
+  assert.equal(store.jobs.size, 0);
+});

@@ -21,6 +21,17 @@ refresh an installed plugin after a release; the plugin cache is separate from
 your ordinary source checkout, so a checkout's =git pull= alone does not update
 that cache.
 
+To update this Git-backed marketplace and install its current plugin version,
+run from an existing directory (not inside the plugin cache):
+#+begin_src sh
+cd "$HOME"
+codex plugin marketplace upgrade folioforge
+codex plugin add folioforge@folioforge
+#+end_src
+Save or download unsaved workspace text first, then reload the plugin or restart
+Codex to stop using the old MCP process. This does not require reinstalling
+Python, pyenv, Quarto or Emacs.
+
 The interactive workspace needs Codex Desktop with MCP Apps support. File
 handlers need a desktop build supporting OpenAI Extensions file entrypoints;
 the CLI alone cannot display the workspace. If the file action is absent, ask
@@ -78,6 +89,25 @@ trusted local themes. Document code is not executed. Project configuration may
 select a theme, but cannot select an executable for the plugin worker: Quarto
 comes from PATH or the explicit =QUARTO= environment variable.
 =FOLIOFORGE_PYTHON= can select the Python executable at plugin launch.
+Each Python worker starts in its own temporary render directory with a matching
+=PWD=, never the host's inherited working directory. Source-relative assets and
+project settings still resolve against the explicitly opened source file.
+
+** Deleted working directory
+
+=shell-init: error retrieving current directory= followed by
+=pyenv: cannot change working directory= means a process retained a directory
+that was removed. Version =0.1.2= fixes this in the preview worker. It also gives
+a reload instruction if the plugin files themselves disappeared, rather than
+attempting to run a missing worker. The editor text is retained after a failed
+render. Save or download it before restarting Codex.
+
+If the error occurs in Terminal, =cd "$HOME"= repairs that shell's current
+directory before updating. If it happens before Folioforge's tools load, use
+an existing project directory and restart Codex; a plugin cannot repair the
+parent host's working directory before its own process has started.
+
+** Preview isolation
 
 The document and slide HTML run in a separate opaque-origin sandbox iframe.
 An inert =https://folioforge.invalid/= base lets Reveal resolve its embedded menu

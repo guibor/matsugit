@@ -20,7 +20,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'folioforge', version: '0.1.1'});
+  const server = new McpServer({name: 'folioforge', version: '0.1.2'});
   new OpenAIExtensions(server);
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: fs.readFileSync(path.join(root, 'codex-plugin/bundle/app.html'), 'utf8'),

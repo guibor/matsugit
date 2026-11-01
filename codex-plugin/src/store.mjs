@@ -70,19 +70,24 @@ export class WorkspaceStore {
     if (theme && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(theme)) throw Error('Invalid theme name.');
     const owner = this.owner(session, hostPath);
     if ([...this.jobs.values()].filter(j => j.state === 'rendering').length >= 2) throw Error('Two previews are already rendering; wait for one to finish.');
+    const worker = path.join(this.root, 'codex-plugin/worker.py');
+    if (!fs.existsSync(worker)) throw Error('Folioforge plugin files are no longer available. Save or download your draft, then reload the plugin in Codex and reopen the document.');
     for (const [id, job] of this.jobs) {
       if (job.state !== 'rendering' && (Date.now() - job.created > 300_000 || this.jobs.size >= 4)) {
         this.jobs.delete(id); fs.rmSync(job.directory, {recursive: true, force: true});
       }
     }
-    const id = randomUUID(), directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-workspace-'));
+    const id = randomUUID(), directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-workspace-')));
     const extension = formats.has(path.extname(name).toLowerCase()) ? path.extname(name).toLowerCase() : '.md';
     const source = owner || path.join(directory, 'Untitled' + extension);
     const output = path.join(directory, 'render');
     const job = {id, owner, directory, output, state: 'rendering', phase: 'Preparing', created: Date.now()};
     this.jobs.set(id, job);
-    const child = spawn(process.env.FOLIOFORGE_PYTHON || 'python3', [path.join(this.root, 'codex-plugin/worker.py')],
-      {stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32', env: process.env});
+    // A long-lived host can retain a deleted cwd. Python/pyenv need a real one
+    // before the worker starts; absolute source paths still resolve project assets.
+    const child = spawn(process.env.FOLIOFORGE_PYTHON || 'python3', [worker],
+      {cwd: directory, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32',
+        env: {...process.env, PWD: directory}});
     job.child = child;
     let stderr = '', stdout = '';
     child.stdin.on('error', () => {});

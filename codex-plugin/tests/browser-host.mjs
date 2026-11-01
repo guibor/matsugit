@@ -9,10 +9,14 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-browser-test-'));
 const source = path.join(temporary, 'pilot.md');
+const inherited = path.join(temporary, 'removed-cwd');
+fs.mkdirSync(inherited);
 fs.copyFileSync(new URL('./workspace.md', import.meta.url), source);
 const client = new Client({name: 'folioforge-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
-  args: [path.join(root, 'codex-plugin/bundle/server.mjs')], env: {...process.env, FOLIOFORGE_CONFIG: path.join(temporary, 'absent.json')}, stderr: 'inherit'}));
+  args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
+  env: {...process.env, PWD: inherited, FOLIOFORGE_CONFIG: path.join(temporary, 'absent.json')}, stderr: 'inherit'}));
+if (process.platform !== 'win32') fs.rmdirSync(inherited);
 const opened = await client.callTool({name: 'folioforge_open', arguments: {path: source}});
 const session = opened.structuredContent.session;
 const app = (await client.readResource({uri: 'ui://folioforge/workspace-v1'})).contents[0].text;

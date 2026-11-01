@@ -51280,13 +51280,15 @@ var WorkspaceStore = class {
     if (theme && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$/.test(theme)) throw Error("Invalid theme name.");
     const owner = this.owner(session, hostPath);
     if ([...this.jobs.values()].filter((j) => j.state === "rendering").length >= 2) throw Error("Two previews are already rendering; wait for one to finish.");
+    const worker = path.join(this.root, "codex-plugin/worker.py");
+    if (!fs.existsSync(worker)) throw Error("Folioforge plugin files are no longer available. Save or download your draft, then reload the plugin in Codex and reopen the document.");
     for (const [id2, job2] of this.jobs) {
       if (job2.state !== "rendering" && (Date.now() - job2.created > 3e5 || this.jobs.size >= 4)) {
         this.jobs.delete(id2);
         fs.rmSync(job2.directory, { recursive: true, force: true });
       }
     }
-    const id = randomUUID(), directory = fs.mkdtempSync(path.join(os.tmpdir(), "folioforge-workspace-"));
+    const id = randomUUID(), directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "folioforge-workspace-")));
     const extension = formats.has(path.extname(name).toLowerCase()) ? path.extname(name).toLowerCase() : ".md";
     const source = owner || path.join(directory, "Untitled" + extension);
     const output2 = path.join(directory, "render");
@@ -51294,8 +51296,13 @@ var WorkspaceStore = class {
     this.jobs.set(id, job);
     const child = spawn(
       process.env.FOLIOFORGE_PYTHON || "python3",
-      [path.join(this.root, "codex-plugin/worker.py")],
-      { stdio: ["pipe", "pipe", "pipe"], detached: process.platform !== "win32", env: process.env }
+      [worker],
+      {
+        cwd: directory,
+        stdio: ["pipe", "pipe", "pipe"],
+        detached: process.platform !== "win32",
+        env: { ...process.env, PWD: directory }
+      }
     );
     job.child = child;
     let stderr = "", stdout = "";
@@ -51387,7 +51394,7 @@ var guard = (fn) => async (...args) => {
   }
 };
 serveStdio(() => {
-  const server = new McpServer({ name: "folioforge", version: "0.1.1" });
+  const server = new McpServer({ name: "folioforge", version: "0.1.2" });
   new OpenAIExtensions(server);
   server.registerResource("workspace", uri2, { mimeType: "text/html;profile=mcp-app" }, async () => ({ contents: [{
     uri: uri2,
