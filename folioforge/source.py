@@ -63,10 +63,16 @@ def strip_agent_comments(node):
 
 
 def read(text, fmt, command):
+    if __package__:
+        from .sugar import markdown, blocks as authoring_blocks
+    else:
+        from sugar import markdown, blocks as authoring_blocks
     if fmt not in ('markdown', 'org'):
         raise ValueError('Source format must be markdown or org')
     if fmt == 'org':
         text = check_org(text)
+    else:
+        text = markdown(text)
     ast = strip_agent_comments(json.loads(pandoc(command, text, fmt, 'json')))
     if fmt == 'org':
         seen = set()
@@ -89,6 +95,7 @@ def read(text, fmt, command):
             else:
                 blocks.append(block)
         ast['blocks'] = org_blocks(blocks, command)
+    ast = authoring_blocks(ast)
     ast['meta'] = metadata(ast.get('meta', {}))
     return ast
 

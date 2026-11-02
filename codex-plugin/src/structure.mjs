@@ -15,18 +15,30 @@ export function structure(source, org = false) {
     markers.push({from, role: ['Section', 'Slide', 'Claim', 'Region'][level - 1] || 'Heading'});
   };
   if (org) {
-    let offset = 0, opaque;
+    let offset = 0;
+    const stack = [], opaqueNames = new Set(['src', 'example', 'export', 'comment', 'agent-comment']);
     for (const line of source.split('\n')) {
-      if (/^\s*#\+end_/i.test(line)) opaque = false;
-      else if (/^\s*#\+begin_(src|example|export|comment|agent-comment)\b/i.test(line)) opaque = true;
-      else if (!opaque) {
+      const begin = /^\s*#\+begin_([\w-]+)\b/i.exec(line);
+      const end = /^\s*#\+end_([\w-]+)\s*$/i.exec(line);
+      const active = stack.at(-1);
+      if (end && active?.role === end[1].toLowerCase()) {
+        const block = stack.pop();
+        blocks.push({...block, endFrom: offset, to: offset + line.length});
+        if (block.opaque) literals.push({from: block.from, to: offset + line.length});
+        markers.push({from: offset, role: block.role, closing: true});
+      } else if (!active?.opaque && begin) {
+        const role = begin[1].toLowerCase();
+        stack.push({from: offset, startEnd: offset + line.length, role, opaque: opaqueNames.has(role)});
+        markers.push({from: offset, role});
+      } else if (!active?.opaque) {
         const match = /^(\*+)\s+(.+)$/.exec(line);
         if (match) add(offset, offset + line.length, match[1].length,
           match[2].replace(/\[\[[^\]]+\]\[([^\]]+)\]\]/g, '$1'));
       }
       offset += line.length + 1;
     }
-    return {headings, markers, blocks, literals};
+    for (const block of stack) if (block.opaque) literals.push({from: block.from, to: source.length});
+    return {headings, markers, blocks, literals: literals.sort((a,b)=>a.from-b.from)};
   }
   const frontmatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
   if (frontmatter) literals.push({from: 0, to: frontmatter});
@@ -66,11 +78,21 @@ export function structure(source, org = false) {
         markers.push({from: offset, role});
       } else if (stack.length && fence[1].length >= stack.at(-1).width) {
         const block = stack.pop();
-        blocks.push({...block, to: offset + line.length});
+        blocks.push({...block, endFrom: offset, to: offset + line.length});
         markers.push({from: offset, role: block.role, closing: true});
       }
     }
     offset += line.length + 1;
+  }
+  for (const match of source.matchAll(/^ {0,3}>[ \t]*\[!TAKEAWAY\][ \t]*\r?$/gm)) {
+    if (literals.some(range => match.index >= range.from && match.index < range.to)) continue;
+    let end = match.index + match[0].length;
+    for (const line of source.slice(end + 1).split('\n')) {
+      if (!/^ {0,3}>/.test(line)) break;
+      end += line.length + 1;
+    }
+    blocks.push({from:match.index,startEnd:match.index+match[0].length,to:end,role:'takeaway',syntax:'callout'});
+    markers.push({from:match.index,role:'takeaway'});
   }
   // Hidden review requests must not become preview navigation targets.
   const visible = headings.filter(h => !blocks.some(b => b.role === 'agent-comment' && h.from > b.from && h.from < b.to));

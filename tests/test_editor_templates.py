@@ -13,7 +13,7 @@ class EditorTemplatesTest(unittest.TestCase):
     def test_shared_templates_and_element_catalogue(self):
         self.assertEqual(len(self.entries), len(TEMPLATES) + len(ELEMENTS))
         for name, md in TEMPLATES.items():
-            entry = self.entries['section-deck' if name == 'section' else name]
+            entry = self.entries[{'section': 'section-deck', 'chart': 'chart-slide'}.get(name, name)]
             self.assertEqual(entry['markdown'], md)
             self.assertEqual(entry['kind'], 'Slide')
             self.assertIn('** ', entry['org'])

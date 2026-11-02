@@ -24,8 +24,8 @@ def main(argv=None):
     commands.add_parser("setup-editor", help="Provision a verified isolated Pandoc when needed")
     commands.add_parser('setup-charts', help='Install the optional isolated local chart backend')
     template = commands.add_parser('template', help='Print or create an editable Markdown/Org starter')
-    from .authoring import TEMPLATES
-    template.add_argument('name', choices=sorted(TEMPLATES))
+    from .authoring import TEMPLATES, ELEMENTS
+    template.add_argument('name', choices=sorted(TEMPLATES.keys() | ELEMENTS.keys()))
     template.add_argument('--output', type=Path)
     template.add_argument('--fragment', action='store_true')
     template.add_argument('--format', choices=['markdown', 'org'], default='markdown')

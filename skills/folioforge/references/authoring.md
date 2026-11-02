@@ -37,6 +37,39 @@ decorative line within a slide. Keep frontmatter at the start of the file.
 
 ## Composition
 
+### Short forms
+
+Use `:::: columns 2:1` for evidence plus commentary, `1:2` for the reverse,
+or `1:1:1` for three equal regions. H4 headings delimit the regions as below;
+there is no need for individual `.column` wrappers. Plain `:::: columns` keeps
+equal widths. The ratio must match the region count; do not mix a ratio with
+individual `width` attributes. Native Org uses `#+begin_columns :ratio "2:1"`
+with its usual `#+begin_region :title "Evidence"` blocks.
+
+A short Markdown takeaway is a quoted callout:
+
+```markdown
+> [!TAKEAWAY]
+> Approve the pilot, not the rollout.
+```
+
+The marker occupies its own line. Prefix every body line, including blank lines,
+with `>`. This is the same conclusion band as `::: takeaway`, not a new slide
+type. Org keeps `#+begin_takeaway`. Existing long forms remain supported.
+Aliases are not expanded inside code, raw HTML, metadata or review comments.
+Old installed CI renderers must be updated before using these aliases.
+
+In the Codex source pane, `/columns` offers equal, evidence and three-column
+insertions. `/chart-barh`, `/chart-bar`, `/chart-line`, `/chart-stacked` and
+`/chart-stacked100` insert chart elements; with a selected pipe table, choose one
+from the `+` menu to wrap it. Fill in `unit` with the actual measurement unit.
+`/chart-slide` inserts a complete chart slide. Type `/chart` to choose the chart
+element type. Select prose and choose `/takeaway`
+from `+` to wrap it. New placeholders use Tab/Shift-Tab; selection wrapping does
+not reinterpret the selected text as placeholders. The braces icon switches
+between raw delimiters and quiet labels, without modifying the source. Column
+labels offer a ratio selector when the regions have no explicit widths.
+
 Use longer colon fences for outer containers. In a group, choose H4-delimited
 regions OR explicit child blocks, not a mixture:
 

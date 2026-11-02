@@ -318,3 +318,21 @@ Also run =python3 -m unittest discover -s tests= from the repository root.
 Passing protocol/browser tests does not prove integration in every Codex Desktop
 release. Check installation, tool discovery and opening/saving a synthetic file
 in the actual target desktop before relying on it for important unsaved work.
+* Less layout syntax
+
+Type =/columns= to see equal, evidence/commentary and three-column choices.
+=/columns-evidence= inserts =:::: columns 2:1= with H4 region headings.
+=/takeaway= inserts a quoted =[!TAKEAWAY]= callout. Long-form source still works.
+New placeholder fields use =Tab= and =Shift-Tab=; press =Escape= to leave them.
+
+Select a pipe table, click =+=, and choose =/chart-barh=, =/chart-bar=,
+=/chart-line=, =/chart-stacked= or =/chart-stacked100=. This wraps the table rather
+than making a second copy. Set its =unit= to the real measurement unit. The
+=/chart-slide= recipe creates a complete slide. Type =/chart= to choose a chart
+element type. Selected prose can be
+wrapped through =/takeaway=. Unsupported selections are retained with an error.
+
+The braces icon toggles compact structural labels. It never edits the document.
+The active structural line stays visible while editing. A Columns label offers
+a ratio selector for titled regions without explicit widths. Ratio changes are
+ordinary undoable source edits. Markdown and native Org share these controls.

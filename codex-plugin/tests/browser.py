@@ -163,7 +163,7 @@ try:
         option.wait_for()
         page.screenshot(path=str(shots / 'insert-menu.png'))
         option.click()
-        wait_until(frame, 'folioforgeWorkspace.editor.state.doc.toString().endsWith("::: takeaway\\nKey takeaway.\\n:::\\n")', 10)
+        wait_until(frame, 'folioforgeWorkspace.editor.state.doc.toString().endsWith("> [!TAKEAWAY]\\n> Key takeaway.\\n")', 10)
         before_undo = frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()')
         ui.locator('#undo').click()
         assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()') != before_undo

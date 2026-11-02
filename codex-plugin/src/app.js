@@ -4,13 +4,13 @@ import {EditorView, basicSetup} from 'codemirror';
 import {markdown} from '@codemirror/lang-markdown';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X} from 'lucide';
+import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
-import {authoringExtensions, insertMenu} from './authoring.mjs';
+import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'Folioforge', version: '0.4.0'});
+const app = new App({name: 'Folioforge', version: '0.5.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.FOLIOFORGE_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -31,7 +31,7 @@ const status = message => { $('status').textContent = message; };
 const editability = new Compartment();
 const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.of(value)];
 const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, markdown(), EditorView.lineWrapping,
-  authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading}),
+  authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice}),
   editability.of(editable(!demo)),
   EditorView.contentAttributes.of({'aria-label': 'Markdown source'}),
   EditorView.domEventHandlers({focus: () => { sourceInput = Date.now(); }}),
@@ -48,7 +48,12 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
 ]});
 for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': PanelsTopLeft,
   open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
-  recover: History, 'close-recovery': X})) $(id).append(createElement(icon));
+  recover: History, 'close-recovery': X, 'compact-markup': Braces})) $(id).append(createElement(icon));
+$('compact-markup').onclick = () => {
+  const compact = $('compact-markup').getAttribute('aria-pressed') !== 'true';
+  $('compact-markup').setAttribute('aria-pressed', String(compact));
+  editor.dispatch({effects:compactMarkup.of(compact)});
+};
 
 async function call(name, args) {
   const response = await app.callServerTool({name, arguments: args});

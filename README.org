@@ -23,6 +23,13 @@ gutter hints distinguish titles, claims and takeaways; type =/= on a blank line
 or use =+= to insert a slide recipe, columns, notes or a hidden agent comment.
 The source stays ordinary Markdown or Org, with explicit saving and undo.
 
+Short forms reduce layout boilerplate: =:::: columns 2:1= groups H4 regions,
+and a quoted =[!TAKEAWAY]= marks the conclusion. The braces icon can show quiet
+structural labels instead of delimiters; column ratios remain directly editable.
+Select a table and use =+ > /chart-barh= to turn it into a chart without copying
+its data. Inserted placeholders use Tab/Shift-Tab. Long-form source still works;
+see the [[file:skills/folioforge/references/authoring.md][authoring contract]] for native Org equivalents and examples.
+
 Smart refresh renders only the selected output. Warm text, link, list-item and
 table-cell edits update in place without reloading the deck or its unchanged
 diagrams. Structural and theme changes safely rebuild; export and CI keep the

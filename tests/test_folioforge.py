@@ -61,6 +61,7 @@ class CoreTests(unittest.TestCase):
     def test_ci_setup_is_opt_in_and_never_overwrites(self):
         settings = config(self.source)
         setup_ci(settings, "github")
+        self.assertTrue((self.root / ".folioforge-ci/sugar.py").is_file())
         workflow = (self.root / ".github/workflows/folioforge-pages.yml").read_text()
         self.assertIn("workflow_dispatch:", workflow)
         self.assertNotIn("  push:", workflow)

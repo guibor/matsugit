@@ -133,6 +133,7 @@ def setup_ci(settings, provider):
         workflow: templates / (provider + ".yml"),
         ".folioforge-ci/core.py": Path(__file__).parent / "core.py",
         ".folioforge-ci/source.py": Path(__file__).parent / "source.py",
+        ".folioforge-ci/sugar.py": Path(__file__).parent / "sugar.py",
         ".folioforge-ci/layout.py": Path(__file__).parent / "layout.py",
         ".folioforge-ci/components.py": Path(__file__).parent / "components.py",
         ".folioforge-ci/relationships.py": Path(__file__).parent / "relationships.py",

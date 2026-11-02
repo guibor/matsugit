@@ -246,9 +246,13 @@ ELEMENTS = {
     'section': '# Section title\n',
     'claim': '### Main claim\n',
     'region': '#### Region title\n\n- Supporting point.\n',
-    'takeaway': '::: takeaway\nKey takeaway.\n:::\n',
+    'takeaway': '> [!TAKEAWAY]\n> Key takeaway.\n',
+    'takeaway-block': '::: takeaway\nKey takeaway.\n:::\n',
     'columns': ':::: columns\n#### First column\n\n- Supporting point.\n\n#### Second column\n\n- Supporting point.\n::::\n',
     'columns-3': ':::: columns\n#### First column\n\n- Supporting point.\n\n#### Second column\n\n- Supporting point.\n\n#### Third column\n\n- Supporting point.\n::::\n',
+    'columns-evidence': ':::: columns 2:1\n#### Evidence\n\n- Supporting evidence.\n\n#### Implication\n\n- What the evidence means.\n::::\n',
+    'takeaway-callout': '> [!TAKEAWAY]\n> Key takeaway.\n',
+    'chart-block': '::: {.chart type="barh" unit="minutes"}\n| Experience | Minutes |\n| :--- | ---: |\n| Baseline | 12 |\n| Pilot | 8 |\n:::\n',
     'rows': '::::: rows\n:::: row\nFirst block of evidence.\n::::\n\n:::: row\nSecond block of evidence.\n::::\n:::::\n',
     'notes': '::: notes\nPresenter notes.\n:::\n',
     'source': '::: source\nSource, date, page or link.\n:::\n',
@@ -266,7 +270,8 @@ def editor_templates():
     entries = {}
     for kind, group in [('Slide', TEMPLATES), ('Element', ELEMENTS)]:
         for name, text in group.items():
-            key = 'section-deck' if kind == 'Slide' and name == 'section' else name
+            key = ({'section': 'section-deck', 'chart': 'chart-slide'}.get(name, name)
+                   if kind == 'Slide' else name)
             # The shared converter intentionally removes hidden agent comments.
             org = ('#+begin_agent-comment :id "review-INSERT_ID" :status "open"\n'
                    'Request:\nDescribe the change or question for this slide.\n\n'
@@ -276,16 +281,20 @@ def editor_templates():
 
 
 def template(name, output=None, fragment=False, fmt='markdown'):
-    if name not in TEMPLATES:
-        raise ValueError('Choose a template: ' + ', '.join(TEMPLATES))
-    text = TEMPLATES[name]
+    catalogue = {**ELEMENTS, **TEMPLATES}
+    if name not in catalogue:
+        raise ValueError('Choose a template: ' + ', '.join(catalogue))
+    text = catalogue[name]
     if not fragment:
         text = ('---\ntitle: Working deck\nslide-layout: structured\n'
                 'slide-section-dividers: false\n---\n\n' + text)
     if fmt == 'org':
         from .source import convert
         from .converter import converter
-        text = convert(text, 'markdown', 'org', converter())
+        if name == 'agent-comment':
+            text = editor_templates()['agent-comment']['org']
+        else:
+            text = convert(text, 'markdown', 'org', converter())
     elif fmt != 'markdown':
         raise ValueError('Template format must be markdown or org')
     if output is None:
