@@ -5,6 +5,7 @@ Optional FOLIOFORGE_SCREENSHOTS writes synthetic UI review screenshots.
 """
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -159,7 +160,7 @@ try:
         ui.locator('.cm-content').focus()
         page.keyboard.press('Control+End')
         page.keyboard.type('/takeaway')
-        option = ui.locator('.cm-completionLabel').filter(has_text='/takeaway')
+        option = ui.locator('.cm-completionLabel').filter(has_text=re.compile(r'^/takeaway$'))
         option.wait_for()
         page.screenshot(path=str(shots / 'insert-menu.png'))
         option.click()

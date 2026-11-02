@@ -251,7 +251,6 @@ ELEMENTS = {
     'columns': ':::: columns\n#### First column\n\n- Supporting point.\n\n#### Second column\n\n- Supporting point.\n::::\n',
     'columns-3': ':::: columns\n#### First column\n\n- Supporting point.\n\n#### Second column\n\n- Supporting point.\n\n#### Third column\n\n- Supporting point.\n::::\n',
     'columns-evidence': ':::: columns 2:1\n#### Evidence\n\n- Supporting evidence.\n\n#### Implication\n\n- What the evidence means.\n::::\n',
-    'takeaway-callout': '> [!TAKEAWAY]\n> Key takeaway.\n',
     'chart-block': '::: {.chart type="barh" unit="minutes"}\n| Experience | Minutes |\n| :--- | ---: |\n| Baseline | 12 |\n| Pilot | 8 |\n:::\n',
     'rows': '::::: rows\n:::: row\nFirst block of evidence.\n::::\n\n:::: row\nSecond block of evidence.\n::::\n:::::\n',
     'notes': '::: notes\nPresenter notes.\n:::\n',
