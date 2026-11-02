@@ -1,6 +1,6 @@
 #+title: One product story, two useful outputs
 
-Folioforge keeps a reading document and a presentation connected to the same
+matsugit keeps a reading document and a presentation connected to the same
 editable source. Ask the agent to organize an argument, review the evidence,
 then edit the result directly. The theme supplies the layout; the source keeps
 the meaning. Previewing and saving are separate from publication.
@@ -57,13 +57,13 @@ edit, not a separate visual object.
 Follow [[file:codex.org][the installation guide]], then ask:
 
 #+begin_quote
-Use Folioforge to turn these notes into a decision brief and slides.
+Use matsugit to turn these notes into a decision brief and slides.
 Keep the supplied numbers, flag missing evidence, and open the split slide
 preview. Do not publish anything.
 #+end_quote
 
-Folioforge is not a native PowerPoint editor or a fact-checker. Save explicitly
-before closing. The visual table editor is a separate Folioforge tool, not an
+matsugit is not a native PowerPoint editor or a fact-checker. Save explicitly
+before closing. The visual table editor is a separate matsugit tool, not an
 embedded spreadsheet in this workspace. Existing Git publication and optional
 CI workflows remain separate from previewing in Codex.
 
@@ -72,7 +72,7 @@ With the plugin dependencies, Quarto, Python Playwright and Chromium installed:
 
 #+begin_src sh
 npm --prefix codex-plugin run build
-python3 codex-plugin/tests/showcase.py --output /tmp/folioforge-showcase --theme default
+python3 codex-plugin/tests/showcase.py --output /tmp/matsugit-showcase --theme default
 #+end_src
 
 Use a new output directory. =QUARTO= and

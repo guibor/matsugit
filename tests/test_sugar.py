@@ -1,9 +1,9 @@
 import unittest
-from folioforge.converter import converter
-from folioforge.core import Error
-from folioforge.source import read, convert
-from folioforge.sugar import markdown, ratios
-from folioforge.layout import plain, slides
+from matsugit.converter import converter
+from matsugit.core import Error
+from matsugit.source import read, convert
+from matsugit.sugar import markdown, ratios
+from matsugit.layout import plain, slides
 
 try:
     COMMAND = converter()

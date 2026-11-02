@@ -7,20 +7,20 @@ import shutil
 import tempfile
 import unittest
 
-from folioforge.charts import dataset, style
-from folioforge.components import prepare
-from folioforge.core import install_theme, run
-from folioforge.layout import plain, slides
-from folioforge.lint import inspect, walk
+from matsugit.charts import dataset, style
+from matsugit.components import prepare
+from matsugit.core import install_theme, run
+from matsugit.layout import plain, slides
+from matsugit.lint import inspect, walk
 
-SKILL = Path(__file__).resolve().parents[1] / 'skills/folioforge'
+SKILL = Path(__file__).resolve().parents[1] / 'skills/matsugit'
 QUARTO = os.environ.get('QUARTO', shutil.which('quarto'))
 
 
 class SkillThemeTests(unittest.TestCase):
     def test_installed_skill_routes_to_bundled_resources_without_repo_checkout(self):
         with tempfile.TemporaryDirectory() as directory:
-            copied = Path(directory) / 'folioforge'
+            copied = Path(directory) / 'matsugit'
             shutil.copytree(SKILL, copied)
             links = re.findall(r'\]\(([^)#]+)(?:#[^)]*)?\)',
                                (copied / 'SKILL.md').read_text())

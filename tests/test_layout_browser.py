@@ -4,11 +4,11 @@ from pathlib import Path
 import unittest
 
 
-@unittest.skipUnless(os.environ.get('FOLIOFORGE_LAYOUT_OUTPUT'), 'Set a rendered synthetic layout fixture')
+@unittest.skipUnless(os.environ.get('MATSUGIT_LAYOUT_OUTPUT'), 'Set a rendered synthetic layout fixture')
 class LayoutBrowserTests(unittest.TestCase):
     def test_hierarchy_columns_media_and_reading_structure(self):
         from playwright.sync_api import sync_playwright
-        root=Path(os.environ['FOLIOFORGE_LAYOUT_OUTPUT'])
+        root=Path(os.environ['MATSUGIT_LAYOUT_OUTPUT'])
         with sync_playwright() as p:
             browser=p.chromium.launch(executable_path=os.environ['CHROME'],
                 args=['--no-sandbox','--disable-dev-shm-usage'])
@@ -59,7 +59,7 @@ class LayoutBrowserTests(unittest.TestCase):
                                 self.assertGreater(rect['w'],20)
                                 self.assertGreater(rect['h'],20)
                         if 'headline' in id:
-                            page.screenshot(path=f'/tmp/folioforge-structured-{width}.png')
+                            page.screenshot(path=f'/tmp/matsugit-structured-{width}.png')
                     self.assertFalse(errors,errors)
                     page.close()
             finally:

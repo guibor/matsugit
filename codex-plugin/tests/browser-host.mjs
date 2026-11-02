@@ -7,22 +7,22 @@ import {fileURLToPath} from 'node:url';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-browser-test-'));
-const fixture = process.env.FOLIOFORGE_SHOWCASE_SOURCE;
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-browser-test-'));
+const fixture = process.env.MATSUGIT_SHOWCASE_SOURCE;
 const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
 const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
 fs.copyFileSync(fixture || new URL('./workspace.md', import.meta.url), source);
 let client, opened, session, app;
 async function start() {
-client = new Client({name: 'folioforge-browser-test', version: '1.0.0'});
+client = new Client({name: 'matsugit-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
   args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
-  env: {...process.env, PWD: inherited, FOLIOFORGE_CONFIG: path.join(temporary, 'absent.json'),
-    FOLIOFORGE_RECOVERY_DIR: path.join(temporary, 'recovery')}, stderr: 'inherit'}));
-opened = await client.callTool({name: 'folioforge_open', arguments: {path: source}});
+  env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: path.join(temporary, 'absent.json'),
+    MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery')}, stderr: 'inherit'}));
+opened = await client.callTool({name: 'matsugit_open', arguments: {path: source}});
 session = opened.structuredContent.session;
-app = (await client.readResource({uri: 'ui://folioforge/workspace-v1'})).contents[0].text;
+app = (await client.readResource({uri: 'ui://matsugit/workspace-v1'})).contents[0].text;
 }
 await start();
 if (process.platform !== 'win32') fs.rmdirSync(inherited);
@@ -42,11 +42,11 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     if (req.url === '/app') {
       res.setHeader('Content-Type', 'text/html');
-      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' data: blob:; style-src 'unsafe-inline' data: blob:; img-src data: blob:; font-src data: blob:; frame-src blob:; base-uri https://folioforge.invalid; connect-src 'none'");
+      res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' data: blob:; style-src 'unsafe-inline' data: blob:; img-src data: blob:; font-src data: blob:; frame-src blob:; base-uri https://matsugit.invalid; connect-src 'none'");
       return res.end(app);
     }
-    if (req.url === '/result') return res.end(JSON.stringify(await client.callTool({name: 'folioforge_open', arguments: {path: source}})));
-    if (req.url === '/untitled-result') return res.end(JSON.stringify(await client.callTool({name: 'folioforge_workspace', arguments: {}})));
+    if (req.url === '/result') return res.end(JSON.stringify(await client.callTool({name: 'matsugit_open', arguments: {path: source}})));
+    if (req.url === '/untitled-result') return res.end(JSON.stringify(await client.callTool({name: 'matsugit_workspace', arguments: {}})));
     if (req.url === '/restart' && req.method === 'POST') {
       await client.close(); fs.mkdirSync(inherited); await start(); fs.rmdirSync(inherited);
       return res.end('{}');
@@ -60,10 +60,10 @@ const server = http.createServer(async (req, res) => {
         hostCapabilities: {serverTools: {}, serverResources: {}, openLinks: {}, experimental: {'openai/resource': {}}}, hostContext: {theme: 'light', displayMode: 'fullscreen'}};
       else if (message.method === 'tools/call') result = await client.callTool({...params, _meta: {'openai/resource': {path: source}}});
       else if (message.method === 'resources/read') {
-        const latest = await client.callTool({name: 'folioforge_read', arguments: {session}});
+        const latest = await client.callTool({name: 'matsugit_read', arguments: {session}});
         result = {contents: [{uri: params.uri, text: latest._meta.source, _meta: {'openai/resource': latest.structuredContent}}]};
       } else if (message.method === 'openai/resources/write') {
-        result = (await client.callTool({name: 'folioforge_save', arguments: {session, text: params.text, etag: params.ifMatch}})).structuredContent;
+        result = (await client.callTool({name: 'matsugit_save', arguments: {session, text: params.text, etag: params.ifMatch}})).structuredContent;
       }
       return res.end(JSON.stringify({result}));
     }

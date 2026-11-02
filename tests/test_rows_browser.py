@@ -4,11 +4,11 @@ from pathlib import Path
 import unittest
 
 
-@unittest.skipUnless(os.environ.get('FOLIOFORGE_ROWS_OUTPUT'), 'Set rendered rows fixture')
+@unittest.skipUnless(os.environ.get('MATSUGIT_ROWS_OUTPUT'), 'Set rendered rows fixture')
 class RowsBrowserTests(unittest.TestCase):
     def test_sections_gaps_media_and_reading_flow(self):
         from playwright.sync_api import sync_playwright
-        root=Path(os.environ['FOLIOFORGE_ROWS_OUTPUT'])
+        root=Path(os.environ['MATSUGIT_ROWS_OUTPUT'])
         with sync_playwright() as p:
             browser=p.chromium.launch(executable_path=os.environ['CHROME'],
                                       args=['--no-sandbox','--disable-dev-shm-usage'])

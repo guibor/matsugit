@@ -22,10 +22,10 @@ def wait(frame, expression, timeout=120):
     raise AssertionError((expression, frame.locator('body').inner_text()[-1000:]))
 
 def checkpoint(frame):
-    frame.evaluate('folioforgeWorkspace.flushRecovery()')
+    frame.evaluate('matsugitWorkspace.flushRecovery()')
     wait(frame, 'document.getElementById("recovery-status").textContent === "Recovery saved"', 20)
 
-shots = Path(tempfile.mkdtemp(prefix='folioforge-recovery-shots-'))
+shots = Path(tempfile.mkdtemp(prefix='matsugit-recovery-shots-'))
 server = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')], stdout=subprocess.PIPE, text=True)
 try:
     ready = json.loads(server.stdout.readline())
@@ -42,8 +42,8 @@ try:
         def opened(suffix=''):
             page.goto(url + suffix)
             frame = page.frames[1]
-            wait(frame, '!!window.folioforgeWorkspace && !folioforgeWorkspace.state.loading && !!folioforgeWorkspace.state.name')
-            wait(frame, '!!folioforgeWorkspace.state.rendered')
+            wait(frame, '!!window.matsugitWorkspace && !matsugitWorkspace.state.loading && !!matsugitWorkspace.state.name')
+            wait(frame, '!!matsugitWorkspace.state.rendered')
             return frame
 
         frame = opened()
@@ -52,19 +52,19 @@ try:
         frame.locator('#theme').fill('default')
         frame.locator('#theme').dispatch_event('change')
         frame.locator('[data-format="slides"]').click()
-        wait(frame, '!!folioforgeWorkspace.state.rendered?.slides && !folioforgeWorkspace.state.rendering')
+        wait(frame, '!!matsugitWorkspace.state.rendered?.slides && !matsugitWorkspace.state.rendering')
         preview = frame.locator('#preview').element_handle().content_frame()
         wait(preview, '!!window.Reveal?.isReady()')
         preview.evaluate('Reveal.slide(2)')
-        wait(frame, 'folioforgeWorkspace.state.positions.slides.h === 2')
+        wait(frame, 'matsugitWorkspace.state.positions.slides.h === 2')
         frame.locator('#divider').focus()
         page.keyboard.press('ArrowLeft')
         frame.evaluate('''() => {
-          const w = folioforgeWorkspace;
+          const w = matsugitWorkspace;
           w.editor.dispatch({changes:{from:0,insert:'<!-- Recover שלום -->\\n'}, selection:{anchor:31}});
         }''')
         checkpoint(frame)
-        draft = frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()')
+        draft = frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         width = frame.evaluate('document.documentElement.style.getPropertyValue("--source-size")')
         assert source.read_text() == original
         print('Unsaved Unicode draft and workspace checkpointed without saving source', flush=True)
@@ -75,18 +75,18 @@ try:
         assert response.ok
         frame = opened()
         frame.locator('#recovery-banner').wait_for(state='visible')
-        assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()') == original
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
         assert frame.locator('#theme').input_value() == 'default'
-        assert frame.evaluate('folioforgeWorkspace.state.format') == 'slides'
+        assert frame.evaluate('matsugitWorkspace.state.format') == 'slides'
         assert frame.evaluate('document.documentElement.style.getPropertyValue("--source-size")') == width
         assert not frame.locator('#sync').is_checked()
         assert not frame.locator('#auto').is_checked()
         preview = frame.locator('#preview').element_handle().content_frame()
         wait(preview, '!!window.Reveal?.isReady() && Reveal.getIndices().h === 2')
         frame.locator('#restore-draft').click()
-        wait(frame, 'folioforgeWorkspace.editor.state.doc.toString().startsWith("<!-- Recover")')
+        wait(frame, 'matsugitWorkspace.editor.state.doc.toString().startsWith("<!-- Recover")')
         checkpoint(frame)
-        assert frame.evaluate('folioforgeWorkspace.editor.state.selection.main.head') == 31
+        assert frame.evaluate('matsugitWorkspace.editor.state.selection.main.head') == 31
         assert source.read_text() == original
         assert frame.locator('#save').is_enabled()
         print('Real backend restart: draft offer, theme, split width, caret and selected slide restored', flush=True)
@@ -96,9 +96,9 @@ try:
         page2 = browser.new_page()
         page2.goto(url)
         frame2 = page2.frames[1]
-        wait(frame2, '!!window.folioforgeWorkspace?.state.rendered')
+        wait(frame2, '!!window.matsugitWorkspace?.state.rendered')
         frame2.locator('#dismiss-recovery').click()
-        frame2.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,insert:'Second viewer\\n'}})")
+        frame2.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,insert:'Second viewer\\n'}})")
         checkpoint(frame2)
         copies = [json.loads(f.read_text()) for f in storage.glob('*.json')]
         assert any(r['text'] == draft for r in copies)
@@ -111,23 +111,23 @@ try:
         source.write_text('# External newer version\n')
         frame = opened()
         frame.locator('#restore-draft').click()
-        wait(frame, 'folioforgeWorkspace.state.conflict')
+        wait(frame, 'matsugitWorkspace.state.conflict')
         assert frame.locator('#save').is_disabled()
         assert source.read_text() == '# External newer version\n'
         frame.locator('#reload').click()
-        wait(frame, '!folioforgeWorkspace.state.conflict && folioforgeWorkspace.editor.state.doc.toString() === "# External newer version\\n"')
+        wait(frame, '!matsugitWorkspace.state.conflict && matsugitWorkspace.editor.state.doc.toString() === "# External newer version\\n"')
         assert source.read_text() == '# External newer version\n'
         print('External edit blocks recovered Save; explicit Reload resolves conflict', flush=True)
 
         # Unnamed workspaces are recoverable without borrowing the host file path.
         frame = opened('?untitled')
         frame.locator('#auto').uncheck()
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,insert:'Unnamed draft\\n'}})")
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,insert:'Unnamed draft\\n'}})")
         checkpoint(frame)
         page.goto('about:blank')
         frame = opened('?untitled')
         frame.locator('#restore-draft').click()
-        wait(frame, 'folioforgeWorkspace.editor.state.doc.toString().startsWith("Unnamed draft")')
+        wait(frame, 'matsugitWorkspace.editor.state.doc.toString().startsWith("Unnamed draft")')
         checkpoint(frame)
         assert frame.locator('#save').is_disabled()
         assert any(r['owner'] is None and r['text'].startswith('Unnamed draft')
@@ -153,28 +153,28 @@ try:
         if frame.locator('#recovery-banner').is_visible():
             frame.locator('#dismiss-recovery').click()
         frame.locator('#auto').uncheck()
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Host draft -->\\n'}})")
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Host draft -->\\n'}})")
         checkpoint(frame)
         page.goto('about:blank')
         frame = opened('?file')
         frame.locator('#restore-draft').click()
-        wait(frame, 'folioforgeWorkspace.editor.state.doc.toString().startsWith("<!-- Host draft")')
+        wait(frame, 'matsugitWorkspace.editor.state.doc.toString().startsWith("<!-- Host draft")')
         assert source.read_text() == original
         frame.locator('#save').click()
-        wait(frame, '!folioforgeWorkspace.state.saving && folioforgeWorkspace.state.base.startsWith("<!-- Host draft")')
+        wait(frame, '!matsugitWorkspace.state.saving && matsugitWorkspace.state.base.startsWith("<!-- Host draft")')
         checkpoint(frame)
         assert source.read_text().startswith('<!-- Host draft -->')
         print('Host resource URI recovery and subsequent explicit Save verified', flush=True)
         # Failure is visible, does not discard editing, and retries on the next change.
         storage.chmod(0o755)
         try:
-            frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Still editable -->\\n'}})")
-            frame.evaluate('folioforgeWorkspace.flushRecovery()')
+            frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Still editable -->\\n'}})")
+            frame.evaluate('matsugitWorkspace.flushRecovery()')
             wait(frame, 'document.getElementById("recovery-status").textContent === "Recovery unavailable"')
             assert not source.read_text().startswith('<!-- Still editable')
         finally:
             storage.chmod(0o700)
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Retry -->\\n'}})")
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Retry -->\\n'}})")
         checkpoint(frame)
         print('Checkpoint failure is visible and editing remains available', flush=True)
         assert not errors, errors

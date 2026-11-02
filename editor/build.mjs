@@ -2,7 +2,7 @@ import {build} from 'esbuild';
 import {readFile, readdir, writeFile} from 'node:fs/promises';
 
 await build({entryPoints: ['main.js'], bundle: true, minify: true, format: 'esm',
-  legalComments: 'linked', outfile: '../folioforge/editor_assets/editor.js'});
+  legalComments: 'linked', outfile: '../matsugit/editor_assets/editor.js'});
 
 const notices = [];
 async function collect(directory) {
@@ -18,4 +18,4 @@ async function collect(directory) {
   }
 }
 await collect('node_modules');
-await writeFile('../folioforge/editor_assets/THIRD-PARTY-LICENSES.txt', notices.sort().join('\n\n--------------------\n\n'));
+await writeFile('../matsugit/editor_assets/THIRD-PARTY-LICENSES.txt', notices.sort().join('\n\n--------------------\n\n'));

@@ -10,9 +10,9 @@ import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'Folioforge', version: '0.5.0'});
+const app = new App({name: 'matsugit', version: '0.6.0'});
 const extensions = new OpenAIExtensions(app);
-const demo = window.FOLIOFORGE_DEMO;
+const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
@@ -91,7 +91,7 @@ function sourceOutline() {
 }
 function followSource() {
   if (!$('sync').checked || !state.rendered || origin !== 'source') return;
-  $('preview').contentWindow?.postMessage({folioforgePreview: previewToken,
+  $('preview').contentWindow?.postMessage({matsugitPreview: previewToken,
     targets: headingTargets(sourceOutline(), editor.state.selection.main.head)}, '*');
 }
 function changeLayout(layout) {
@@ -128,13 +128,13 @@ function changeFormat(format) {
 for (const button of document.querySelectorAll('button[data-layout]')) button.onclick = () => changeLayout(button.dataset.layout);
 for (const button of document.querySelectorAll('button[data-format]')) button.onclick = () => changeFormat(button.dataset.format);
 window.addEventListener('message', event => {
-  if (event.source !== $('preview').contentWindow || event.data?.folioforgePreview !== previewToken) return;
+  if (event.source !== $('preview').contentWindow || event.data?.matsugitPreview !== previewToken) return;
   if (event.data.patched && pendingPatch?.id === event.data.patched) {
     pendingPatch.finish(event.data.patchError); pendingPatch = null;
   }
-  if (event.data.folioforgeReady) { if (!restoredPosition) followSource(); restoredPosition = false; }
-  if (['slides', 'document'].includes(event.data?.folioforgeFormat)) changeFormat(event.data.folioforgeFormat);
-  const position = event.data?.folioforgePosition;
+  if (event.data.matsugitReady) { if (!restoredPosition) followSource(); restoredPosition = false; }
+  if (['slides', 'document'].includes(event.data?.matsugitFormat)) changeFormat(event.data.matsugitFormat);
+  const position = event.data?.matsugitPosition;
   if (position && ['slides', 'document'].includes(position.format)
       && typeof position.hash === 'string' && position.hash.length < 1024
       && (!position.hash || position.hash.startsWith('#')) && Number.isFinite(position.scroll)) {
@@ -173,13 +173,13 @@ async function render(manual = true) {
   const session = state.session;
   const owner = session ? {session} : {};
   const current = () => sequence === previewSequence && revision === state.revision && format === state.format;
-  const cancel = job => call('folioforge_preview_cancel', {job, ...owner}).catch(() => {});
+  const cancel = job => call('matsugit_preview_cancel', {job, ...owner}).catch(() => {});
   state.pendingRender = false;
   state.rendering = true; refreshControls(); status('Preparing preview');
   try {
     const base = state.forceFull ? undefined : state.bases[format];
     state.forceFull = false;
-    const initial = await call('folioforge_preview', {text: text(), name: state.name, format, base,
+    const initial = await call('matsugit_preview', {text: text(), name: state.name, format, base,
       theme: $('theme').value.trim(), ...owner});
     let job = initial;
     while (job.state === 'rendering') {
@@ -188,7 +188,7 @@ async function render(manual = true) {
       if (!state.rendered) $('empty-label').textContent = job.phase || 'Rendering';
       await new Promise(resolve => setTimeout(resolve, base ? 100 : 350));
       if (!current()) { await cancel(initial.job); return; }
-      job = await call('folioforge_preview_status', {job: initial.job, ...owner});
+      job = await call('matsugit_preview_status', {job: initial.job, ...owner});
     }
     if (!current()) return;
     if (job.state !== 'ready') throw Error(job.error || 'Preview failed.');
@@ -196,7 +196,7 @@ async function render(manual = true) {
     const parts = []; let offset = 0;
     while (true) {
       if (!current()) return;
-      const part = await call('folioforge_preview_chunk', {job: initial.job, format, offset, ...owner});
+      const part = await call('matsugit_preview_chunk', {job: initial.job, format, offset, ...owner});
       parts.push(part.chunk); offset = part.next;
       if (part.done) break;
     }
@@ -210,7 +210,7 @@ async function render(manual = true) {
           await new Promise((resolve, reject) => {
             const timer = setTimeout(() => { pendingPatch = null; reject(Error('Preview did not acknowledge update')); }, 3000);
             pendingPatch = {id: job.job, finish: error => { clearTimeout(timer); error ? reject(Error(error)) : resolve(); }};
-            $('preview').contentWindow.postMessage({folioforgePreview: previewToken,
+            $('preview').contentWindow.postMessage({matsugitPreview: previewToken,
               patch: {base: job.base, next: job.job, changes}}, '*');
           });
           // Even if the source changed during the acknowledgement, the iframe
@@ -253,7 +253,7 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
     const value = 'text' in item ? item.text : new TextDecoder('utf-8', {fatal: true}).decode(Uint8Array.from(atob(item.blob), char => char.charCodeAt(0)));
     return {text: value, etag: item.openaiMetadata?.etag, writable: item.openaiMetadata?.writable === true};
   }
-  const result = await call('folioforge_read', {session});
+  const result = await call('matsugit_read', {session});
   return {...result, text: result.source};
 }
 async function reload(force = false) {
@@ -280,7 +280,7 @@ async function save() {
   state.saving = true; refreshControls(); status('Saving');
   try {
     const result = state.uri ? await extensions.resources.write(state.uri, {text: value, ifMatch: state.etag})
-      : await call('folioforge_save', {session: state.session, text: value, etag: state.etag});
+      : await call('matsugit_save', {session: state.session, text: value, etag: state.etag});
     if (sequence !== loadSequence) return;
     if (result.outcome === 'saved') { state.base = value; state.etag = result.etag; state.conflict = false; notice(); }
     else if (result.outcome === 'conflict') {
@@ -317,7 +317,7 @@ async function load(data) {
   if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
   try {
     if (state.uri) {
-      if (!extensions.resources) throw Error('This host does not support file editing. Update Codex Desktop or use the folioforge_open tool.');
+      if (!extensions.resources) throw Error('This host does not support file editing. Update Codex Desktop or use the matsugit_open tool.');
       data = await resourceRead();
     }
     if (sequence !== loadSequence) return;
@@ -328,7 +328,7 @@ async function load(data) {
     editor.dispatch({selection: {anchor: 0}});
     if (!demo) {
       try {
-        const recovered = await call('folioforge_recovery_begin', {...recoveryScope(), name: state.name});
+        const recovered = await call('matsugit_recovery_begin', {...recoveryScope(), name: state.name});
         if (sequence !== loadSequence) return;
         recoveryId = recovered.id;
         const candidate = suppliedRecovery || recovered.candidate;
@@ -421,7 +421,7 @@ async function flushRecovery() {
   const snapshot = {id, generation: ++recoveryGeneration, ...recoveryScope(), text: text(), base: state.base, view: viewState()};
   recoveryPromise = (async () => {
     try {
-      const result = await call('folioforge_recovery_checkpoint', snapshot);
+      const result = await call('matsugit_recovery_checkpoint', snapshot);
       if (sequence !== loadSequence) return;
       $('recovery-status').dataset.error = 'false';
       $('recovery-status').textContent = recoveryPending ? 'Recovery pending' : 'Recovery saved';
@@ -435,7 +435,7 @@ async function recoveryPicker() {
   const container = $('recovery-items'); container.replaceChildren();
   if (!$('recovery-dialog').open) $('recovery-dialog').showModal();
   try {
-    const result = await call('folioforge_recovery_list', recoveryScope());
+    const result = await call('matsugit_recovery_list', recoveryScope());
     if (!result.items.length) container.textContent = 'No recovery copies.';
     if (result.unreadable) { const warning = document.createElement('p'); warning.textContent = `${result.unreadable} unreadable copies retained on disk.`; container.append(warning); }
     for (const item of result.items) {
@@ -447,7 +447,7 @@ async function recoveryPicker() {
       const restore = document.createElement('button'); restore.title = restore.ariaLabel = 'Restore ' + item.name; restore.append(createElement(RotateCcw));
       restore.onclick = async () => {
         try {
-          const result = await call('folioforge_recovery_restore', {...recoveryScope(), id: item.id});
+          const result = await call('matsugit_recovery_restore', {...recoveryScope(), id: item.id});
           $('recovery-dialog').close();
           if (state.uri) await restoreCopy(result.recovery);
           else await load({...result.workspace, recovery: result.recovery});
@@ -457,7 +457,7 @@ async function recoveryPicker() {
       remove.onclick = async () => {
         if (!confirm(`Delete the recovery copy of ${item.name}? The original file will not be changed.`)) return;
         try {
-          await call('folioforge_recovery_forget', {...recoveryScope(), id: item.id, token: item.token});
+          await call('matsugit_recovery_forget', {...recoveryScope(), id: item.id, token: item.token});
           if (item.id === recoveryId) { recoveryId = null; recoveryPending = false; $('recovery-status').textContent = 'Recovery paused'; }
           await recoveryPicker();
         } catch (error) { notice(error.message); }
@@ -495,7 +495,7 @@ async function restoreCopy(record) {
 $('restore-draft').onclick = async () => {
   if (!recoveryCandidate) return;
   try {
-    const result = await call('folioforge_recovery_restore', {...recoveryScope(), id: recoveryCandidate.id});
+    const result = await call('matsugit_recovery_restore', {...recoveryScope(), id: recoveryCandidate.id});
     await restoreCopy(result.recovery);
   } catch (error) { notice(error.message); }
 };
@@ -550,10 +550,10 @@ $('divider').onkeydown = event => {
 };
 function dividerOrientation() { $('divider').setAttribute('aria-orientation', innerWidth <= 700 ? 'horizontal' : 'vertical'); }
 window.addEventListener('resize', dividerOrientation); dividerOrientation();
-document.modelContext?.registerTool({name: 'folioforge_get_source', description: 'Read the current workspace draft, including unsaved edits.',
+document.modelContext?.registerTool({name: 'matsugit_get_source', description: 'Read the current workspace draft, including unsaved edits.',
   inputSchema: {type: 'object', properties: {}}, annotations: {readOnlyHint: true},
   async execute() { return JSON.stringify({name: state.name, text: text(), revision: state.revision, dirty: dirty()}); }});
-document.modelContext?.registerTool({name: 'folioforge_replace_source', description: 'Replace the workspace draft only when its revision matches. Does not save or publish.',
+document.modelContext?.registerTool({name: 'matsugit_replace_source', description: 'Replace the workspace draft only when its revision matches. Does not save or publish.',
   inputSchema: {type: 'object', properties: {text: {type: 'string'}, revision: {type: 'integer'}}, required: ['text','revision']},
   async execute(args) {
     if (demo || state.loading || args.revision !== state.revision) throw Error('Draft changed or is loading; read the current revision first.');
@@ -562,7 +562,7 @@ document.modelContext?.registerTool({name: 'folioforge_replace_source', descript
     return JSON.stringify({revision: state.revision, saved: false});
   }});
 // Expose only the editor model to the isolated local UI test harness.
-window.folioforgeWorkspace = {editor, state, load, render, save, reload, flushRecovery};
+window.matsugitWorkspace = {editor, state, load, render, save, reload, flushRecovery};
 async function boot() {
 if (demo) {
   await load(demo);

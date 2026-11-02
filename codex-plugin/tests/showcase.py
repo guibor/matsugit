@@ -26,8 +26,8 @@ def main():
     parser.add_argument('--theme', default='default')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
-    env = dict(os.environ, FOLIOFORGE_SHOWCASE_SOURCE=str(Path(__file__).with_name('product-review.md')),
-               FOLIOFORGE_DEFAULT_THEME=args.theme)
+    env = dict(os.environ, MATSUGIT_SHOWCASE_SOURCE=str(Path(__file__).with_name('product-review.md')),
+               MATSUGIT_DEFAULT_THEME=args.theme)
     host = subprocess.Popen(['node', str(Path(__file__).with_name('browser-host.mjs'))], env=env,
                             stdout=subprocess.PIPE, text=True)
     try:
@@ -40,7 +40,7 @@ def main():
             page.goto(f'http://127.0.0.1:{ready["port"]}')
             ui = page.frame_locator('#app')
             frame = page.frames[1]
-            wait(frame, '!!window.folioforgeWorkspace?.state.rendered')
+            wait(frame, '!!window.matsugitWorkspace?.state.rendered')
             ui.frame_locator('#preview').locator('h1').first.wait_for()
             ui.locator('#auto').uncheck()
 
@@ -56,7 +56,7 @@ def main():
 
             def heading(title):
                 frame.evaluate('''title => {
-                  const w = folioforgeWorkspace;
+                  const w = matsugitWorkspace;
                   const from = w.editor.state.doc.toString().indexOf('## ' + title);
                   w.editor.focus(); w.editor.dispatch({selection:{anchor:from}});
                 }''', title)
@@ -76,7 +76,7 @@ def main():
             shot('05-presentation-view')
             ui.locator('[data-layout="split"]').click()
             frame.evaluate('''() => {
-              const w = folioforgeWorkspace;
+              const w = matsugitWorkspace;
               const from = w.editor.state.doc.toString().indexOf(':::: {.agent-comment');
               w.editor.focus(); w.editor.dispatch({selection:{anchor:from}});
             }''')
@@ -84,7 +84,7 @@ def main():
             page.keyboard.press('Control+End')
             shot('06-agent-review-in-source')
             frame.evaluate('''() => {
-              const w = folioforgeWorkspace, end = w.editor.state.doc.length;
+              const w = matsugitWorkspace, end = w.editor.state.doc.length;
               w.editor.dispatch({changes:{from:end,insert:'\\n\\n'},selection:{anchor:end+2}});
               w.editor.focus();
             }''')

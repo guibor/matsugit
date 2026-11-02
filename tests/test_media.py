@@ -5,8 +5,8 @@ import shutil
 import tempfile
 import unittest
 
-from folioforge.core import Error, config, diagram_fences, mermaid_block, normalize, render
-from folioforge.publish import setup_ci
+from matsugit.core import Error, config, diagram_fences, mermaid_block, normalize, render
+from matsugit.publish import setup_ci
 
 QUARTO = os.environ.get("QUARTO", shutil.which("quarto"))
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -37,7 +37,7 @@ class MediaTests(unittest.TestCase):
             source.write_text("# Example")
             setup_ci(config(source), "github")
             for name in ("media.js", "media.css"):
-                self.assertTrue((root / ".folioforge-ci/runtime" / name).is_file())
+                self.assertTrue((root / ".matsugit-ci/runtime" / name).is_file())
 
 
 @unittest.skipUnless(QUARTO, "Set QUARTO for normalization and real render tests")

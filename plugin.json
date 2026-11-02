@@ -1,16 +1,16 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "folioforge",
-  "version": "0.5.0",
-  "description": "Edit Markdown and Org with Folioforge document and slide previews in Codex.",
-  "author": {"name": "Folioforge"},
+  "name": "matsugit",
+  "version": "0.6.0",
+  "description": "Edit Markdown and Org with matsugit document and slide previews in Codex.",
+  "author": {"name": "matsugit"},
   "extensions": {"com.openai": {"interface": {
-    "displayName": "Folioforge",
+    "displayName": "matsugit",
     "shortDescription": "Markdown, documents and slides",
-    "longDescription": "A local editing workspace with source, rendered and split views, document and slide previews, explicit version-checked saving, and the Folioforge authoring skill. Requires Node 22+, Python 3.10+ and Quarto. Does not publish documents.",
-    "developerName": "Folioforge",
+    "longDescription": "A local editing workspace with source, rendered and split views, document and slide previews, explicit version-checked saving, and the matsugit authoring skill. Requires Node 22+, Python 3.10+ and Quarto. Does not publish documents.",
+    "developerName": "matsugit",
     "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],
-    "defaultPrompt": "Open my Markdown document in the Folioforge workspace with a split slide preview."
+    "defaultPrompt": "Open my Markdown document in the matsugit workspace with a split slide preview."
   }}}
 }

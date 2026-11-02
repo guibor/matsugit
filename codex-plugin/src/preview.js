@@ -63,9 +63,9 @@ export function patchedHtml(html, changes) {
 
 function navigation(format, position, token, headingKey, base, applyChanges) {
   let lastInput = 0, suppressUntil = 0, currentTarget;
-  const post = data => parent.postMessage({...data, folioforgePreview: token}, '*');
+  const post = data => parent.postMessage({...data, matsugitPreview: token}, '*');
   window.addEventListener('message', event => {
-    if (event.source !== parent || event.data?.folioforgePreview !== token || !event.data.patch) return;
+    if (event.source !== parent || event.data?.matsugitPreview !== token || !event.data.patch) return;
     const patch = event.data.patch;
     try {
       if (patch.base !== base) throw Error('Preview revision changed');
@@ -102,7 +102,7 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
     lastInput = Date.now(); currentTarget = null; suppressUntil = 0;
   }, {passive: true, capture: true});
   window.addEventListener('message', event => {
-    if (event.source !== parent || event.data?.folioforgePreview !== token || !Array.isArray(event.data.targets)) return;
+    if (event.source !== parent || event.data?.matsugitPreview !== token || !Array.isArray(event.data.targets)) return;
     const list = headings();
     for (const target of event.data.targets.slice(0, 8)) {
       if (typeof target.key !== 'string' || target.key.length > 4096) continue;
@@ -126,7 +126,7 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
     const href = anchor.getAttribute('href') || '';
     if (/^(slides|index)\.html(?:#.*)?$/.test(href)) {
       event.preventDefault();
-      post({folioforgeFormat: href.startsWith('slides') ? 'slides' : 'document'});
+      post({matsugitFormat: href.startsWith('slides') ? 'slides' : 'document'});
     } else {
       event.preventDefault();
       if (href.startsWith('#')) {
@@ -140,7 +140,7 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
   let pending;
   const report = () => {
     clearTimeout(pending);
-    pending = setTimeout(() => post({folioforgePosition: {
+    pending = setTimeout(() => post({matsugitPosition: {
       format, hash: location.hash, scroll: window.scrollY,
       heading: currentHeading(), inputTime: lastInput,
       userNavigation: Date.now() - lastInput < 1500 && Date.now() > suppressUntil,
@@ -161,12 +161,12 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
         const slide = position.slideId && document.getElementById(position.slideId);
         const indices = slide ? Reveal.getIndices(slide) : position;
         Reveal.slide(indices.h || 0, indices.v || 0);
-        post({folioforgeReady: true});
+        post({matsugitReady: true});
       };
       if (Reveal.isReady()) restore(); else Reveal.on('ready', restore);
     };
     attach();
-  } else window.addEventListener('load', () => post({folioforgeReady: true}));
+  } else window.addEventListener('load', () => post({matsugitReady: true}));
 }
 
 export function previewHtml(html, format, position, token = '', base = null) {
@@ -181,7 +181,7 @@ export function previewHtml(html, format, position, token = '', base = null) {
   // Reveal's embedded menu resolves a relative script URL even when all assets
   // are inline. Blob URLs are not hierarchical; this reserved base grants no network access.
   const baseElement = parsed.createElement('base');
-  baseElement.href = 'https://folioforge.invalid/';
+  baseElement.href = 'https://matsugit.invalid/';
   parsed.head.prepend(baseElement);
   // Quarto expects Storage; provide only ephemeral state inside the opaque frame.
   const storage = parsed.createElement('script');

@@ -4,13 +4,13 @@ from pathlib import Path
 import unittest
 
 
-@unittest.skipUnless(os.environ.get('FOLIOFORGE_ORG_PREVIEWS'), 'Render the Org/Markdown recipe corpus first')
+@unittest.skipUnless(os.environ.get('MATSUGIT_ORG_PREVIEWS'), 'Render the Org/Markdown recipe corpus first')
 class OrgBrowserTests(unittest.TestCase):
     def test_rendered_recipes_and_hidden_comments(self):
         from playwright.sync_api import sync_playwright
-        root = Path(os.environ['FOLIOFORGE_ORG_PREVIEWS'])
+        root = Path(os.environ['MATSUGIT_ORG_PREVIEWS'])
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path=os.environ.get('FOLIOFORGE_CHROMIUM'),
+            browser = p.chromium.launch(executable_path=os.environ.get('MATSUGIT_CHROMIUM'),
                                         args=['--no-sandbox'])
             try:
                 observed = {}

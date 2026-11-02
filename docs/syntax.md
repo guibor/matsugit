@@ -5,8 +5,8 @@ The same source works with every theme; theme selection changes presentation,
 not the meaning of headings or the available components.
 
 For choosing a composition rather than a keyword, see the
-[twelve slide recipes](../skills/folioforge/references/slide-types.md). The
-[portable Folioforge skill](../skills/folioforge/SKILL.md) also covers authoring,
+[twelve slide recipes](../skills/matsugit/references/slide-types.md). The
+[portable matsugit skill](../skills/matsugit/SKILL.md) also covers authoring,
 theme creation and the distinction between supported and proposed capabilities.
 
 ## Start here
@@ -204,7 +204,7 @@ X values for scatter); the next one to four columns contain numeric series.
 Units are required. Keep units out of numeric cells. Up to 30 rows are supported;
 missing values are rejected, not silently replaced by zero. `highlight` names
 a category to emphasize. Line-chart categories are equally spaced, not a continuous
-time axis. Install the optional backend once with `folioforge setup-charts`.
+time axis. Install the optional backend once with `matsugit setup-charts`.
 
 ## Images and Mermaid
 
@@ -295,13 +295,13 @@ These are explicit choices, not automatic shrinking or permission to overload a 
 
 ## Emacs and CLI
 
-- `M-x mdf/folioforge-insert-template` / `SPC m e v i`: insert a starter.
-- `M-x mdf/folioforge-select-theme` / `SPC m e v t`: change this buffer's style.
-- `M-x mdf/folioforge-preview-slides` / `SPC m e v s`: preview without publishing.
-- `M-x mdf/folioforge-preview-document` / `SPC m e v d`: reading preview.
-- `M-x mdf/folioforge-lint` / `SPC m e v l`: structural checks.
+- `M-x mdf/matsugit-insert-template` / `SPC m e v i`: insert a starter.
+- `M-x mdf/matsugit-select-theme` / `SPC m e v t`: change this buffer's style.
+- `M-x mdf/matsugit-preview-slides` / `SPC m e v s`: preview without publishing.
+- `M-x mdf/matsugit-preview-document` / `SPC m e v d`: reading preview.
+- `M-x mdf/matsugit-lint` / `SPC m e v l`: structural checks.
 
-CLI starters: `folioforge template comparison --output comparison.md`.
+CLI starters: `matsugit template comparison --output comparison.md`.
 Other template names are `metrics`, `timeline`, `decision`, `assertion`, `chart`
 and `section`. Templates refuse to overwrite existing files.
 

@@ -7,9 +7,18 @@ import {checkedText} from './store.mjs';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const MAX_RECORD = 12 * 1024 * 1024;
 export function recoveryDirectory() {
-  return process.env.FOLIOFORGE_RECOVERY_DIR || (process.platform === 'darwin'
+  if (process.env.MATSUGIT_RECOVERY_DIR || process.env.FOLIOFORGE_RECOVERY_DIR) {
+    return process.env.MATSUGIT_RECOVERY_DIR || process.env.FOLIOFORGE_RECOVERY_DIR;
+  }
+  // Keep upgrades in the same recovery store, including concurrently open old viewers.
+  // Do not move, merge, rewrite or delete any recovery records during installation.
+  const legacy = process.platform === 'darwin'
     ? path.join(os.homedir(), 'Library/Application Support/Folioforge/recovery')
-    : path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local/state'), 'folioforge/recovery'));
+    : path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local/state'), 'folioforge/recovery');
+  if (fs.existsSync(legacy)) return legacy;
+  return (process.platform === 'darwin'
+    ? path.join(os.homedir(), 'Library/Application Support/matsugit/recovery')
+    : path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local/state'), 'matsugit/recovery'));
 }
 const number = (value, fallback, max) => Number.isFinite(value) && value >= 0 ? Math.min(value, max) : fallback;
 export function preferences(value = {}) {

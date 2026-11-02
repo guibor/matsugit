@@ -1,8 +1,8 @@
 import unittest
 
-from folioforge.authoring import ELEMENTS, TEMPLATES, editor_templates
-from folioforge.source import convert
-from folioforge.converter import converter
+from matsugit.authoring import ELEMENTS, TEMPLATES, editor_templates
+from matsugit.source import convert
+from matsugit.converter import converter
 
 
 class EditorTemplatesTest(unittest.TestCase):

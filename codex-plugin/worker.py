@@ -6,8 +6,8 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from folioforge.core import config
-from folioforge.preview import render
+from matsugit.core import config
+from matsugit.preview import render
 
 
 def main():

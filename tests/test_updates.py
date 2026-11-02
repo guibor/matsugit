@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from folioforge.core import Error, git
-from folioforge.updates import (Catalog, LOCK, VENDOR, digest, encoded, manage,
+from matsugit.core import Error, git
+from matsugit.updates import (Catalog, LOCK, VENDOR, digest, encoded, manage,
                                safe_name, target_path, wrapper)
 
 
@@ -125,7 +125,7 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(git(self.remote,'show','main:document.md'),'Original document')
 
     def test_retry_own_failed_push_without_second_commit(self):
-        from folioforge import updates
+        from matsugit import updates
         original=updates.git
         def fail_push(repo,*args):
             if args[0]=='push':raise Error('network unavailable')
@@ -151,6 +151,45 @@ class UpdateTests(unittest.TestCase):
     def test_offline_status(self):
         self.run_update('status')
         self.run_update();self.run_update('status')
+
+    def legacy_install(self):
+        """Build a genuine legacy lock and wrapper against the same verified release."""
+        self.run_update()
+        lock = json.loads((self.repo / LOCK).read_text())
+        (self.repo / VENDOR).rename(self.repo / '.folioforge-renderer')
+        script = self.repo / 'scripts/build.py'
+        script.write_text(script.read_text().replace('matsugit', 'folioforge'))
+        lock['files'] = {name.replace(VENDOR, '.folioforge-renderer'): value
+                         for name, value in lock['files'].items()}
+        lock['files']['scripts/build.py'] = digest(script.read_bytes())
+        (self.repo / LOCK).unlink()
+        (self.repo / 'folioforge-renderer.lock.json').write_bytes(encoded(lock))
+        git(self.repo, 'add', '.')
+        git(self.repo, 'commit', '-m', 'Synthetic legacy installation')
+        git(self.repo, 'push', 'origin', 'main')
+
+    def test_legacy_install_migrates_same_release_and_preserves_ci_and_document(self):
+        self.legacy_install()
+        (self.repo / 'document.md').write_text('Unsaved draft\n')
+        self.run_update(dry_run=True)
+        self.assertTrue((self.repo / 'folioforge-renderer.lock.json').exists())
+        self.run_update()
+        self.assertFalse((self.repo / 'folioforge-renderer.lock.json').exists())
+        self.assertTrue((self.repo / VENDOR / 'scripts/build.py').exists())
+        self.assertEqual(json.loads((self.repo / LOCK).read_text())['history'], [])
+        self.assertEqual((self.repo / 'document.md').read_text(), 'Unsaved draft\n')
+        self.assertEqual((self.repo / '.gitlab-ci.yml').read_text(), 'existing: manual gate\n')
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        self.run_update()
+        self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), head)
+
+    def test_legacy_edited_renderer_is_preserved(self):
+        self.legacy_install()
+        source = self.repo / '.folioforge-renderer/scripts/build.py'
+        source.write_text('Local customization\n')
+        with self.assertRaisesRegex(Error, 'edited'):
+            self.run_update()
+        self.assertEqual(source.read_text(), 'Local customization\n')
 
 
 if __name__=='__main__':unittest.main()

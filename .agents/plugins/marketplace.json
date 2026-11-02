@@ -1,5 +1,5 @@
 {
-  "name": "folioforge",
-  "interface": {"displayName": "Folioforge"},
-  "plugins": [{"name": "folioforge", "source": {"source": "local", "path": "./"}}]
+  "name": "matsugit",
+  "interface": {"displayName": "matsugit"},
+  "plugins": [{"name": "matsugit", "source": {"source": "local", "path": "./"}}]
 }

@@ -1,0 +1,23 @@
+:root {
+  --ff-accent: #1769aa; --ff-ink: #20262d; --ff-rule: #dae1e8;
+  --personal-blue: var(--ff-accent); --personal-claim: var(--ff-accent);
+  --personal-ink: var(--ff-ink); --personal-rule: var(--ff-rule);
+  --bs-body-color: var(--ff-ink); --bs-link-color: var(--ff-accent);
+  --mermaid-fg-color: #20262d; --mermaid-bg-color: #fff;
+  --mermaid-node-bg-color: #edf4fa; --mermaid-node-fg-color: #20262d;
+  --mermaid-edge-color: #1769aa;
+}
+body { font-family: system-ui, sans-serif; line-height: 1.6; letter-spacing: 0; }
+h1, h2, h3, h4 { color: var(--ff-ink); letter-spacing: 0; }
+li::marker { color: var(--ff-accent); }
+table { font-variant-numeric: tabular-nums; }
+td, th { vertical-align: top; }
+img { max-width: 100%; }
+/* Reserve room for Quarto's heading permalinks without widening the page. */
+main .anchored { position: relative; padding-right: 1.25em; overflow-wrap: anywhere; }
+main .anchored > .anchorjs-link { position: absolute; right: 0; margin-left: 0; }
+.matsugit-nav { display: flex; flex-wrap: wrap; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--ff-rule); font-size: 14px; }
+.matsugit-nav span { margin-left: auto; color: #536170; }
+.source { color: #536170; font-size: .85em; }
+.ff-division-heading { font-weight: 600; color: var(--ff-accent); }
+.ff-handout-slide .ff-takeaway, .takeaway { border-left: 3px solid var(--ff-accent); padding-left: 1rem; }

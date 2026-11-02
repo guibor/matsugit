@@ -5,7 +5,7 @@ import {autocompletion, startCompletion, snippet} from '@codemirror/autocomplete
 import {structure} from './structure.mjs';
 import {chartTypes, wrapElement, snippetTemplate, ratioLine} from './insertions.mjs';
 
-const recipes = __FOLIOFORGE_TEMPLATES__;
+const recipes = __MATSUGIT_TEMPLATES__;
 export const compactMarkup = StateEffect.define();
 const compactState = StateField.define({create: () => false,
   update(value, tr) { for (const effect of tr.effects) if (effect.is(compactMarkup)) value = effect.value; return value; }});

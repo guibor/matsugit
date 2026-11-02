@@ -8,7 +8,7 @@ import {RecoveryStore, preferences} from '../src/recovery.mjs';
 import {WorkspaceStore} from '../src/store.mjs';
 
 function setup(t, options) {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-recovery-test-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-recovery-test-'));
   t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
   return new RecoveryStore(path.join(directory, 'recovery'), options);
 }

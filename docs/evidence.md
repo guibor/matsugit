@@ -19,7 +19,7 @@ titleless image slide. `.data-table` provides deliberate dense financial-table
 spacing; `.quotation` preserves longer quotations without silently summarising.
 These roles work in every style. They are explicit choices, not inferred rewrites.
 
-Start with `folioforge template section --output deck.md`. Templates are ordinary
+Start with `matsugit template section --output deck.md`. Templates are ordinary
 editable Markdown; the command refuses to overwrite an existing file.
 
 ```markdown
@@ -62,7 +62,7 @@ is appropriate. This changes padding, not the data; it is available in every sty
 
 ## Table-backed charts
 
-Run `folioforge setup-charts` once, or install `folioforge[charts]` in your own
+Run `matsugit setup-charts` once, or install `matsugit[charts]` in your own
 environment. The preferred backend uses Altair/Vega-Lite; it does not execute document
 code. It produces local SVG and retains the original editable table in source.md.
 
@@ -94,18 +94,18 @@ Child assets can override parent files; paths must stay within their theme root.
 
 ## Lint and handouts
 
-`folioforge lint deck.md --strict` exits 2 for structural/density warnings.
+`matsugit lint deck.md --strict` exits 2 for structural/density warnings.
 `--json` produces machine-readable diagnostics. Without strict mode warnings do
 not prevent editing. No automatic shrinking, clipping or content deletion occurs.
 
-`folioforge render deck.md --handout --output preview` creates document, slides,
+`matsugit render deck.md --handout --output preview` creates document, slides,
 editable source and handout.html, in that order. Handouts include speaker notes,
 so check for private information before sharing. Ordinary exports do not acquire
 a handout unless explicitly requested or configured.
 
-For optional browser checks, install `folioforge[lint]`, run
-`playwright install chromium`, then `folioforge lint deck.md --rendered preview`.
-`FOLIOFORGE_CHROMIUM` can point to an existing Chromium binary. Network requests
+For optional browser checks, install `matsugit[lint]`, run
+`playwright install chromium`, then `matsugit lint deck.md --rendered preview`.
+`MATSUGIT_CHROMIUM` can point to an existing Chromium binary. Network requests
 are blocked during checks; remote media therefore needs local verification.
 Checks cover overflow, top-level overlap and broken images, not every possible
 typographic or factual problem. Inspect the actual deck on the intended screen.
@@ -113,7 +113,7 @@ typographic or factual problem. Inspect the actual deck on the intended screen.
 CI runners that rebuild native charts need Altair and vl-convert-python in their
 Python environment; legacy Matplotlib remains available. See [charts.md](charts.md).
 No new dependency is required for documents without chart blocks. Installing or
-updating Folioforge never enables hosting or changes a repository's visibility.
+updating matsugit never enables hosting or changes a repository's visibility.
 
 See `examples/decision-demo.md` for a complete original consulting-style story
 using the components together. Its data and commercial assumptions are synthetic.

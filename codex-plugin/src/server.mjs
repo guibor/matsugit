@@ -7,8 +7,8 @@ import {WorkspaceStore, MAX_SOURCE, checkedPath} from './store.mjs';
 import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
 
-const uri = 'ui://folioforge/workspace-v1';
-const runtime = new PluginRuntime(__FOLIOFORGE_RUNTIME__);
+const uri = 'ui://matsugit/workspace-v1';
+const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
 const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
 const recoveryOwner = (args, context) => args.session || args.resourceUri
@@ -23,50 +23,50 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'folioforge', version: '0.5.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.6.0'});
   new OpenAIExtensions(server);
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: runtime.app,
     _meta: {'openai/ui': {preferredDisplayMode: 'fullscreen', availableDisplayModes: ['fullscreen']},
-      ui: {csp: {frameDomains: ['blob:'], resourceDomains: ['data:', 'blob:'], baseUriDomains: ['https://folioforge.invalid']}}},
+      ui: {csp: {frameDomains: ['blob:'], resourceDomains: ['data:', 'blob:'], baseUriDomains: ['https://matsugit.invalid']}}},
   }]}));
-  server.registerTool('folioforge_workspace', {title: 'Folioforge', description: 'Open an empty local Markdown workspace with document and slide previews. Does not publish.',
+  server.registerTool('matsugit_workspace', {title: 'matsugit', description: 'Open an empty local Markdown workspace with document and slide previews. Does not publish.',
     inputSchema: z.object(viewOptions), annotations: readOnly,
     _meta: {ui: {resourceUri: uri}, 'openai/ui': {entrypoints: [{type: 'global'}]}}},
     async options => result({...options, name: 'Untitled.md', text: '---\ntitle: Untitled\nslide-layout: structured\n---\n\n# Section\n\n## Slide title\n### Main claim\n\n- Supporting evidence\n', writable: false}));
-  server.registerTool('folioforge_file', {title: 'Edit with Folioforge', description: 'Open the host-selected Markdown or Org file in Folioforge. Source writes are version-checked by the host.',
+  server.registerTool('matsugit_file', {title: 'Edit with matsugit', description: 'Open the host-selected Markdown or Org file in matsugit. Source writes are version-checked by the host.',
     inputSchema: OpenAIFileEntrypointInputSchema, annotations: readOnly,
     _meta: {ui: {resourceUri: uri, visibility: ['app']}, 'openai/ui': {entrypoints: [{type: 'file', extensions: ['.md', '.markdown', '.qmd', '.org']}]}}},
     async ({file}) => result({file}));
-  server.registerTool('folioforge_open', {title: 'Open document in Folioforge',
+  server.registerTool('matsugit_open', {title: 'Open document in matsugit',
     description: 'Open a user-requested existing Markdown/Org file for editing and document/slides preview. Reads only the specified file. Never publishes.',
     inputSchema: z.object({path: z.string(), ...viewOptions}), annotations: readOnly, _meta: {ui: {resourceUri: uri}}},
     guard(async ({path: file, ...options}) => { const data = store.open(file); const {text, ...summary} = data; return result({...summary, ...options}, {source: text}); }));
-  server.registerTool('folioforge_read', {description: 'Refresh the document already opened in this workspace.', ...appOnly,
+  server.registerTool('matsugit_read', {description: 'Refresh the document already opened in this workspace.', ...appOnly,
     inputSchema: z.object({session: z.string()}), annotations: readOnly},
     guard(async ({session}) => { const {text, ...data} = store.source(session); return result(data, {source: text}); }));
-  server.registerTool('folioforge_save', {description: 'Save explicit workspace edits only if the opened file still matches the expected version. Never force overwrites.', ...appOnly,
+  server.registerTool('matsugit_save', {description: 'Save explicit workspace edits only if the opened file still matches the expected version. Never force overwrites.', ...appOnly,
     inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1)}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
     guard(async ({session, text, etag}) => result(store.save(session, text, etag))));
-  server.registerTool('folioforge_recovery_begin', {description: 'Prepare a private recovery copy for this viewer; does not save the document.', ...appOnly,
+  server.registerTool('matsugit_recovery_begin', {description: 'Prepare a private recovery copy for this viewer; does not save the document.', ...appOnly,
     inputSchema: z.object({...scope, name: z.string().max(512)}), annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
     guard(async (args, context) => {
       const data = recovery.begin({...args, owner: recoveryOwner(args, context)});
       return result({id: data.id}, {candidate: data.candidate});
     }));
-  server.registerTool('folioforge_recovery_checkpoint', {description: 'Checkpoint workspace text and view settings in private local recovery storage. Never writes the original file or publishes.', ...appOnly,
+  server.registerTool('matsugit_recovery_checkpoint', {description: 'Checkpoint workspace text and view settings in private local recovery storage. Never writes the original file or publishes.', ...appOnly,
     inputSchema: z.object({...scope, id: z.string(), generation: z.number().int().nonnegative(),
       text: z.string().max(MAX_SOURCE), base: z.string().max(MAX_SOURCE), view: z.record(z.string(), z.unknown())}),
     annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
     guard(async (args, context) => result(recovery.checkpoint(args.id, args.generation, args, recoveryOwner(args, context)))));
-  server.registerTool('folioforge_recovery_list', {description: 'List local recovery copies in the workspace recovery picker.', ...appOnly,
+  server.registerTool('matsugit_recovery_list', {description: 'List local recovery copies in the workspace recovery picker.', ...appOnly,
     inputSchema: z.object(scope), annotations: readOnly},
     guard(async (args, context) => {
       const owner = recoveryOwner(args, context);
       return result({}, recovery.list(owner || (args.resourceUri ? 'resource:' + args.resourceUri : undefined)));
     }));
-  server.registerTool('folioforge_recovery_restore', {description: 'Read the recovery copy explicitly selected in the picker. Does not save or overwrite the source.', ...appOnly,
+  server.registerTool('matsugit_recovery_restore', {description: 'Read the recovery copy explicitly selected in the picker. Does not save or overwrite the source.', ...appOnly,
     inputSchema: z.object({...scope, id: z.string()}), annotations: readOnly},
     guard(async (args, context) => {
       const record = recovery.read(args.id), owner = recoveryOwner(args, context);
@@ -80,7 +80,7 @@ serveStdio(() => {
       }
       return result({}, {workspace: data, recovery: record});
     }));
-  server.registerTool('folioforge_recovery_forget', {description: 'Delete only the recovery copy explicitly confirmed in the picker, never its source document.', ...appOnly,
+  server.registerTool('matsugit_recovery_forget', {description: 'Delete only the recovery copy explicitly confirmed in the picker, never its source document.', ...appOnly,
     inputSchema: z.object({...scope, id: z.string(), token: z.string()}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
     guard(async (args, context) => {
@@ -88,18 +88,18 @@ serveStdio(() => {
       if ((owner && owner !== record.owner) || (!owner && args.resourceUri && record.identity !== 'resource:' + args.resourceUri)) throw Error('Recovery copy belongs to another document.');
       return result(recovery.forget(args.id, args.token));
     }));
-  server.registerTool('folioforge_preview', {description: 'Render an unsaved snapshot locally with the existing Folioforge engine. Creates temporary output only; does not save or publish.', ...appOnly,
+  server.registerTool('matsugit_preview', {description: 'Render an unsaved snapshot locally with the existing matsugit engine. Creates temporary output only; does not save or publish.', ...appOnly,
     inputSchema: z.object({text: z.string().max(MAX_SOURCE), name: z.string().optional(), theme: z.string().optional(), session: z.string().optional(),
       format: z.enum(['document', 'slides']).optional(), base: z.string().optional()}), annotations: readOnly},
     guard(async (args, context) => result(store.start(args, getResourcePath(context.mcpReq?._meta)))));
-  server.registerTool('folioforge_preview_status', {description: 'Read render progress and completed preview for the opened document.', ...appOnly,
+  server.registerTool('matsugit_preview_status', {description: 'Read render progress and completed preview for the opened document.', ...appOnly,
     inputSchema: z.object({job: z.string(), session: z.string().optional()}), annotations: readOnly},
     guard(async ({job, session}, context) => result(store.status(job, session, getResourcePath(context.mcpReq?._meta)))));
-  server.registerTool('folioforge_preview_cancel', {description: 'Cancel only this workspace preview job. Does not change or save the source.', ...appOnly,
+  server.registerTool('matsugit_preview_cancel', {description: 'Cancel only this workspace preview job. Does not change or save the source.', ...appOnly,
     inputSchema: z.object({job: z.string(), session: z.string().optional()}),
     annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
     guard(async ({job, session}, context) => result(store.cancel(job, session, getResourcePath(context.mcpReq?._meta)))));
-  server.registerTool('folioforge_preview_chunk', {description: 'Read a bounded part of a completed preview, only for this document.', ...appOnly,
+  server.registerTool('matsugit_preview_chunk', {description: 'Read a bounded part of a completed preview, only for this document.', ...appOnly,
     inputSchema: z.object({job: z.string(), format: z.enum(['document', 'slides']), offset: z.number().int().nonnegative(), session: z.string().optional()}), annotations: readOnly},
     guard(async ({job, format, offset, session}, context) => {
       const {chunk, ...data} = store.chunk(job, format, offset, session, getResourcePath(context.mcpReq?._meta));

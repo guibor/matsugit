@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from folioforge import charts, vega
+from matsugit import charts, vega
 from test_layout import container, heading
 
 READY = all(importlib.util.find_spec(m) for m in ('altair', 'vl_convert'))
@@ -23,7 +23,7 @@ def block(spec=None):
 
 class VegaTests(unittest.TestCase):
     def test_lint_measures_exhibit_caption_not_json_but_requires_source(self):
-        from folioforge.lint import inspect
+        from matsugit.lint import inspect
         from test_layout import document
         spec = dict(SPEC, data={'values': [{'category': f'Item {i}', 'value': i} for i in range(200)]})
         findings = inspect(document([heading(2, 'Evidence'), block(spec)]))

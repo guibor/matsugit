@@ -6,9 +6,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from folioforge.core import Error
-from folioforge.converter import converter
-from folioforge.table_editor import TableDocument, TableHTML, TableSession, signature, validate
+from matsugit.core import Error
+from matsugit.converter import converter
+from matsugit.table_editor import TableDocument, TableHTML, TableSession, signature, validate
 
 SIMPLE = "| Name | Value |\n| --- | --- |\n| **Alpha** | 12 |\n"
 MERGED = '<table><tr><th colspan="2">Group</th><th>Total</th></tr><tr><td rowspan="2">North</td><td>Alpha</td><td>12</td></tr><tr><td>Beta</td><td>18</td></tr></table>'
@@ -28,12 +28,12 @@ class ValidationTests(unittest.TestCase):
 
     def test_old_pandoc_is_not_accepted(self):
         result = subprocess.CompletedProcess([], 0, "pandoc 3.6.3\n", "")
-        with patch("folioforge.converter.subprocess.run", return_value=result):
+        with patch("matsugit.converter.subprocess.run", return_value=result):
             with self.assertRaisesRegex(Error, "setup-editor"):
                 converter()
 
 
-@unittest.skipUnless(COMMAND, "Requires span-aware Pandoc (folioforge setup-editor)")
+@unittest.skipUnless(COMMAND, "Requires span-aware Pandoc (matsugit setup-editor)")
 class RoundtripTests(unittest.TestCase):
     def test_simple_table_stays_pipe_markdown(self):
         table = TableDocument(SIMPLE, COMMAND)
@@ -100,12 +100,12 @@ class RoundtripTests(unittest.TestCase):
 
     def test_old_writer_output_fails_instead_of_flattening(self):
         table = TableDocument(SIMPLE, COMMAND)
-        from folioforge.table_editor import convert as real_convert
+        from matsugit.table_editor import convert as real_convert
         def flatten(command, text, reader, writer, *args):
             if reader == "json" and writer.startswith("markdown"):
                 return SIMPLE
             return real_convert(command, text, reader, writer, *args)
-        with patch("folioforge.table_editor.convert", side_effect=flatten):
+        with patch("matsugit.table_editor.convert", side_effect=flatten):
             with self.assertRaisesRegex(Error, "would change"):
                 table.serialize(MERGED)
 

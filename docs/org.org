@@ -33,7 +33,7 @@ For =metrics=, =comparison=, =timeline=, =decision= and =implication=,
 use =#+begin_region :title "Heading"= ... =#+end_region= per region.
 This becomes an H4 region in the shared document model. Org headlines inside
 special blocks are not legal structural children in Pandoc's reader: they
-can silently disappear. Folioforge rejects that input rather than lose content.
+can silently disappear. matsugit rejects that input rather than lose content.
 
 =mapping= contains a normal two-column Org table. =annotated= contains one
 =evidence= block, followed by =callout :target "name"= blocks. An evidence
@@ -41,7 +41,7 @@ block can have =:id "name"=. An Org target (=<<name>>=) at the start of a table
 cell names that cell's text; a named evidence block points to the whole exhibit.
 Native alignment cookies (=<l>=, =<c>=, =<r>=) preserve table alignment.
 
-All recipe names support =folioforge template NAME --format org=.
+All recipe names support =matsugit template NAME --format org=.
 Adding =--fragment= omits deck metadata. Output is readable and editable Org,
 not HTML. Themes never change the semantics of these blocks.
 
@@ -51,7 +51,7 @@ Normal Org tables, links and emphasis stay native. Merged or rich multiline
 tables cannot be represented in Org's pipe-table syntax. They use a Pandoc
 grid inside an explicit =#+begin_export markdown= block. The shared converter
 parses its content as data before layout, resource validation and rendering.
-Select the whole block for =folioforge edit-table table.org --output edited.org=.
+Select the whole block for =matsugit edit-table table.org --output edited.org=.
 No sidecar, raw HTML or lost spans are necessary. Table captions stay outside
 the visual editor's selection; unsupported cell content is refused.
 
@@ -75,11 +75,11 @@ rebuilding Org publications. CLI updates alone never change CI files or gates.
 For an existing Markdown-only pipeline, use the inert conversion command:
 
 #+begin_src sh
-folioforge convert --from org --to markdown < deck.org > deck.md
-folioforge render deck.org --output /tmp/org-preview
-folioforge lint deck.org --strict
+matsugit convert --from org --to markdown < deck.org > deck.md
+matsugit render deck.org --output /tmp/org-preview
+matsugit lint deck.org --strict
 #+end_src
 
-An ordinary Org HTML exporter is not the Folioforge renderer. To render these
-slide components, use Folioforge's document/slide previews or convert through
+An ordinary Org HTML exporter is not the matsugit renderer. To render these
+slide components, use matsugit's document/slide previews or convert through
 the adapter before passing the result to a compatible CI renderer.

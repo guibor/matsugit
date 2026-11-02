@@ -1,21 +1,24 @@
-#+title: Folioforge in Codex
+#+title: matsugit in Codex
 
 * Install
+
+Upgrading from Folioforge? Follow [[file:migration.org][the rename migration guide]] first;
+the new plugin identity is =matsugit@matsugit=. Save drafts before removing an old viewer.
 
 This is a local MCP App plugin, not a hosted editor. Install on the machine
 where Codex can read the source files. It requires Node 22+, Python 3.10+,
 Git and Quarto on the Codex process's PATH. The renderer is included; a separate
-pip install of Folioforge is not required. Chart preparation still needs
-Folioforge's optional chart environment.
+pip install of matsugit is not required. Chart preparation still needs
+matsugit's optional chart environment.
 
 #+begin_src sh
-codex plugin marketplace add guibor/folioforge
-codex plugin add folioforge@folioforge
+codex plugin marketplace add guibor/matsugit
+codex plugin add matsugit@matsugit
 #+end_src
 
 The repository currently requires authorized Git access. These commands neither
 change repository visibility nor publish documents. For a local checkout, use
-its absolute path in the first command instead of =guibor/folioforge=.
+its absolute path in the first command instead of =guibor/matsugit=.
 Start a new Codex session after installation. Use Codex's plugin manager to
 refresh an installed plugin after a release; the plugin cache is separate from
 your ordinary source checkout, so a checkout's =git pull= alone does not update
@@ -25,8 +28,8 @@ To update this Git-backed marketplace and install its current plugin version,
 run from an existing directory (not inside the plugin cache):
 #+begin_src sh
 cd "$HOME"
-codex plugin marketplace upgrade folioforge
-codex plugin add folioforge@folioforge
+codex plugin marketplace upgrade matsugit
+codex plugin add matsugit@matsugit
 #+end_src
 Save or download unsaved workspace text first, then reload the plugin or restart
 Codex to stop using the old MCP process. From 0.3.1, an already-running workspace
@@ -37,14 +40,14 @@ This does not require reinstalling Python, pyenv, Quarto or Emacs.
 The interactive workspace needs Codex Desktop with MCP Apps support. File
 handlers need a desktop build supporting OpenAI Extensions file entrypoints;
 the CLI alone cannot display the workspace. If the file action is absent, ask
-the agent to open the file through =folioforge_open=. This still requires an
+the agent to open the file through =matsugit_open=. This still requires an
 MCP Apps-capable UI, and is not a workaround for a terminal-only host.
 
 * Open and work
 
-Ask Codex: "Open /absolute/path/deck.md in Folioforge with a split slide preview."
-Alternatively choose the Folioforge action for a supported file in Codex, or
-open the global Folioforge workspace to start an unsaved draft.
+Ask Codex: "Open /absolute/path/deck.md in matsugit with a split slide preview."
+Alternatively choose the matsugit action for a supported file in Codex, or
+open the global matsugit workspace to start an unsaved draft.
 
 - =Markdown=: source only, with highlighting, undo, search and line wrapping.
 - =Render=: preview only.
@@ -64,7 +67,7 @@ open the global Folioforge workspace to start an unsaved draft.
 - Download icon: download the current source, including unsaved edits.
 
 The renderer supports Markdown, Quarto Markdown and Org. The editor currently
-provides Markdown highlighting; Org source still renders through Folioforge's
+provides Markdown highlighting; Org source still renders through matsugit's
 native conversion path. Existing source-relative images work when a repository
 file is opened. The file-picker button imports a browser copy: it has no
 write-back permission or access to adjacent assets. Download that copy, or open
@@ -96,15 +99,15 @@ slash command, does not call an agent, and does not save or publish.
 | =/metrics=, =/comparison=, =/mapping=, =/implication= | Complete slide recipes |
 | =/evidence=, =/annotated=, =/chart= | Evidence and diagram recipes |
 
-The complete menu also includes the other =folioforge template= recipes. They
+The complete menu also includes the other =matsugit template= recipes. They
 come from the same Python catalogue, not an independent copy of the syntax.
 In an Org file, insertions use native Org headings and blocks. Each insertion
 can be undone. The menu avoids Markdown code fences and hidden review bodies.
 
 ** Theme defaults
 
-Explicit preview overrides win over the nearest project's =folioforge.json=,
-then user settings in =~/.config/folioforge/config.json=, then the built-in
+Explicit preview overrides win over the nearest project's =matsugit.json=,
+then user settings in =~/.config/matsugit/config.json=, then the built-in
 default. For example, set =theme= and =themes_dir= in that JSON file to use a
 trusted local theme pack. A theme in a shell wrapper alone is not inherited by
 an already-running Codex desktop process. Project settings remain authoritative;
@@ -113,7 +116,7 @@ changing the machine default does not override an explicit project choice.
 * Saving and concurrent edits
 
 Host-selected files use Codex resource permissions and version tokens. Files
-opened through =folioforge_open= use opaque sessions scoped to the selected
+opened through =matsugit_open= use opaque sessions scoped to the selected
 file, SHA-256 version checks and an atomic replacement. Saving requires the
 version originally read; the plugin does not offer force overwrite.
 
@@ -144,7 +147,7 @@ reports =Recovery pending=, =Recovery saved= or =Recovery unavailable=; hover it
 for the timestamp or failure reason. These are best-effort timings, not a promise
 that keystrokes typed immediately before a crash can be recovered.
 
-Reopen the same file in Folioforge. View settings return automatically; an
+Reopen the same file in matsugit. View settings return automatically; an
 unsaved draft is offered with =Restore draft= and =Not now=. Restoring does not
 write the file. If it changed elsewhere, Save remains blocked: download the
 draft to reconcile it, or explicitly reload the latest file. =Not now= leaves the
@@ -152,7 +155,7 @@ older recovery copy in the history list. If an agent saved exactly the recovered
 text, it is recognized as already saved.
 
 The history icon (=Recover workspaces=) lists copies for the current document.
-Open the global Folioforge workspace to browse all local copies, including
+Open the global matsugit workspace to browse all local copies, including
 unnamed drafts and files that no longer exist. Missing files recover as
 downloadable drafts; the plugin does not recreate a deleted source silently.
 Each viewer gets its own copy, so two open viewers cannot overwrite each other's
@@ -161,10 +164,10 @@ the currently active copy pauses checkpoints for that viewer until reopened.
 
 Storage is on the machine running the plugin server, outside the plugin cache:
 
-- macOS: =~/Library/Application Support/Folioforge/recovery=.
-- Linux: =$XDG_STATE_HOME/folioforge/recovery=, normally
-  =~/.local/state/folioforge/recovery=.
-- =FOLIOFORGE_RECOVERY_DIR= overrides the directory when set in the MCP server's
+- macOS: =~/Library/Application Support/matsugit/recovery=.
+- Linux: =$XDG_STATE_HOME/matsugit/recovery=, normally
+  =~/.local/state/matsugit/recovery=.
+- =MATSUGIT_RECOVERY_DIR= overrides the directory when set in the MCP server's
   environment. Do not select a shared or public directory.
 
 Records are plaintext UTF-8 JSON, not encrypted. On macOS/Linux the directory
@@ -199,7 +202,7 @@ scroll position are preserved; source/preview following remains controlled by
 
 This is deliberately not a second, approximate Markdown renderer. The complete
 source is reparsed with Quarto's bundled Pandoc, shared references are resolved,
-and the usual Folioforge conversions run. Only inert inline regions with
+and the usual matsugit conversions run. Only inert inline regions with
 unchanged surrounding structure qualify for patches. Headings (including TOC
 and menu dependencies), YAML, inserted/deleted blocks, table geometry, code,
 math, diagrams, images and theme changes take the full-render path. Merged-table
@@ -219,11 +222,11 @@ crash recovery and never saves the source file.
 
 ** Worker execution
 
-Rendering uses a temporary directory, the existing Folioforge parser and
+Rendering uses a temporary directory, the existing matsugit parser and
 trusted local themes. Document code is not executed. Project configuration may
 select a theme, but cannot select an executable for the plugin worker: Quarto
 comes from PATH or the explicit =QUARTO= environment variable.
-=FOLIOFORGE_PYTHON= can select the Python executable at plugin launch.
+=MATSUGIT_PYTHON= can select the Python executable at plugin launch.
 Each Python worker starts in its own temporary render directory with a matching
 =PWD=, never the host's inherited working directory. Source-relative assets and
 project settings still resolve against the explicitly opened source file.
@@ -233,7 +236,7 @@ project settings still resolve against the explicitly opened source file.
 Before 0.3.1, a running MCP process read its Python worker and UI from the
 installed plugin directory on every use. If a plugin update or cache cleanup
 removed that directory while the process stayed alive, preview reported
-"Folioforge plugin files are no longer available". That warning concerns the
+"matsugit plugin files are no longer available". That warning concerns the
 plugin installation, not the user's source document.
 
 Version 0.3.1 embeds the UI and a version-matched renderer payload in the server
@@ -263,14 +266,14 @@ adds the cache-replacement protection described above. The editor text is retain
 after a failed render. Save or download it before restarting Codex.
 
 If the error occurs in Terminal, =cd "$HOME"= repairs that shell's current
-directory before updating. If it happens before Folioforge's tools load, use
+directory before updating. If it happens before matsugit's tools load, use
 an existing project directory and restart Codex; a plugin cannot repair the
 parent host's working directory before its own process has started.
 
 ** Preview isolation
 
 The document and slide HTML run in a separate opaque-origin sandbox iframe.
-An inert =https://folioforge.invalid/= base lets Reveal resolve its embedded menu
+An inert =https://matsugit.invalid/= base lets Reveal resolve its embedded menu
 URLs inside a blob document; it grants no network connection to that domain.
 The plugin has no HTTP listener or deployment tool. Source text and rendered
 HTML are carried in app-only MCP metadata rather than echoed into the tool's
@@ -282,7 +285,7 @@ per render and 20 MiB of embedded HTML per output. A failed render retains the
 last successful preview and the editor text. Preview links switch between
 document and slides; external navigation is disabled inside the preview frame.
 No renderer-specific table-grid UI is embedded yet: tables can be edited as
-source here, or with the existing standalone Folioforge table editor.
+source here, or with the existing standalone matsugit table editor.
 
 * Develop and verify
 

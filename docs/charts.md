@@ -1,17 +1,17 @@
 # Charts: prepare with Altair, compose with Markdown
 
-Folioforge does not implement a plotting engine. Altair prepares Vega-Lite and
+matsugit does not implement a plotting engine. Altair prepares Vega-Lite and
 `vl-convert-python` renders local SVGs before Quarto runs. No chart CDN, external
 data fetch, or Python execution from documents is needed. Theme palettes apply
 at preparation time, and the resulting `.vl.json` stays beside each SVG in
 `assets/`. `source.md` retains the editable table/spec for the next build.
 
 ```sh
-folioforge setup-charts
+matsugit setup-charts
 ```
 
 This explicitly installs optional dependencies in an isolated environment.
-CI can install `folioforge[charts]` instead; `FOLIOFORGE_CHART_PYTHON` selects an
+CI can install `matsugit[charts]` instead; `MATSUGIT_CHART_PYTHON` selects an
 existing interpreter. New setup-ci bundles include the renderer and its setup
 command. Existing organization CI must use its documented renderer update flow.
 
@@ -60,24 +60,24 @@ Use a standard `vega-lite` JSON fence, including inline data. For example:
 
 Author complex charts in a **separate, reviewed preparation script** using
 Altair; paste `chart.to_json()` here with inline data. Do not paste executable
-Python into a deck and expect Folioforge to run it. Standard layers, transforms,
+Python into a deck and expect matsugit to run it. Standard layers, transforms,
 temporal axes, rules, error bands, heatmaps and waterfall calculations are
 delegated to Vega-Lite. Arithmetic, units and factual interpretation still need
 author review. [Altair's waterfall example](https://altair-viz.github.io/gallery/waterfall_chart.html)
-illustrates the library approach; no new Folioforge waterfall grammar is needed.
+illustrates the library approach; no new matsugit waterfall grammar is needed.
 
 This is a bounded static subset, not every Vega feature: at most 1 MB of JSON,
 5000 items per array, 40 nested levels and a 60-second worker limit. URLs, image
 marks, hyperlinks, expression-valued properties, interactive parameters and
 facet/concat/repeat are refused. Use inline data, standard declarative transforms
-and Folioforge columns/rows for composition. Rejected input produces an error,
+and matsugit columns/rows for composition. Rejected input produces an error,
 not a blank chart or network request. Altair validates against its local schema.
 
 ## Size for the slot
 
 Full exhibits prepare at 960 logical pixels wide; two equal columns at 466.
 Explicit column ratios and evidence regions affect the preparation width.
-Label fonts keep the same logical size. Folioforge sets chart width/height and
+Label fonts keep the same logical size. matsugit sets chart width/height and
 fit autosizing, overriding native spec dimensions to match the slot. It then
 preserves aspect ratio in the slide/document/handout. Inspect long category
 labels and dense charts; simplify or split instead of hiding evidence.
@@ -88,5 +88,5 @@ labels and dense charts; simplify or split instead of hiding evidence.
 - Mermaid (already integrated): process and relationship diagrams.
 - Graphviz/D2 or other established tools: prepare externally and include SVG;
   they are not silently installed or advertised as native integrations.
-- Folioforge: safe preparation, palettes, layout slots, captions, sources,
+- matsugit: safe preparation, palettes, layout slots, captions, sources,
   takeaways and portable outputs. No hand-built chart or graph-layout engine.

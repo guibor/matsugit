@@ -4,15 +4,15 @@ from pathlib import Path
 import unittest
 
 
-@unittest.skipUnless(os.environ.get('FOLIOFORGE_RELATIONSHIPS_OUTPUT'), 'Set FOLIOFORGE_RELATIONSHIPS_OUTPUT')
+@unittest.skipUnless(os.environ.get('MATSUGIT_RELATIONSHIPS_OUTPUT'), 'Set MATSUGIT_RELATIONSHIPS_OUTPUT')
 class RelationshipBrowserTests(unittest.TestCase):
     def test_slides_reading_resize_targets_and_no_fit_loop(self):
         from playwright.sync_api import sync_playwright
-        root = Path(os.environ['FOLIOFORGE_RELATIONSHIPS_OUTPUT']).resolve()
+        root = Path(os.environ['MATSUGIT_RELATIONSHIPS_OUTPUT']).resolve()
         with sync_playwright() as p:
             options = {'headless': True, 'args': ['--no-sandbox', '--disable-dev-shm-usage']}
-            if os.environ.get('FOLIOFORGE_CHROMIUM'):
-                options['executable_path'] = os.environ['FOLIOFORGE_CHROMIUM']
+            if os.environ.get('MATSUGIT_CHROMIUM'):
+                options['executable_path'] = os.environ['MATSUGIT_CHROMIUM']
             browser = p.chromium.launch(**options)
             try:
                 page = browser.new_page()
@@ -53,7 +53,7 @@ class RelationshipBrowserTests(unittest.TestCase):
                             page.locator('.present .ff-callout-number').first.click()
                             self.assertEqual(page.evaluate('document.activeElement.id'),'pilot-cycle')
                             self.assertEqual(page.evaluate('Reveal.getIndices().h'),2)
-                        folder = os.environ.get('FOLIOFORGE_RELATIONSHIPS_SCREENSHOTS')
+                        folder = os.environ.get('MATSUGIT_RELATIONSHIPS_SCREENSHOTS')
                         if folder:
                             Path(folder).mkdir(parents=True,exist_ok=True)
                             page.screenshot(path=str(Path(folder)/f'slide-{index+1}-{width}.png'))

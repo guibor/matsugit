@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from folioforge import core, preview, charts
+from matsugit import core, preview, charts
 
 
 class AnchorTests(unittest.TestCase):
@@ -44,7 +44,7 @@ class AnchorTests(unittest.TestCase):
             root = Path(directory)
             data = {'caption': 'Synthetic', 'headers': ['X', 'Y'], 'unit': 'count'}
             result = {'svg': '<svg/>', 'spec': None}
-            with patch('folioforge.charts.render_chart', return_value=result) as worker:
+            with patch('matsugit.charts.render_chart', return_value=result) as worker:
                 charts.save_chart(data, root / 'first', cache=root / 'cache')
                 charts.save_chart(data, root / 'second', cache=root / 'cache')
                 self.assertEqual(worker.call_count, 1)
@@ -65,7 +65,7 @@ class PreviewTests(unittest.TestCase):
         self.source.write_text('Original file must remain untouched')
         self.settings = core.config(self.source, {'quarto': QUARTO, 'theme': 'default', 'themes_dir': str(self.root / 'themes')})
         self.count = 0
-        self.full = patch('folioforge.core.render').start()
+        self.full = patch('matsugit.core.render').start()
         self.addCleanup(patch.stopall)
 
     def render(self, text, base=None, format='slides'):

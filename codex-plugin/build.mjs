@@ -8,12 +8,12 @@ import {gzipSync} from 'node:zlib';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(root, 'bundle');
 await mkdir(out, {recursive: true});
-const templates = execFileSync(process.env.FOLIOFORGE_PYTHON || 'python3', ['-c',
-  'import json; from folioforge.authoring import editor_templates; print(json.dumps(editor_templates()))'],
+const templates = execFileSync(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3', ['-c',
+  'import json; from matsugit.authoring import editor_templates; print(json.dumps(editor_templates()))'],
   {cwd: path.dirname(root), encoding: 'utf8'});
 const browser = await build({entryPoints: [path.join(root, 'src/app.js')], bundle: true,
   write: false, minify: true, format: 'iife', target: 'es2022', legalComments: 'inline', metafile: true,
-  define: {__FOLIOFORGE_TEMPLATES__: templates}});
+  define: {__MATSUGIT_TEMPLATES__: templates}});
 const html = await readFile(path.join(root, 'src/index.html'), 'utf8');
 const css = await readFile(path.join(root, 'src/style.css'), 'utf8');
 const hostCss = await readFile(fileURLToPath(import.meta.resolve('@openai/mcp-extensions/app/styles.css')), 'utf8');
@@ -35,15 +35,15 @@ async function includeTree(relative) {
   }
 }
 await include('codex-plugin/worker.py');
-for (const name of (await readdir(path.join(root, '../folioforge'))).sort().filter(name => name.endsWith('.py'))) {
-  await include('folioforge/' + name);
+for (const name of (await readdir(path.join(root, '../matsugit'))).sort().filter(name => name.endsWith('.py'))) {
+  await include('matsugit/' + name);
 }
-await includeTree('folioforge/runtime');
-await includeTree('folioforge/themes/default');
+await includeTree('matsugit/runtime');
+await includeTree('matsugit/themes/default');
 const runtime = gzipSync(JSON.stringify({app, files})).toString('base64');
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
-  define: {__FOLIOFORGE_RUNTIME__: JSON.stringify(runtime)},
+  define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime)},
   legalComments: 'inline', metafile: true, banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
 const packages = new Set();
 for (const file of [...Object.keys(browser.metafile.inputs), ...Object.keys(server.metafile.inputs)]) {

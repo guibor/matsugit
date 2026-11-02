@@ -10,5 +10,5 @@ const demo = {name: path.basename(source), text: fs.readFileSync(source, 'utf8')
 const html = fs.readFileSync(new URL('./bundle/app.html', import.meta.url), 'utf8');
 const data = JSON.stringify(demo).replaceAll('<', '\\u003c');
 fs.mkdirSync(path.dirname(path.resolve(destination)), {recursive: true});
-fs.writeFileSync(destination, html.replace('<script>', () => `<script>window.FOLIOFORGE_DEMO=${data};</script><script>`), {flag: 'wx'});
+fs.writeFileSync(destination, html.replace('<script>', () => `<script>window.MATSUGIT_DEMO=${data};</script><script>`), {flag: 'wx'});
 console.log(path.resolve(destination));

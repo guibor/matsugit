@@ -1,8 +1,0 @@
-:root { --bs-body-color: #202620; --bs-link-color: #17665c; }
-body { background: #fff; font-family: system-ui, sans-serif; }
-.folioforge-nav { display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline; padding: 1rem 0; border-bottom: 1px solid #dce2df; font-size: 14px; }
-.folioforge-nav span { color: #52625a; margin-left: auto; }
-table { font-variant-numeric: tabular-nums; }
-td, th { vertical-align: top; }
-pre { overflow: auto; }
-img { max-width: 100%; }

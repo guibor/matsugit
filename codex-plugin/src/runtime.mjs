@@ -9,18 +9,18 @@ export class PluginRuntime {
   directory = null;
   constructor(archive) {
     const {app, files} = JSON.parse(gunzipSync(Buffer.from(archive, 'base64')));
-    if (typeof app !== 'string' || !files || typeof files !== 'object') throw Error('Invalid bundled Folioforge runtime.');
+    if (typeof app !== 'string' || !files || typeof files !== 'object') throw Error('Invalid bundled matsugit runtime.');
     this.app = app;
     this.files = Object.entries(files).map(([name, content]) => {
       if (typeof content !== 'string' || name.includes('\\') ||
           name.split('/').some(part => !part || part.startsWith('.')) ||
-          !(name === 'codex-plugin/worker.py' || name.startsWith('folioforge/'))) {
-        throw Error('Invalid bundled Folioforge runtime path.');
+          !(name === 'codex-plugin/worker.py' || name.startsWith('matsugit/'))) {
+        throw Error('Invalid bundled matsugit runtime path.');
       }
       return [name, Buffer.from(content, 'base64')];
     });
-    for (const required of ['codex-plugin/worker.py', 'folioforge/core.py', 'folioforge/preview.py']) {
-      if (!files[required]) throw Error('Incomplete bundled Folioforge runtime.');
+    for (const required of ['codex-plugin/worker.py', 'matsugit/core.py', 'matsugit/preview.py']) {
+      if (!files[required]) throw Error('Incomplete bundled matsugit runtime.');
     }
   }
   intact() {
@@ -36,7 +36,7 @@ export class PluginRuntime {
   root() {
     if (this.intact()) return this.directory;
     // Private and process-owned. Recreate from memory if temp cleanup removes it.
-    const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-runtime-')));
+    const directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-runtime-')));
     try {
       fs.chmodSync(directory, 0o700);
       for (const [name, bytes] of this.files) {

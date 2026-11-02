@@ -1,7 +1,7 @@
 """Exercise the built app through a local MCP host, with the real renderer.
 
 QUARTO=/path/to/quarto /path/to/playwright-python tests/browser.py
-Optional FOLIOFORGE_SCREENSHOTS writes synthetic UI review screenshots.
+Optional MATSUGIT_SCREENSHOTS writes synthetic UI review screenshots.
 """
 import json
 import os
@@ -24,7 +24,7 @@ def wait_until(frame, expression, timeout=180):
     diagnostic = frame.evaluate('({status:document.getElementById("status")?.textContent,notice:document.getElementById("notice-text")?.textContent})')
     raise AssertionError(f'{expression}: {diagnostic}')
 
-shots = Path(os.environ.get('FOLIOFORGE_SCREENSHOTS', tempfile.mkdtemp(prefix='folioforge-ui-shots-')))
+shots = Path(os.environ.get('MATSUGIT_SCREENSHOTS', tempfile.mkdtemp(prefix='matsugit-ui-shots-')))
 shots.mkdir(parents=True, exist_ok=True)
 server = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')], stdout=subprocess.PIPE, text=True)
 try:
@@ -40,15 +40,15 @@ try:
         print('Connected to test host', flush=True)
         ui = page.frame_locator('#app')
         frame = page.frames[1]
-        wait_until(frame, '!!window.folioforgeWorkspace?.state.rendered')
+        wait_until(frame, '!!window.matsugitWorkspace?.state.rendered')
         assert source.read_text() == original
         print('Initial preview rendered', flush=True)
-        assert frame.evaluate('Object.keys(folioforgeWorkspace.state.rendered)') == ['document']
+        assert frame.evaluate('Object.keys(matsugitWorkspace.state.rendered)') == ['document']
         ui.frame_locator('#preview').locator('h1').first.wait_for()
         assert ui.frame_locator('#preview').locator('table').count() >= 1
         assert 'createHTML' not in ui.frame_locator('#preview').locator('body').inner_text()
         page.screenshot(path=str(shots / 'split-document.png'))
-        rendered = frame.evaluate('folioforgeWorkspace.state.rendered')
+        rendered = frame.evaluate('matsugitWorkspace.state.rendered')
         for format, html in rendered.items():
             (shots / ('index.html' if format == 'document' else 'slides.html')).write_text(html)
         print('Browser errors: ' + str(errors)[:1000], flush=True)
@@ -58,7 +58,7 @@ try:
         assert 'createHTML' not in ui.frame_locator('#preview').locator('body').inner_text()
         preview = ui.locator('#preview').element_handle().content_frame()
         frame.evaluate('''() => {
-          const w = folioforgeWorkspace;
+          const w = matsugitWorkspace;
           w.editor.focus();
           w.editor.dispatch({selection:{anchor:w.editor.state.doc.toString().indexOf('## Make the decision')}});
         }''')
@@ -67,15 +67,15 @@ try:
         page.wait_for_timeout(1200)
         preview.locator('body').click(position={'x': 15, 'y': 15})
         page.keyboard.press('ArrowLeft')
-        wait_until(frame, 'folioforgeWorkspace.state.positions.slides.h === 1', 15)
-        wait_until(frame, 'folioforgeWorkspace.editor.state.doc.lineAt(folioforgeWorkspace.editor.state.selection.main.head).text.startsWith("## Prove")', 15)
+        wait_until(frame, 'matsugitWorkspace.state.positions.slides.h === 1', 15)
+        wait_until(frame, 'matsugitWorkspace.editor.state.doc.lineAt(matsugitWorkspace.editor.state.selection.main.head).text.startsWith("## Prove")', 15)
         ui.locator('#sync').uncheck()
-        frame.evaluate('folioforgeWorkspace.editor.dispatch({selection:{anchor:folioforgeWorkspace.editor.state.doc.toString().indexOf("## Make")}})')
+        frame.evaluate('matsugitWorkspace.editor.dispatch({selection:{anchor:matsugitWorkspace.editor.state.doc.toString().indexOf("## Make")}})')
         page.wait_for_timeout(500)
         assert preview.evaluate('Reveal.getIndices().h') == 1
         ui.locator('#sync').check()
         wait_until(preview, 'Reveal.getIndices().h === 2', 15)
-        frame.evaluate('folioforgeWorkspace.editor.dispatch({selection:{anchor:folioforgeWorkspace.editor.state.doc.toString().indexOf("## Prove")}})')
+        frame.evaluate('matsugitWorkspace.editor.dispatch({selection:{anchor:matsugitWorkspace.editor.state.doc.toString().indexOf("## Prove")}})')
         wait_until(preview, 'Reveal.getIndices().h === 1', 15)
         page.screenshot(path=str(shots / 'split-slides.png'))
         print('Document, slides and two-way position sync verified', flush=True)
@@ -86,14 +86,14 @@ try:
         preview.evaluate('window.keptDiagram = document.querySelector("svg.mermaid-js")')
         started = time.monotonic()
         frame.evaluate('''() => {
-          const w = folioforgeWorkspace, at = w.editor.state.doc.toString().indexOf('12 days');
+          const w = matsugitWorkspace, at = w.editor.state.doc.toString().indexOf('12 days');
           w.editor.dispatch({changes:{from:at,to:at+7,insert:'10 days'}});
           void w.render();
         }''')
-        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.renderedRevision === folioforgeWorkspace.state.revision')
+        wait_until(frame, '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision')
         warm = time.monotonic() - started
-        assert frame.evaluate('folioforgeWorkspace.state.lastRefresh.kind') == 'patch'
-        assert frame.evaluate('folioforgeWorkspace.state.lastRefresh.changed') == 1
+        assert frame.evaluate('matsugitWorkspace.state.lastRefresh.kind') == 'patch'
+        assert frame.evaluate('matsugitWorkspace.state.lastRefresh.changed') == 1
         assert ui.locator('#preview').get_attribute('src') == before_url
         assert preview.evaluate('window.keptDiagram === document.querySelector("svg.mermaid-js")')
         assert preview.locator('[data-ff-preview]').count() == 0, 'Preview markers must not alter theme selectors'
@@ -103,15 +103,15 @@ try:
         print(f'Warm table-cell refresh: {warm:.3f}s; iframe, current slide and Mermaid preserved', flush=True)
         # The hidden document is stale until selected, then gets its own patch.
         ui.locator('[data-format="document"]').click()
-        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.renderedRevision === folioforgeWorkspace.state.revision')
-        assert frame.evaluate('folioforgeWorkspace.state.lastRefresh.kind') == 'patch'
+        wait_until(frame, '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision')
+        assert frame.evaluate('matsugitWorkspace.state.lastRefresh.kind') == 'patch'
         assert '10 days' in ui.frame_locator('#preview').locator('table').inner_text()
         ui.locator('[data-format="slides"]').click()
         ui.frame_locator('#preview').locator('.reveal.ready').wait_for(timeout=30000)
         # Explicit full rebuild remains available, even for unchanged source.
         before_rebuild = ui.locator('#preview').get_attribute('src')
         ui.locator('#refresh').click(modifiers=['Shift'])
-        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.lastRefresh.kind === "full"')
+        wait_until(frame, '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.lastRefresh.kind === "full"')
         assert ui.locator('#preview').get_attribute('src') != before_rebuild
         ui.locator('#auto').check()
         ui.locator('[data-layout="render"]').click()
@@ -120,10 +120,10 @@ try:
         assert not ui.locator('#preview-pane').is_visible()
         ui.locator('[data-layout="split"]').click()
         # Edit and preview without changing the selected file.
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'<!-- unsaved edit -->\\n'}})")
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'<!-- unsaved edit -->\\n'}})")
         print('Draft changed; waiting for preview', flush=True)
         for attempt in range(90):
-            current = frame.evaluate('({revision:folioforgeWorkspace.state.revision, rendered:folioforgeWorkspace.state.renderedRevision, rendering:folioforgeWorkspace.state.rendering, notice:document.getElementById("notice-text").textContent})')
+            current = frame.evaluate('({revision:matsugitWorkspace.state.revision, rendered:matsugitWorkspace.state.renderedRevision, rendering:matsugitWorkspace.state.rendering, notice:document.getElementById("notice-text").textContent})')
             if current['rendered'] == current['revision']:
                 break
             if attempt % 10 == 0:
@@ -135,28 +135,28 @@ try:
         ui.frame_locator('#preview').locator('section.present h2').filter(has_text='Prove the process').wait_for()
         assert source.read_text() == original
         ui.locator('#save').click()
-        wait_until(frame, '!folioforgeWorkspace.state.saving && folioforgeWorkspace.state.base.startsWith("<!-- unsaved edit -->")', 15)
+        wait_until(frame, '!matsugitWorkspace.state.saving && matsugitWorkspace.state.base.startsWith("<!-- unsaved edit -->")', 15)
         assert source.read_text().startswith('<!-- unsaved edit -->')
         print('Explicit save verified', flush=True)
         ui.locator('#auto').uncheck()
         # A busy manual refresh queues the latest text even with Auto off.
-        frame.evaluate('void folioforgeWorkspace.render()')
-        wait_until(frame, 'folioforgeWorkspace.state.rendering', 10)
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'<!-- latest revision -->\\n'}})")
+        frame.evaluate('void matsugitWorkspace.render()')
+        wait_until(frame, 'matsugitWorkspace.state.rendering', 10)
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'<!-- latest revision -->\\n'}})")
         ui.locator('#refresh').click()
-        wait_until(frame, '!folioforgeWorkspace.state.rendering && folioforgeWorkspace.state.renderedRevision === folioforgeWorkspace.state.revision')
+        wait_until(frame, '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision')
         assert source.read_text().startswith('<!-- unsaved edit -->')
         print('Superseded render canceled; queued manual refresh verified', flush=True)
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Local draft\\n'}})")
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Local draft\\n'}})")
         source.write_text('# External agent edit\n')
-        frame.evaluate('folioforgeWorkspace.reload()')
+        frame.evaluate('matsugitWorkspace.reload()')
         assert ui.locator('#save').is_disabled()
-        assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString().startsWith("Local draft")')
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString().startsWith("Local draft")')
         assert source.read_text() == '# External agent edit\n'
         print('External edit conflict retained', flush=True)
         # Semantic hints and slash insertions use the same authoring catalogue.
         assert ui.locator('.ff-gutter-marker[title="Slide"]').count() >= 2
-        frame.evaluate('folioforgeWorkspace.editor.dispatch({selection:{anchor:folioforgeWorkspace.editor.state.doc.length},changes:{from:folioforgeWorkspace.editor.state.doc.length,insert:"\\n\\n"}})')
+        frame.evaluate('matsugitWorkspace.editor.dispatch({selection:{anchor:matsugitWorkspace.editor.state.doc.length},changes:{from:matsugitWorkspace.editor.state.doc.length,insert:"\\n\\n"}})')
         ui.locator('.cm-content').focus()
         page.keyboard.press('Control+End')
         page.keyboard.type('/takeaway')
@@ -164,10 +164,10 @@ try:
         option.wait_for()
         page.screenshot(path=str(shots / 'insert-menu.png'))
         option.click()
-        wait_until(frame, 'folioforgeWorkspace.editor.state.doc.toString().endsWith("> [!TAKEAWAY]\\n> Key takeaway.\\n")', 10)
-        before_undo = frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()')
+        wait_until(frame, 'matsugitWorkspace.editor.state.doc.toString().endsWith("> [!TAKEAWAY]\\n> Key takeaway.\\n")', 10)
+        before_undo = frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         ui.locator('#undo').click()
-        assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()') != before_undo
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') != before_undo
         print('Semantic handles, slash insertion and undo verified', flush=True)
         for width, height in [(390, 844), (768, 1024)]:
             page.set_viewport_size({'width': width, 'height': height})
@@ -186,14 +186,14 @@ try:
         page.goto(f"http://127.0.0.1:{ready['port']}/?file")
         print('Testing host file handler', flush=True)
         frame = page.frames[1]
-        wait_until(frame, '!!window.folioforgeWorkspace?.state.etag', 30)
+        wait_until(frame, '!!window.matsugitWorkspace?.state.etag', 30)
         ui = page.frame_locator('#app')
         ui.locator('#auto').uncheck()
-        assert frame.evaluate('folioforgeWorkspace.state.uri') == 'host://selected/pilot'
+        assert frame.evaluate('matsugitWorkspace.state.uri') == 'host://selected/pilot'
         source.write_text('# Clean external edit without a notification\n')
-        wait_until(frame, 'folioforgeWorkspace.state.base.startsWith("# Clean external edit")', 15)
-        frame.evaluate("folioforgeWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Host draft\\n'}})")
-        frame.evaluate('folioforgeWorkspace.save()')
+        wait_until(frame, 'matsugitWorkspace.state.base.startsWith("# Clean external edit")', 15)
+        frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Host draft\\n'}})")
+        frame.evaluate('matsugitWorkspace.save()')
         assert source.read_text().startswith('Host draft\n')
         assert not errors, errors
         page.close(run_before_unload=False)

@@ -1,1 +1,2 @@
-__version__ = "0.9.0"
+"""Legacy import compatibility. The canonical package is matsugit."""
+from matsugit import __version__

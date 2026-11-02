@@ -1,0 +1,119 @@
+#+title: Migrating to matsugit
+
+The product name is =matsugit=, always lowercase. This is the same local document
+and slide tool previously named Folioforge, not a new hosted service. Core 0.10.0
+and Codex plugin 0.6.0 introduce the rename. Account permissions, repository
+visibility, hosting access and publication policy are unchanged.
+
+* Before updating
+Save or download drafts, then close their viewers before retiring an old plugin.
+Do not rename/delete a directory while a terminal, agent or plugin uses it as
+its working directory. Existing checkout directory names can stay unchanged.
+Never delete recovery directories as part of this migration.
+
+* Codex Desktop
+Run from your home directory, not inside a plugin cache:
+#+begin_src sh
+cd "$HOME"
+codex plugin marketplace add guibor/matsugit
+codex plugin add matsugit@matsugit
+#+end_src
+Start a new Codex session and ask: "Use $matsugit to open my document in a split
+slide preview." Verify the new workspace and local theme. Only after saving and
+closing every old workspace, retire the old installation:
+#+begin_src sh
+cd "$HOME"
+codex plugin remove folioforge@folioforge
+codex plugin marketplace remove folioforge
+#+end_src
+Plugin/marketplace IDs are now =matsugit@matsugit=; a repository redirect does not
+migrate local identities. Existing recovery records are reused in place. Fresh
+installations use a lowercase =matsugit= recovery directory.
+
+* Command line
+In an existing Python virtual environment:
+#+begin_src sh
+python -m pip install --upgrade 'matsugit @ git+https://github.com/guibor/matsugit.git'
+matsugit --help
+#+end_src
+Or, for an isolated tool installation when uv is installed:
+#+begin_src sh
+uv tool install --from git+https://github.com/guibor/matsugit.git matsugit
+matsugit --help
+#+end_src
+An old tool installation may own the =folioforge= compatibility executable.
+If installation reports that conflict, use a separate virtual environment or
+remove the old managed tool installation after saving your work. Do not force
+overwrite an unrelated executable. Do not install =folioforge= from PyPI; that
+distribution belongs to another project.
+
+From an existing source checkout (its directory need not be renamed):
+#+begin_src sh
+git remote set-url origin https://github.com/guibor/matsugit.git
+git pull --ff-only
+python3 bin/matsugit --help
+#+end_src
+Do not discard local changes to make a pull succeed. Old =bin/folioforge=,
+=python -m folioforge= and Python imports continue to forward to =matsugit=.
+
+* Skills and Cursor
+#+begin_src sh
+npx skills add guibor/matsugit --skill matsugit --agent cursor --global
+#+end_src
+Use =--agent codex= instead for a standalone Codex skill. The Codex plugin already
+includes it. In Cursor use =/matsugit=; in Codex use =$matsugit=. Update project
+instructions, slash-command references and bookmarks to the new name. Preserve
+local edits to an old skill before retiring it.
+
+* Settings and existing documents
+| Canonical name | Accepted legacy name |
+|----------------+----------------------|
+| =matsugit.json= | =folioforge.json= |
+| =~/.config/matsugit/config.json= | =~/.config/folioforge/config.json= |
+| =MATSUGIT_*= environment variables | =FOLIOFORGE_*= variables |
+| =matsugit= CLI and Python package | =folioforge= compatibility entry points |
+
+New environment names win. Global settings load before project settings; within
+each level the new file wins while legacy-only keys survive. Explicit CLI choices
+still win. The slide syntax, agent comments, themes and theme names are unchanged.
+Legacy chart/Pandoc installations and theme directories are reused when their
+new counterparts are absent. Existing theme CSS hooks remain supported.
+
+* CI and published sites
+Existing =folioforge-site= paths and installed CI remain supported, so publication
+URLs do not change. Compatibility manifests let old CI rebuild new exports.
+Fresh sites use =matsugit-site= and new CI uses =.matsugit-ci/=.
+
+Do not globally rename publishing files or run setup-ci over existing CI. It
+deliberately refuses to install a competing workflow. Preserve GitLab deployment
+rules and manual approval gates. A branding migration does not require publishing
+or redeploying a document.
+
+For installations using the versioned renderer catalog:
+#+begin_src sh
+matsugit status --all
+matsugit update --all --dry-run
+#+end_src
+After reviewing the plan, =matsugit update --all= commits and pushes only verified
+renderer changes. It migrates old managed paths/lockfiles, keeps rollback history
+and refuses unknown edits. It does not enable hosting or change CI rules.
+Published release bundles retain their original bytes and verified hashes.
+
+* Copy-paste handoff for another agent
+#+begin_example
+Folioforge has been renamed to matsugit (always lowercase).
+Canonical repository: https://github.com/guibor/matsugit
+CLI/Python package/skill: matsugit
+Codex plugin: matsugit@matsugit
+Project config: matsugit.json; environment prefix: MATSUGIT_
+
+Update this project's active references and setup instructions to the new name.
+Read matsugit's docs/migration.org before changing installed integrations.
+Preserve source documents, customizations, themes, drafts, recovery files,
+deployment targets, URLs, permissions and CI approval rules. Do not rename an
+active working directory, bulk-edit archived releases, remove plugin caches
+while viewers are open, or publish a document as a migration test.
+Use compatibility readers for existing settings and publication metadata.
+Test with synthetic content. Report separately what changed in source, what
+was installed locally, and what needs activation in a fresh editor/agent session.
+#+end_example

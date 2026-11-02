@@ -5,12 +5,12 @@ import shutil
 from pathlib import Path
 import tempfile
 import unittest
-from folioforge.authoring import template, TEMPLATES
-from folioforge.components import prepare
-from folioforge.charts import dataset, worker, number
-from folioforge.core import install_theme, Error, run
-from folioforge.handout import prepare as handout
-from folioforge.lint import inspect
+from matsugit.authoring import template, TEMPLATES
+from matsugit.components import prepare
+from matsugit.charts import dataset, worker, number
+from matsugit.core import install_theme, Error, run
+from matsugit.handout import prepare as handout
+from matsugit.lint import inspect
 from test_layout import heading, para, container, document
 
 QUARTO = os.environ.get('QUARTO',shutil.which('quarto'))

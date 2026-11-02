@@ -9,22 +9,22 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const bundle = fileURLToPath(new URL('../bundle/server.mjs', import.meta.url));
 test('recovery MCP survives process restart, scopes files and preserves current disk content', async () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-recovery-protocol-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-recovery-protocol-'));
   const file = path.join(directory, 'deck.md'), second = path.join(directory, 'other.org');
   fs.writeFileSync(file, '# Original\n'); fs.writeFileSync(second, '* Other');
   let client;
   const start = async () => {
     client = new Client({name: 'recovery-test', version: '1'});
     await client.connect(new StdioClientTransport({command: process.execPath, args: [bundle],
-      env: {...process.env, FOLIOFORGE_RECOVERY_DIR: path.join(directory, 'recovery')}, stderr: 'pipe'}));
+      env: {...process.env, MATSUGIT_RECOVERY_DIR: path.join(directory, 'recovery')}, stderr: 'pipe'}));
   };
-  const call = async (name, args = {}, host) => client.callTool({name: 'folioforge_' + name, arguments: args,
+  const call = async (name, args = {}, host) => client.callTool({name: 'matsugit_' + name, arguments: args,
     ...(host ? {_meta: {'openai/resource': {path: host}}} : {})});
   const ok = result => { assert.notEqual(result.isError, true, JSON.stringify(result)); return {...result.structuredContent, ...result._meta}; };
   try {
     await start();
     const {tools} = await client.listTools();
-    for (const tool of tools.filter(t => t.name.startsWith('folioforge_recovery_'))) assert.deepEqual(tool._meta.ui.visibility, ['app']);
+    for (const tool of tools.filter(t => t.name.startsWith('matsugit_recovery_'))) assert.deepEqual(tool._meta.ui.visibility, ['app']);
     const opened = ok(await call('open', {path: file})), {session} = opened;
     const {id} = ok(await call('recovery_begin', {session, name: 'deck.md'}));
     ok(await call('recovery_checkpoint', {session, id, generation: 1, text: '# Private draft\nשלום', base: '# Original\n', view: {format: 'slides'}}));

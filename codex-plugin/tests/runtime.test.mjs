@@ -5,9 +5,9 @@ import path from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {PluginRuntime} from '../src/runtime.mjs';
 
-const files = {'codex-plugin/worker.py': '# worker', 'folioforge/core.py': '# core',
-  'folioforge/preview.py': '# preview', 'folioforge/runtime/layout.css': 'p {}',
-  'folioforge/themes/default/theme.json': '{}'};
+const files = {'codex-plugin/worker.py': '# worker', 'matsugit/core.py': '# core',
+  'matsugit/preview.py': '# preview', 'matsugit/runtime/layout.css': 'p {}',
+  'matsugit/themes/default/theme.json': '{}'};
 const archive = (extra = {}) => gzipSync(JSON.stringify({app: '<html>Bundled UI</html>',
   files: Object.fromEntries(Object.entries({...files, ...extra}).map(([name, text]) =>
     [name, Buffer.from(text).toString('base64')]))})).toString('base64');
@@ -37,18 +37,18 @@ test('deleted or changed runtime files are recreated from this version in memory
     fs.rmSync(first, {recursive: true});
     const second = runtime.root();
     assert.notEqual(first, second);
-    fs.writeFileSync(path.join(second, 'folioforge/core.py'), '# Changed');
+    fs.writeFileSync(path.join(second, 'matsugit/core.py'), '# Changed');
     const third = runtime.root();
     assert.notEqual(second, third);
-    assert.equal(fs.readFileSync(path.join(third, 'folioforge/core.py'), 'utf8'), '# core');
+    assert.equal(fs.readFileSync(path.join(third, 'matsugit/core.py'), 'utf8'), '# core');
     // Do not remove an older directory out from under an in-flight worker.
     assert.equal(fs.existsSync(second), true);
   } finally { runtime.close(); }
 });
 
 test('bundled paths cannot escape the renderer directory', () => {
-  for (const name of ['../escape.py', '/tmp/escape.py', 'folioforge/../../escape',
-    'folioforge\\escape', 'folioforge/.hidden', 'private/theme.css']) {
+  for (const name of ['../escape.py', '/tmp/escape.py', 'matsugit/../../escape',
+    'matsugit\\escape', 'matsugit/.hidden', 'private/theme.css']) {
     assert.throws(() => new PluginRuntime(archive({[name]: 'bad'})), /runtime path/);
   }
 });

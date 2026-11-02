@@ -4,11 +4,11 @@ import os
 import shutil
 import unittest
 
-from folioforge.authoring import template
-from folioforge.components import prepare
-from folioforge.core import run
-from folioforge.layout import slides
-from folioforge.relationships import nodes
+from matsugit.authoring import template
+from matsugit.components import prepare
+from matsugit.core import run
+from matsugit.layout import slides
+from matsugit.relationships import nodes
 from test_layout import container, document, heading, para
 
 QUARTO = os.environ.get('QUARTO', shutil.which('quarto'))

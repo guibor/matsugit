@@ -6,7 +6,7 @@ import path from 'node:path';
 import {WorkspaceStore, checkedPath, checkedText, MAX_SOURCE} from '../src/store.mjs';
 
 test('opening and saving only the selected file, with conflicts and permissions preserved', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-store-test-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-store-test-'));
   const file = path.join(directory, 'note.md');
   const store = new WorkspaceStore(directory);
   try {
@@ -55,7 +55,7 @@ test('large preview transfers are bounded and preserve Unicode across chunks', (
   assert.throws(() => store.chunk('preview', 'other', 0));
 });
 test('a removed plugin cache asks for a reload before allocating a render job', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-missing-plugin-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-missing-plugin-'));
   fs.rmdirSync(directory);
   const store = new WorkspaceStore(directory);
   assert.throws(() => store.start({text: '# Draft'}), /plugin files.*Save or download.*reload/);
@@ -63,7 +63,7 @@ test('a removed plugin cache asks for a reload before allocating a render job', 
 });
 
 test('cancel is scoped to its document and cannot cancel a completed render', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-cancel-test-'));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-cancel-test-'));
   const store = new WorkspaceStore(directory);
   try {
     const file = path.join(directory, 'a.md'), other = path.join(directory, 'b.md');

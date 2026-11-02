@@ -1,0 +1,13 @@
+/*-- scss:defaults --*/
+$body-bg: #ffffff;
+$body-color: #202620;
+$link-color: #17665c;
+$font-family-sans-serif: system-ui, sans-serif;
+$presentation-font-size-root: 30px;
+/*-- scss:rules --*/
+.reveal h1, .reveal h2, .reveal h3 { letter-spacing: 0; text-transform: none; }
+.reveal table { font-size: 0.75em; font-variant-numeric: tabular-nums; }
+.reveal th, .reveal td { vertical-align: top; }
+.reveal .footer a.matsugit-document-link { font-size: 13px; color: #52625a; text-decoration: none; }
+.reveal .footer a.matsugit-document-link:hover,
+.reveal .footer a.matsugit-document-link:focus-visible { text-decoration: underline; }

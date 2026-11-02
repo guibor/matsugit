@@ -6,15 +6,15 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from folioforge.authoring import TEMPLATES, template
-from folioforge.converter import converter
-from folioforge.core import Error, config, normalize, write_json, render, run
-from folioforge.components import prepare
-from folioforge.layout import slides, plain
-from folioforge.source import read, convert, check_org, write_org
-from folioforge.table_editor import TableDocument, signature
-from folioforge.publish import check_destination, setup_ci
-from folioforge.relationships import nodes
+from matsugit.authoring import TEMPLATES, template
+from matsugit.converter import converter
+from matsugit.core import Error, config, normalize, write_json, render, run
+from matsugit.components import prepare
+from matsugit.layout import slides, plain
+from matsugit.source import read, convert, check_org, write_org
+from matsugit.table_editor import TableDocument, signature
+from matsugit.publish import check_destination, setup_ci
+from matsugit.relationships import nodes
 
 try:
     COMMAND = converter()
@@ -39,7 +39,7 @@ class OrgSafetyTests(unittest.TestCase):
             source = root / 'source.org'
             source.write_text('* Original\n')
             (root / 'source.md').write_text('# Original\n')
-            write_json(root / 'folioforge-manifest.json', {
+            write_json(root / 'matsugit-manifest.json', {
                 'version': 1, 'source_file': 'source.org',
                 'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
                 'normalized_sha256': hashlib.sha256((root/'source.md').read_bytes()).hexdigest(),
@@ -54,7 +54,7 @@ class OrgSafetyTests(unittest.TestCase):
                 check_destination(root, source.resolve())
 
 
-@unittest.skipUnless(COMMAND, 'Requires Pandoc; run folioforge setup-editor')
+@unittest.skipUnless(COMMAND, 'Requires Pandoc; run matsugit setup-editor')
 class OrgParityTests(unittest.TestCase):
     def test_org_alignment_and_cell_targets_match_markdown(self):
         md = '| Label | Value |\n|:------|------:|\n| Cycle | [8 days]{#pilot} |\n'
@@ -186,7 +186,7 @@ class OrgNormalizationTests(unittest.TestCase):
             source = root/'deck.org'
             source.write_text('#+TITLE: Deck\n#+SLIDE_LAYOUT: structured\n** Evidence\n'
                               '#+begin_takeaway\nKeep meaning.\n#+end_takeaway\n')
-            output = root/'folioforge-site/deck'
+            output = root/'matsugit-site/deck'
             render(config(source, {'quarto': os.environ['QUARTO']}), output,
                    edit_url='https://example.invalid/edit/source.org')
             with (output/'source.org').open('a') as stream:
@@ -194,7 +194,7 @@ class OrgNormalizationTests(unittest.TestCase):
                              '#+begin_agent-comment :status "open"\nCI_HIDDEN_SENTINEL\n'
                              '[[file:not-an-asset.png]]\n#+end_agent-comment\n')
             setup_ci(config(source), 'github')
-            run([os.sys.executable, '.folioforge-ci/build.py'], cwd=root)
+            run([os.sys.executable, '.matsugit-ci/build.py'], cwd=root)
             for name in ('slides.html', 'index.html', 'source.md', 'source.org'):
                 text = (output/name).read_text()
                 self.assertIn('New Org evidence.', text)

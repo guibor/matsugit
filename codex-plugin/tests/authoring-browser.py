@@ -8,7 +8,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-shots = Path(os.environ.get('FOLIOFORGE_SCREENSHOTS', tempfile.mkdtemp(prefix='ff-authoring-')))
+shots = Path(os.environ.get('MATSUGIT_SCREENSHOTS', tempfile.mkdtemp(prefix='ff-authoring-')))
 shots.mkdir(parents=True, exist_ok=True)
 
 
@@ -22,7 +22,7 @@ def wait(frame, expression, timeout=180):
 
 
 host = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')],
-                        env=dict(os.environ, FOLIOFORGE_SHOWCASE_SOURCE=str(Path(__file__).with_name('authoring-sugar.md'))),
+                        env=dict(os.environ, MATSUGIT_SHOWCASE_SOURCE=str(Path(__file__).with_name('authoring-sugar.md'))),
                         stdout=subprocess.PIPE, text=True)
 try:
     ready = json.loads(host.stdout.readline())
@@ -35,45 +35,45 @@ try:
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(f'http://127.0.0.1:{ready["port"]}')
         frame = page.frames[1]
-        wait(frame, '!!window.folioforgeWorkspace?.state.rendered')
+        wait(frame, '!!window.matsugitWorkspace?.state.rendered')
         frame.locator('[data-format="slides"]').click()
-        wait(frame, '!!folioforgeWorkspace.state.rendered?.slides && !folioforgeWorkspace.state.rendering')
+        wait(frame, '!!matsugitWorkspace.state.rendered?.slides && !matsugitWorkspace.state.rendering')
         frame.locator('#auto').uncheck()
         frame.locator('#compact-markup').click()
         assert frame.locator('.ff-block-label').count() >= 3
-        assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()') == original
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
         frame.locator('select[aria-label="Column proportions"]').select_option('1:2')
-        assert ':::: columns 1:2' in frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()')
+        assert ':::: columns 1:2' in frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         frame.locator('#undo').click()
-        assert frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()') == original
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
         page.screenshot(path=str(shots / 'compact-labels.png'))
         frame.locator('#compact-markup').click()
         assert frame.locator('.ff-block-label').count() == 0
         frame.evaluate(r'''() => {
-          const e=folioforgeWorkspace.editor, at=e.state.doc.length;
+          const e=matsugitWorkspace.editor, at=e.state.doc.length;
           e.dispatch({changes:{from:at,insert:'\n\n'},selection:{anchor:at+2}});e.focus();
         }''')
         page.keyboard.type('/columns-evidence')
         frame.locator('.cm-completionLabel').filter(has_text='/columns-evidence').click()
-        selected = frame.evaluate('folioforgeWorkspace.editor.state.sliceDoc(folioforgeWorkspace.editor.state.selection.main.from,folioforgeWorkspace.editor.state.selection.main.to)')
+        selected = frame.evaluate('matsugitWorkspace.editor.state.sliceDoc(matsugitWorkspace.editor.state.selection.main.from,matsugitWorkspace.editor.state.selection.main.to)')
         assert selected == 'Supporting evidence.', selected
         page.keyboard.press('Tab')
-        selected = frame.evaluate('folioforgeWorkspace.editor.state.sliceDoc(folioforgeWorkspace.editor.state.selection.main.from,folioforgeWorkspace.editor.state.selection.main.to)')
+        selected = frame.evaluate('matsugitWorkspace.editor.state.sliceDoc(matsugitWorkspace.editor.state.selection.main.from,matsugitWorkspace.editor.state.selection.main.to)')
         assert selected == 'What the evidence means.', selected
         frame.evaluate(r'''() => {
-          const e=folioforgeWorkspace.editor, text=e.state.doc.toString();
+          const e=matsugitWorkspace.editor, text=e.state.doc.toString();
           const from=text.indexOf('| Experience'), to=text.indexOf('\n\n#### Implication');
           e.dispatch({selection:{anchor:from,head:to}});e.focus();
         }''')
         frame.locator('#insert').click()
         frame.locator('.cm-completionLabel').filter(has_text='/chart-barh').click()
-        text = frame.evaluate('folioforgeWorkspace.editor.state.doc.toString()')
+        text = frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         assert text.count('| Baseline | 12 |') == 1
         assert 'type="barh" unit="units"' in text
         assert source.read_text() == original
         # Org completion must not escape an example through an unrelated end.
         frame.evaluate(r'''() => {
-          const w=folioforgeWorkspace;w.state.name='example.org';
+          const w=matsugitWorkspace;w.state.name='example.org';
           const text='#+begin_src text\n#+end_columns\n\n/take';
           w.editor.dispatch({changes:{from:0,to:w.editor.state.doc.length,insert:text},selection:{anchor:text.length}});
         }''')

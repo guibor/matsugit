@@ -4,18 +4,18 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from folioforge.core import config, render
+from matsugit.core import config, render
 
 
-@unittest.skipUnless(os.environ.get('FOLIOFORGE_MEDIA_BROWSER_TESTS'), 'Opt-in media browser tests')
+@unittest.skipUnless(os.environ.get('MATSUGIT_MEDIA_BROWSER_TESTS'), 'Opt-in media browser tests')
 class MediaBrowserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from playwright.sync_api import sync_playwright
         cls.temp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temp.cleanup)
-        cls.output = Path(os.environ.get('FOLIOFORGE_MEDIA_OUTPUT', cls.temp.name))
-        if not os.environ.get('FOLIOFORGE_MEDIA_OUTPUT'):
+        cls.output = Path(os.environ.get('MATSUGIT_MEDIA_OUTPUT', cls.temp.name))
+        if not os.environ.get('MATSUGIT_MEDIA_OUTPUT'):
             render(config(Path(__file__).parent / 'fixtures/media.md'), cls.output)
         cls.playwright = sync_playwright().start()
         cls.addClassCleanup(cls.playwright.stop)

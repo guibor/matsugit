@@ -30,7 +30,7 @@ function tableHTML() {
 async function api(path, data, keepalive = false) {
   const response = await fetch(`api/${path}`, {
     method: data === undefined ? 'GET' : 'POST',
-    headers: {'Authorization': `Bearer ${token}`, 'X-Folioforge-Client': client,
+    headers: {'Authorization': `Bearer ${token}`, 'X-matsugit-Client': client,
       ...(data === undefined ? {} : {'Content-Type': 'application/json'})},
     keepalive,
     ...(data === undefined ? {} : {body: JSON.stringify(data)}),
@@ -128,7 +128,7 @@ async function initialize(html) {
     onSelectionUpdate: () => update(),
   });
   // Exposes the existing editor API for local integration tests, not a second model.
-  window.folioforgeEditor = editor;
+  window.matsugitEditor = editor;
   button('Undo', Undo2, () => editor.chain().focus().undo().run());
   button('Redo', Redo2, () => editor.chain().focus().redo().run());
   separator();

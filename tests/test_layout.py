@@ -7,9 +7,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from folioforge.core import config, normalize, render, run
-from folioforge.layout import metadata, slides
-from folioforge.publish import setup_ci
+from matsugit.core import config, normalize, render, run
+from matsugit.layout import metadata, slides
+from matsugit.publish import setup_ci
 
 
 def heading(level, text):
@@ -43,8 +43,8 @@ class LayoutTests(unittest.TestCase):
 
     def test_personal_default_never_overrides_explicit_theme(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {
-                'FOLIOFORGE_CONFIG':str(Path(directory)/'absent.json'),
-                'FOLIOFORGE_DEFAULT_THEME':'personal'}):
+                'MATSUGIT_CONFIG':str(Path(directory)/'absent.json'),
+                'MATSUGIT_DEFAULT_THEME':'personal'}):
             source=Path(directory)/'test.md'
             source.write_text('# Test')
             self.assertEqual(config(source)['theme'],'personal')
@@ -203,11 +203,11 @@ class LayoutRenderTests(unittest.TestCase):
             root = Path(directory)
             source = root / 'input.md'
             source.write_text(FIXTURE)
-            output = root / 'folioforge-site/example'
+            output = root / 'matsugit-site/example'
             render(config(source, {'quarto': QUARTO}), output)
             setup_ci(config(source), 'github')
             with patch.dict(os.environ, {'QUARTO': QUARTO}):
-                run([os.sys.executable, '.folioforge-ci/build.py'], cwd=root)
+                run([os.sys.executable, '.matsugit-ci/build.py'], cwd=root)
             deck = (output / 'slides.html').read_text()
             self.assertIn('ff-claim', deck)
             self.assertIn('continuation-2', deck)

@@ -29,7 +29,7 @@ export class WorkspaceStore {
   constructor(root) { this.root = root; }
   open(file) {
     const target = checkedPath(file), text = read(target), id = randomUUID();
-    if (this.sessions.size >= 64) throw Error('Too many open workspaces; restart the Folioforge plugin.');
+    if (this.sessions.size >= 64) throw Error('Too many open workspaces; restart the matsugit plugin.');
     this.sessions.set(id, target);
     return {session: id, name: path.basename(target), text, etag: hash(text), writable: true};
   }
@@ -45,7 +45,7 @@ export class WorkspaceStore {
     if (!file) throw Error('Workspace expired; reopen the document.');
     const current = this.source(session);
     if (!etag || current.etag !== etag) return {outcome: 'conflict', etag: current.etag};
-    const temporary = path.join(path.dirname(file), `.folioforge-${randomUUID()}.tmp`);
+    const temporary = path.join(path.dirname(file), `.matsugit-${randomUUID()}.tmp`);
     try {
       fs.writeFileSync(temporary, text, {flag: 'wx', mode: fs.statSync(file).mode & 0o777});
       // Check again immediately before atomic replacement. Never force overwrite.
@@ -92,13 +92,13 @@ export class WorkspaceStore {
     if ([...this.jobs.values()].filter(j => j.state === 'rendering').length >= 2) throw Error('Two previews are already rendering; wait for one to finish.');
     const root = typeof this.root === 'function' ? this.root() : this.root;
     const worker = path.join(root, 'codex-plugin/worker.py');
-    if (!fs.existsSync(worker)) throw Error('Folioforge plugin files are no longer available. Save or download your draft, then reload the plugin in Codex and reopen the document.');
+    if (!fs.existsSync(worker)) throw Error('matsugit plugin files are no longer available. Save or download your draft, then reload the plugin in Codex and reopen the document.');
     for (const [id, job] of this.jobs) {
       if (job !== baseline && !job.readers && job.state !== 'rendering' && (Date.now() - job.created > 300_000 || this.jobs.size >= 4)) {
         this.jobs.delete(id); fs.rmSync(job.directory, {recursive: true, force: true});
       }
     }
-    const id = randomUUID(), directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'folioforge-workspace-')));
+    const id = randomUUID(), directory = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-workspace-')));
     const extension = formats.has(path.extname(name).toLowerCase()) ? path.extname(name).toLowerCase() : '.md';
     const source = owner || baseline?.source || path.join(directory, 'Untitled' + extension);
     const output = path.join(directory, 'render');
@@ -107,7 +107,7 @@ export class WorkspaceStore {
     this.jobs.set(id, job);
     // A long-lived host can retain a deleted cwd. Python/pyenv need a real one
     // before the worker starts; absolute source paths still resolve project assets.
-    const child = spawn(process.env.FOLIOFORGE_PYTHON || 'python3', [worker],
+    const child = spawn(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3', [worker],
       {cwd: directory, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32',
         env: {...process.env, PWD: directory}});
     job.child = child;
@@ -131,7 +131,7 @@ export class WorkspaceStore {
       if (baseline) baseline.readers--;
       if (job.state !== 'rendering') return;
       if (code !== 0) {
-        job.state = 'error'; job.error = stderr.replaceAll(root, '<folioforge>').replaceAll(directory, '<preview>').slice(-4000) || 'Rendering failed.';
+        job.state = 'error'; job.error = stderr.replaceAll(root, '<matsugit>').replaceAll(directory, '<preview>').slice(-4000) || 'Rendering failed.';
       } else {
         try {
           const result = JSON.parse(stdout);
