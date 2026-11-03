@@ -65,6 +65,18 @@ class SourceCITests(unittest.TestCase):
             for expected in ('Evidence', 'Claim', 'Caf\u00e9', '<a>&code'): self.assertIn(expected, text)
             source_ci.check_destination(output, settings['source'])
 
+    def test_canvas_requires_a_capable_ci_renderer(self):
+        (self.root / 'visual.html').write_text('<h1>Illustrative evidence</h1>')
+        self.source.write_text('## Evidence\n\n::: {.canvas src="visual.html" title="Evidence"}\n:::\n')
+        reviewed = targets.plan(self.settings)
+        source_ci.prepare(self.settings, self.root / 'canvas-current', reviewed)
+        self.assertEqual(len(list((self.root / 'canvas-current/assets').glob('*.html'))), 1)
+        (self.repo / '.matsugit-ci/canvas.py').unlink()
+        before = git(self.repo, 'rev-parse', 'HEAD')
+        with self.assertRaisesRegex(Error, 'predates HTML canvases'):
+            source_ci.prepare(self.settings, self.root / 'canvas-old', reviewed)
+        self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), before)
+
     def test_topics_uses_existing_ci_and_does_not_ship_a_new_theme(self):
         scripts = self.repo / 'scripts'; scripts.mkdir()
         (scripts / 'build_pages.py').write_text('# existing renderer\n')

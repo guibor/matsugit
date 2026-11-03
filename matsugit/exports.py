@@ -164,6 +164,9 @@ def export_file(settings, kind, output=None, *, sync_folder=False, reference=Non
             rendered.mkdir()
             theme = install_theme(settings, rendered)
             ast = normalize(settings, rendered, source_text=source_text)
+            from .canvas import contains
+            if contains(ast):
+                raise Error('HTML canvases cannot be embedded in editable PowerPoint. Use HTML/ZIP/PDF, or replace the canvas with an image first')
             palette = read_json(rendered / 'theme' / theme['charts']) if theme.get('charts') else {}
             ast = slides(components(charts(ast, rendered, palette)))
             if not ast['meta'].get('slide-title-page', {'c':True})['c']:

@@ -1,7 +1,9 @@
 # Presentation and delivery
 
-In the Codex workspace, the presentation-screen icon enters slide-only mode.
-Arrow keys/Space advance, Escape restores editing. This never publishes.
+In Codex or Cursor, select Document or Slides, then the presentation-screen icon.
+The selected format is presented without the editor; arrows/Space navigate slides,
+documents keep their reading layout with page scrolling. Escape restores editing.
+This never publishes.
 
 The download icon offers Source, HTML slides, ZIP (document + slides + source),
 PDF and editable PowerPoint. The current draft can be exported without saving

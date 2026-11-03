@@ -13,11 +13,11 @@
   function prepare(slide) {
     for (const slot of slide.querySelectorAll(".ff-media")) {
       if (slot.closest(".media-natural")) continue;
-      const media = slot.querySelector("img, svg.mermaid-js");
+      const media = slot.querySelector("img, svg.mermaid-js, iframe.ff-canvas-frame");
       if (!media) continue; // Mermaid may still be rendering asynchronously.
       slot.classList.add("ff-fitted");
       for (let parent = media.parentElement; parent && parent !== slot; parent = parent.parentElement) {
-        parent.classList.add("ff-media-inner");
+        if (!slot.classList.contains('ff-canvas')) parent.classList.add("ff-media-inner");
       }
       if (media.tagName.toLowerCase() === "svg") media.setAttribute("preserveAspectRatio", "xMidYMid meet");
       slot.style.height = "0px";

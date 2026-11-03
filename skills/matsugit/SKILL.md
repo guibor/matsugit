@@ -44,6 +44,10 @@ one slide.
 - **Relationships or saved pointers:** read [relationships.md](references/relationships.md).
   Distinguish whole-panel implication, paired rows and named evidence callouts.
   For chart data points use native Altair/Vega-Lite annotations, not DOM coordinates.
+- **Expandable HTML evidence:** use an empty `canvas` block with local `src` and
+  accessible `title`. Scripts require explicit `interactive="true"` for a trusted
+  self-contained file. Never turn arbitrary raw HTML into executable content.
+  See [canvas.md](references/canvas.md) for safety, Org syntax and export limits.
 - **Evaluate a missing capability:** read [research-and-gaps.md](references/research-and-gaps.md).
   Distinguish native support, composition from existing blocks, external-image
   fallback, and proposed features. Never invent supported options.

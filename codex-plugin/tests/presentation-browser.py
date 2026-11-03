@@ -15,6 +15,19 @@ with sync_playwright() as p:
         # Simulate the fullscreen restriction common to embedded hosts.
         page.evaluate("() => { document.documentElement.requestFullscreen = () => Promise.reject(new Error('Host restriction')); }")
         page.locator('#present').click()
+        frame = page.locator('#preview').element_handle().content_frame()
+        assert page.evaluate('matsugitWorkspace.state.format') == 'document'
+        assert frame.locator('main').is_visible()
+        assert page.locator('header').is_hidden()
+        bounds = page.locator('#preview').bounding_box()
+        assert bounds['width'] == width and bounds['height'] == height
+        page.locator('#present-next').click()
+        frame.wait_for_function('scrollY > 0')
+        frame.locator('body').press('Escape')
+        page.wait_for_function('!document.body.classList.contains("presenting")')
+        assert page.evaluate('matsugitWorkspace.state.layout') == 'split'
+        page.locator('[data-format="slides"]').click()
+        page.locator('#present').click()
         preview = page.frame_locator('#preview')
         preview.locator('.reveal.ready').wait_for()
         frame = page.locator('#preview').element_handle().content_frame()
@@ -32,7 +45,7 @@ with sync_playwright() as p:
         page.wait_for_function('!document.body.classList.contains("presenting")')
         assert page.locator('header').is_visible()
         assert page.evaluate('matsugitWorkspace.state.layout') == 'split'
-        assert page.evaluate('matsugitWorkspace.state.format') == 'document'
+        assert page.evaluate('matsugitWorkspace.state.format') == 'slides'
         assert page.locator('#sync').is_checked()
         assert not errors, errors
         print(f'Present, navigation, fullscreen fallback and return passed: {width}x{height}')

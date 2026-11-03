@@ -122,7 +122,7 @@ def render(settings, output, text, format='document', base=None):
         shutil.copytree(Path(base) / 'chart-cache', cache)
     ast = core.normalize(settings, output, source_text=text, editable_source=False)
     colours = core.read_json(core.inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
-    display = core.evidence_components(core.chart_components(ast, output, colours, cache=cache))
+    display = core.canvas_components(core.evidence_components(core.chart_components(ast, output, colours, cache=cache)), output)
     target = slides(display) if format == 'slides' else display
     annotated, snapshot = annotate(target)
     snapshot.update(signature=signature, format=format)

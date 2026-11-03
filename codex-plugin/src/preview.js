@@ -75,9 +75,12 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       if (event.data.presentNavigate === 'next') Reveal.next();
       if (event.data.presentNavigate === 'prev') Reveal.prev();
     }
+    if (presenting && format === 'document' && ['prev','next'].includes(event.data.presentNavigate)) {
+      window.scrollBy({top:innerHeight * .85 * (event.data.presentNavigate === 'next' ? 1 : -1), behavior:'smooth'});
+    }
   });
   document.addEventListener('keydown', event => {
-    if (presenting && event.key === 'Escape') {
+    if (presenting && event.key === 'Escape' && !document.querySelector('.ff-canvas-dialog:modal')) {
       event.preventDefault(); event.stopImmediatePropagation(); post({presentExit: true});
     }
   }, true);

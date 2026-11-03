@@ -16,12 +16,14 @@ if __package__:
     from .compat import env, existing, global_config
     from .layout import metadata as display_metadata, slides as slide_layout, plain
     from .components import prepare as evidence_components
+    from .canvas import prepare as canvas_components
     from .charts import prepare as chart_components
     from .handout import prepare as handout_layout
 else:  # The standalone CI bundle imports core directly.
     from compat import env, existing, global_config
     from layout import metadata as display_metadata, slides as slide_layout, plain
     from components import prepare as evidence_components
+    from canvas import prepare as canvas_components
     from charts import prepare as chart_components
     from handout import prepare as handout_layout
 
@@ -232,9 +234,9 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
     # Keep declarative display settings, not filters/includes/executable settings.
     ast["meta"] = display_metadata(ast.get("meta", {}))
 
-    def resource(value):
+    def resource(value, canvas=False):
         url = urlsplit(value)
-        if url.scheme in {"https", "http", "mailto", "tel"} or value.startswith("#"):
+        if not canvas and (url.scheme in {"https", "http", "mailto", "tel"} or value.startswith("#")):
             return value
         if url.scheme or url.netloc or not url.path:
             raise Error(f"Unsupported resource URL: {value}")
@@ -242,8 +244,11 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
         path = (source.parent / raw).resolve()
         if raw.is_absolute() or not path.is_relative_to(settings["source_root"]) or any(p.startswith(".") for p in path.relative_to(settings["source_root"]).parts):
             raise Error(f"Resource outside the source project or hidden: {value}")
-        if not path.is_file() or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".pdf", ".csv", ".txt", ".md", ".mp4", ".webm", ".mp3"}:
+        allowed = {'.html', '.htm'} if canvas else {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".pdf", ".csv", ".txt", ".md", ".mp4", ".webm", ".mp3"}
+        if not path.is_file() or path.suffix.lower() not in allowed:
             raise Error(f"Missing or unsupported attachment: {value}")
+        if canvas and (path.stat().st_size > 2 * 1024 * 1024 or url.query or url.fragment):
+            raise Error('Canvas requires a self-contained HTML file of at most 2 MiB, without query/fragment')
         digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
         name = path.name if path.name.startswith(digest + "-") else digest + "-" + path.name
         (output / "assets").mkdir(exist_ok=True)
@@ -256,6 +261,14 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
         if not isinstance(node, dict):
             return node
         kind = node.get("t")
+        if kind == 'Div' and 'canvas' in node['c'][0][1]:
+            if __package__:
+                from .canvas import attributes
+            else:
+                from canvas import attributes
+            values = attributes(node)
+            values['src'] = resource(values['src'], canvas=True)
+            node['c'][0][2] = list(map(list, values.items()))
         if kind == "CodeBlock" and "mermaid" in node["c"][0][1]:
             return mermaid_block(*node["c"])
         if kind in {"Image", "Link"}:
@@ -323,7 +336,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
         theme = install_theme(settings, output)
         ast = normalize(settings, output, source_text=source_text)
         colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
-        display_ast = evidence_components(chart_components(ast, output, colours))
+        display_ast = canvas_components(evidence_components(chart_components(ast, output, colours)), output)
     else:
         theme, ast, display_ast = _prepared
     document_ast = _transform(display_ast, 'document') if _transform else display_ast
@@ -348,8 +361,10 @@ def render(settings, output, edit_url=None, *, source_text=None,
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
     (output / "media-head.html").write_text(
         '<link rel="stylesheet" href="runtime/media.css">\n'
+        '<link rel="stylesheet" href="runtime/canvas.css">\n'
         '<link rel="stylesheet" href="runtime/layout.css">\n'
         '<script defer src="runtime/media.js"></script>\n'
+        '<script defer src="runtime/canvas.js"></script>\n'
         '<script defer src="runtime/annotations.js"></script>\n', encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'

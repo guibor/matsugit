@@ -53,7 +53,11 @@ codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit
 #+end_src
 
-Present with the screen icon and Escape back to editing. The download picker
+Present the selected Document or Slides tab with the screen icon; Escape returns
+to editing. Local HTML [[file:docs/canvas.org][canvases]] fit either output and expand without losing their
+state. Scripts are opt-in; the frame cannot access the editor, and resource
+fetches are blocked. Use only trusted local HTML (see the canvas limitations).
+The download picker
 offers source, HTML, ZIP, PDF and editable PowerPoint. Export into a configured
 OneDrive folder without an API, or review and explicitly push both outputs to
 a named GitHub/GitLab target. See the [[file:docs/delivery.org][presentation and delivery guide]] for

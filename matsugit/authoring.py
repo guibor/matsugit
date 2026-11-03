@@ -242,6 +242,7 @@ The implication that follows from this cluster.
 
 # Small authoring elements share the renderer's existing syntax, not a new DSL.
 ELEMENTS = {
+    'canvas': '::: {.canvas src="visual.html" title="Interactive evidence"}\n:::\n',
     'slide': '## Slide title\n### Main claim\n\n- Supporting evidence.\n',
     'section': '# Section title\n',
     'claim': '### Main claim\n',

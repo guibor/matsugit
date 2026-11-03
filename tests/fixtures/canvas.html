@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Illustrative pilot</title>
+<style>
+body { margin:0; padding:24px; font:16px/1.5 system-ui,sans-serif; color:#17212b; background:white; }
+h1 { font-size:24px; margin:0 0 8px; }
+canvas { width:100%; max-width:600px; height:auto; display:block; }
+button { padding:6px 12px; background:#174bc8; color:white; border:0; border-radius:4px; }
+p { margin:8px 0; } small { color:#61666d; }
+</style>
+<h1>Test the operating assumption</h1>
+<p>Illustrative cycle time, not observed company data.</p>
+<canvas id="chart" width="600" height="240" aria-label="Baseline 12 days; pilot 8 days"></canvas>
+<button id="increment">Add a scenario</button> Scenarios: <span id="value">0</span>
+<p><small>This example runs locally with no network access.</small></p>
+<script>
+const canvas = document.getElementById('chart'), c = canvas.getContext('2d');
+c.fillStyle='#dbe5fa'; c.fillRect(120,30,420,55);
+c.fillStyle='#174bc8'; c.fillRect(120,120,280,55);
+c.fillStyle='#17212b'; c.font='18px system-ui'; c.fillText('Baseline',10,65); c.fillText('Pilot',10,155);
+c.fillText('12 days',440,65); c.fillStyle='white'; c.fillText('8 days',310,155);
+document.getElementById('increment').onclick=()=>{document.getElementById('value').textContent=String(Number(document.getElementById('value').textContent)+1);};
+</script>

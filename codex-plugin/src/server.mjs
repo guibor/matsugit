@@ -25,7 +25,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.8.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.9.0'});
   new OpenAIExtensions(server);
   server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
     inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository']), session:z.string().optional(),

@@ -1,0 +1,49 @@
+#+title: Expandable HTML canvases
+
+A canvas is a self-contained local HTML visual embedded in a reading document
+or slide. It can contain ordinary HTML, inline SVG or a JavaScript canvas. It is
+not a new slide layout or an external website connection.
+
+#+begin_src markdown
+::: {.canvas src="visual.html" title="Operating assumptions"}
+:::
+#+end_src
+
+Native Org:
+#+begin_src org
+#+begin_canvas :src "visual.html" :title "Operating assumptions"
+#+end_canvas
+#+end_src
+
+Insert =/canvas= in the workspace or Emacs slash menu. The inline canvas is a
+preview, not a set of tiny controls: use Expand to interact at normal size.
+This avoids unreliable pointer targeting in browser-scaled slide iframes.
+Use Close/Escape to
+return. Expansion retains the same frame and its interaction state. Document
+mode keeps an ordinary in-flow figure; slides allocate available media space.
+Existing theme typography, reading width and takeaway treatment are unchanged.
+
+The file must be within the source project, UTF-8, at most 2 MiB, and self-contained:
+inline CSS, inline SVG or data-URL images/fonts. Relative/network resources are
+blocked, not fetched or silently copied. Live URLs are deliberately unsupported
+in this first version; use a normal link for sites requiring authentication or
+which prohibit embedding.
+
+Scripts are disabled unless you explicitly add =interactive="true"= (Org:
+=:interactive "true"=) for a trusted local visual. Even then its iframe has an
+opaque origin and cannot access the editor or parent page. Resource fetches,
+forms and popups are blocked. Only use trusted HTML: this is not a general-purpose
+malware sandbox, and interactive visuals should not attempt navigation. This is an explicit execution
+boundary for that embedded visual, not permission to execute document code.
+Avoid navigation or external dependencies in an interactive visual.
+
+HTML/ZIP and the native source-CI builder carry the canvas. PDF is a static view;
+review it before sharing. Editable PowerPoint refuses a live canvas instead of
+silently losing it; replace it with a static image for that export. Existing
+Mobileye work CI needs private renderer 1.9.0 before using canvas blocks.
+
+The Document tab is still a reading document. Claims remain supporting text,
+columns and comparisons reflow, and takeaways stay adjacent to their argument.
+They need not have the same dimensions or fixed bottom placement as on slides.
+Present works for the selected tab in both Codex and Cursor: document scrolling
+or slide navigation, then Escape back to editing.

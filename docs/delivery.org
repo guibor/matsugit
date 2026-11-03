@@ -1,9 +1,11 @@
 #+title: Present, export and publish
 
 * Present now
-In the Codex workspace, click the presentation-screen icon. Arrow keys or Space
-advance; Escape returns to your previous editor layout. If Codex blocks native
-fullscreen, the workspace still becomes a slide-only presentation. This does not
+In the Codex or Cursor workspace, select Document or Slides, then click the
+presentation-screen icon. The selected format stays selected. Slide arrows/Space
+advance; document mode keeps its reading layout with page scrolling. Escape returns
+to your previous editor layout. If the host blocks native fullscreen, the workspace
+still becomes a content-only presentation. This does not
 save, publish or require hosting.
 
 * Downloads and local synced folders

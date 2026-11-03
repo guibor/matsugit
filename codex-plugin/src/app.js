@@ -11,7 +11,7 @@ import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
 import {delivery} from './delivery.js';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.7.0'});
+const app = new App({name: 'matsugit', version: '0.9.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -64,6 +64,8 @@ async function call(name, args) {
   return {...response.structuredContent, ...response._meta};
 }
 function refreshControls() {
+  $('present').title = state.format === 'slides' ? 'Present slides' : 'Present document';
+  $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
   $('save').disabled = !!demo || state.saving || !state.writable || !state.etag || state.conflict || !dirty();
   $('refresh').disabled = !!demo || state.loading;
@@ -148,12 +150,17 @@ $('present').onclick = () => {
   $('sync').checked = false;
   document.body.classList.add('presenting');
   $('presentation-controls').hidden = false;
+  for (const [id, label] of [['present-previous', 'Previous'], ['present-next', 'Next']]) {
+    $(id).title = label + (state.format === 'slides' ? ' slide' : ' page');
+    $(id).setAttribute('aria-label', $(id).title);
+  }
+  $('present-position').textContent = state.format === 'slides' ? String((state.positions.slides.h || 0) + 1) : '';
   state.loading = true;
-  changeFormat('slides'); changeLayout('render');
+  changeLayout('render');
   state.loading = false;
   if (!demo && state.renderedRevision !== state.revision) render();
   presentationMessage(); $('preview').focus();
-  // Embedded hosts may forbid fullscreen; the slide-only view still works.
+  // Embedded hosts may forbid fullscreen; the content-only view still works.
   document.documentElement.requestFullscreen?.().catch(() => {});
 };
 $('present-exit').onclick = exitPresentation;

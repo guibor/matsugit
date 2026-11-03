@@ -82,7 +82,17 @@ def prepare(settings, output, reviewed):
     """Normalize with Pandoc only. Never run Quarto render on the client."""
     from .converter import converter
     output.mkdir()
-    normalize(dict(settings, _preview_pandoc=converter()), output)
+    ast = normalize(dict(settings, _preview_pandoc=converter()), output)
+    from .canvas import contains
+    if contains(ast):
+        repo = settings['repo']
+        if reviewed['ci_layout'] == 'native':
+            installed = (repo / '.matsugit-ci/canvas.py').is_file()
+        else:
+            installed = any((repo / prefix / 'scripts/matsugit_semantics/canvas.py').is_file()
+                            for prefix in ('', '.matsugit-renderer', '.folioforge-renderer'))
+        if not installed:
+            raise Error('This CI renderer predates HTML canvases. Update its reviewed renderer first; no source was committed')
     source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
     if source_name == 'source.org':
         (output / 'source.md').unlink()

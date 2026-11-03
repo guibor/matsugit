@@ -1,0 +1,10 @@
+.ff-canvas { margin:1.25em 0; width:100%; min-width:0; }
+.ff-canvas-dialog[open] { display:block; position:relative; inset:auto; box-sizing:border-box; margin:0; padding:0; border:1px solid #aaa6; width:100%; max-width:none; height:auto; max-height:none; aspect-ratio:16/9; background:white; color:#202020; }
+.ff-canvas-dialog:modal { position:fixed; inset:16px; width:calc(100vw - 32px); height:calc(100vh - 32px); aspect-ratio:auto; margin:0; }
+.ff-canvas-dialog::backdrop { background:#0009; }
+.ff-canvas-frame { display:block; border:0; width:100%; height:100%; min-height:0; }
+.ff-canvas-dialog:not(:modal) .ff-canvas-frame { pointer-events:none; }
+.ff-canvas-expand { position:absolute; top:8px; right:8px; z-index:1; font:13px/1.4 system-ui,sans-serif; padding:4px 8px; background:white; color:#202020; border:1px solid #aaa; border-radius:4px; cursor:pointer; }
+.reveal .ff-canvas.ff-fitted .ff-canvas-dialog:not(:modal) { flex:1 1 0; height:0; min-height:96px; width:100%; aspect-ratio:auto; }
+.ff-canvas figcaption { font-size:.8em; margin-top:.4em; }
+@media print { .ff-canvas-expand { display:none; } }
