@@ -7,3 +7,12 @@
 :root .ff-block-label{font:12px system-ui,sans-serif;color:var(--role-color);letter-spacing:0;display:inline-flex;align-items:center;gap:8px;min-height:21px}
 .ff-block-label select{font:inherit;color:inherit;border:0;border-bottom:1px dotted currentColor;background:transparent;padding:0 2px;max-width:100px}
 #compact-markup[aria-pressed=true]{background:var(--muted-bg);color:var(--accent)}
+body.presenting #app{padding:0;min-height:0}
+body.presenting #app>header,body.presenting #app>nav,body.presenting #app>footer,body.presenting #recovery-banner{display:none}
+body.presenting #workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+body.presenting #source-pane,body.presenting #divider{display:none}
+#presentation-controls{position:fixed;right:12px;bottom:12px;z-index:20;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--border);border-radius:6px;background:var(--bg);opacity:.35;transition:opacity .15s}
+#presentation-controls[hidden]{display:none}
+#presentation-controls:hover,#presentation-controls:focus-within{opacity:1}
+#presentation-controls button{width:34px;height:34px;display:grid;place-items:center}
+#present-position{min-width:24px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums}

@@ -63,7 +63,24 @@ export function patchedHtml(html, changes) {
 
 function navigation(format, position, token, headingKey, base, applyChanges) {
   let lastInput = 0, suppressUntil = 0, currentTarget;
+  let presenting = false;
   const post = data => parent.postMessage({...data, matsugitPreview: token}, '*');
+  window.addEventListener('message', event => {
+    if (event.source !== parent || event.data?.matsugitPreview !== token) return;
+    if (typeof event.data.presenting === 'boolean') {
+      presenting = event.data.presenting;
+      if (presenting) { document.body.tabIndex = -1; document.body.focus(); }
+    }
+    if (presenting && format === 'slides' && window.Reveal?.isReady()) {
+      if (event.data.presentNavigate === 'next') Reveal.next();
+      if (event.data.presentNavigate === 'prev') Reveal.prev();
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (presenting && event.key === 'Escape') {
+      event.preventDefault(); event.stopImmediatePropagation(); post({presentExit: true});
+    }
+  }, true);
   window.addEventListener('message', event => {
     if (event.source !== parent || event.data?.matsugitPreview !== token || !event.data.patch) return;
     const patch = event.data.patch;

@@ -14,6 +14,7 @@
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
       <button id="download" title="Download source" aria-label="Download source"></button>
+      <button id="present" title="Present slides" aria-label="Present slides"></button>
     </div>
   </header>
   <nav aria-label="Workspace views">
@@ -45,6 +46,12 @@
   </div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span></footer>
 </main>
+<div id="presentation-controls" hidden aria-label="Presentation controls">
+  <button id="present-previous" title="Previous slide" aria-label="Previous slide"></button>
+  <span id="present-position" aria-live="polite"></span>
+  <button id="present-next" title="Next slide" aria-label="Next slide"></button>
+  <button id="present-exit" title="Exit presentation (Escape)" aria-label="Exit presentation"></button>
+</div>
 <dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
 <script>/* APP_SCRIPT */</script>
 </body></html>

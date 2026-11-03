@@ -1,5 +1,18 @@
 #+title: matsugit in Codex
 
+* Present
+Click the presentation-screen icon at the top right. It switches to slides and
+hides the editor and workspace chrome. Use arrow keys, Space, Page Up/Down or the
+quiet bottom-right controls. Escape or the exit icon restores your previous view
+and Sync setting. Browser fullscreen is requested when allowed; embedded hosts
+that block it still get the full slide-only workspace. Nothing is saved or published.
+
+Upgrade the plugin, then open the document in a fresh Codex session:
+#+begin_src sh
+codex plugin marketplace upgrade matsugit
+codex plugin add matsugit@matsugit
+#+end_src
+
 * Install
 
 Upgrading from Folioforge? Follow [[file:migration.org][the rename migration guide]] first;

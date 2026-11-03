@@ -4,13 +4,13 @@ import {EditorView, basicSetup} from 'codemirror';
 import {markdown} from '@codemirror/lang-markdown';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces} from 'lucide';
+import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.6.0'});
+const app = new App({name: 'matsugit', version: '0.6.1'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -24,6 +24,7 @@ let sourceInput = 0;
 let pendingPatch;
 let recoveryId, recoveryGeneration = 0, recoveryTimer, recoveryPending = false, recoveryPromise, recoveryCandidate;
 let restoredPosition = false;
+let presentation = null;
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
 const notice = (message = '') => { $('notice').hidden = !message; $('notice-text').textContent = message; $('reload').hidden = !state.conflict; };
@@ -48,7 +49,8 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
 ]});
 for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': PanelsTopLeft,
   open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
-  recover: History, 'close-recovery': X, 'compact-markup': Braces})) $(id).append(createElement(icon));
+  recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
+  'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2})) $(id).append(createElement(icon));
 $('compact-markup').onclick = () => {
   const compact = $('compact-markup').getAttribute('aria-pressed') !== 'true';
   $('compact-markup').setAttribute('aria-pressed', String(compact));
@@ -125,14 +127,55 @@ function changeFormat(format) {
   refreshControls(); updateModelContext();
   scheduleRecovery();
 }
+function presentationMessage(extra = {}) {
+  $('preview').contentWindow?.postMessage({matsugitPreview: previewToken, presenting: !!presentation, ...extra}, '*');
+}
+function exitPresentation() {
+  if (!presentation) return;
+  const previous = presentation; presentation = null;
+  presentationMessage();
+  document.body.classList.remove('presenting');
+  $('presentation-controls').hidden = true;
+  $('sync').checked = previous.sync;
+  changeFormat(previous.format); changeLayout(previous.layout);
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  $('present').focus();
+}
+$('present').onclick = () => {
+  if (presentation || state.loading) return;
+  presentation = {format: state.format, layout: state.layout, sync: $('sync').checked};
+  $('sync').checked = false;
+  document.body.classList.add('presenting');
+  $('presentation-controls').hidden = false;
+  state.loading = true;
+  changeFormat('slides'); changeLayout('render');
+  state.loading = false;
+  if (!demo && state.renderedRevision !== state.revision) render();
+  presentationMessage(); $('preview').focus();
+  // Embedded hosts may forbid fullscreen; the slide-only view still works.
+  document.documentElement.requestFullscreen?.().catch(() => {});
+};
+$('present-exit').onclick = exitPresentation;
+$('present-previous').onclick = () => presentationMessage({presentNavigate: 'prev'});
+$('present-next').onclick = () => presentationMessage({presentNavigate: 'next'});
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) exitPresentation();
+});
+document.addEventListener('keydown', event => {
+  if (!presentation) return;
+  const direction = {ArrowLeft:'prev', ArrowUp:'prev', PageUp:'prev', ArrowRight:'next', ArrowDown:'next', PageDown:'next', ' ':'next'}[event.key];
+  if (event.key === 'Escape') { event.preventDefault(); exitPresentation(); }
+  else if (direction) { event.preventDefault(); presentationMessage({presentNavigate: direction}); }
+});
 for (const button of document.querySelectorAll('button[data-layout]')) button.onclick = () => changeLayout(button.dataset.layout);
 for (const button of document.querySelectorAll('button[data-format]')) button.onclick = () => changeFormat(button.dataset.format);
 window.addEventListener('message', event => {
   if (event.source !== $('preview').contentWindow || event.data?.matsugitPreview !== previewToken) return;
+  if (event.data.presentExit) { exitPresentation(); return; }
   if (event.data.patched && pendingPatch?.id === event.data.patched) {
     pendingPatch.finish(event.data.patchError); pendingPatch = null;
   }
-  if (event.data.matsugitReady) { if (!restoredPosition) followSource(); restoredPosition = false; }
+  if (event.data.matsugitReady) { if (!restoredPosition) followSource(); restoredPosition = false; presentationMessage(); }
   if (['slides', 'document'].includes(event.data?.matsugitFormat)) changeFormat(event.data.matsugitFormat);
   const position = event.data?.matsugitPosition;
   if (position && ['slides', 'document'].includes(position.format)
@@ -142,6 +185,7 @@ window.addEventListener('message', event => {
       h: Number.isInteger(position.h) && position.h >= 0 ? position.h : 0,
       v: Number.isInteger(position.v) && position.v >= 0 ? position.v : 0,
       slideId: typeof position.slideId === 'string' && position.slideId.length < 512 ? position.slideId : ''};
+    if (position.format === 'slides') $('present-position').textContent = String((position.h || 0) + 1);
     scheduleRecovery();
     if ($('sync').checked && position.userNavigation && position.heading
         && Number.isFinite(position.inputTime) && position.inputTime >= sourceInput) {
