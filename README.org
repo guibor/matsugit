@@ -53,6 +53,12 @@ codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit
 #+end_src
 
+Present with the screen icon and Escape back to editing. The download picker
+offers source, HTML, ZIP, PDF and editable PowerPoint. Export into a configured
+OneDrive folder without an API, or review and explicitly push both outputs to
+a named GitHub/GitLab target. See the [[file:docs/delivery.org][presentation and delivery guide]] for
+setup, PowerPoint fidelity limits, and the distinction between push and deployment.
+
 Start a new Codex session and ask: "Open =/absolute/path/deck.md= in matsugit
 with a split slide preview." Supported desktop builds also offer matsugit as
 a file-opening action. The repository remains private; installation uses your

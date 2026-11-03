@@ -72,6 +72,9 @@ def publish(settings, confirmed=False, deploy=False):
     remote, branch = settings["remote"], settings["branch"]
     preflight(settings)
     host, project, base = identity(repo, remote)
+    original_remote = git(repo, 'remote', 'get-url', remote)
+    if settings.get('expected_remote') and git(repo, 'remote', 'get-url', remote) != settings['expected_remote']:
+        raise Error('Target remote does not match expected_remote; nothing published')
     subdir = str(Path(settings["site_dir"]) / settings["slug"])
     dest = inside(repo, subdir)
     check_destination(dest, settings["source"])
@@ -80,7 +83,8 @@ def publish(settings, confirmed=False, deploy=False):
     if (site / "index.html").exists() and not site_marker.is_file():
         raise Error("Refusing to overwrite an unowned site index")
     source_digest = hashlib.sha256(settings["source"].read_bytes()).hexdigest()
-    edit_part = "/edit/" if host == "github.com" else "/-/edit/"
+    provider = settings.get('provider', 'github' if host == 'github.com' else 'gitlab')
+    edit_part = "/edit/" if provider == "github" else "/-/edit/"
     source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
     edit = base + edit_part + quote(branch, safe="") + "/" + quote(subdir + '/' + source_name)
     with tempfile.TemporaryDirectory(prefix="matsugit-render-") as temp:
@@ -92,6 +96,8 @@ def publish(settings, confirmed=False, deploy=False):
                 print("Cancelled; target checkout unchanged")
                 return None
         preflight(settings)
+        if git(repo, 'remote', 'get-url', remote) != original_remote:
+            raise Error('Remote changed during rendering; nothing published')
         git(repo, "fetch", remote, branch)
         upstream = git(repo, "rev-parse", "FETCH_HEAD")
         ahead = git(repo, "rev-list", "--count", f"{upstream}..HEAD")
@@ -118,13 +124,15 @@ def publish(settings, confirmed=False, deploy=False):
         git(repo, "add", "--", *paths)
         git(repo, "commit", "-m", f"Publish {settings['slug']} document and slides", "--", *paths)
         sha = git(repo, "rev-parse", "HEAD")
+        if git(repo, 'remote', 'get-url', remote) != original_remote:
+            raise Error('Remote changed; local publication commit retained, not pushed')
         git(repo, "push", remote, f"{sha}:refs/heads/{branch}")
         print(f"Pushed {sha}. Hosting availability has not been verified.", flush=True)
         if deploy:
-            if host == "github.com":
+            if provider == "github":
                 workflow = existing(repo / '.github/workflows/matsugit-pages.yml',
                                     repo / '.github/workflows/folioforge-pages.yml').name
-                run(["gh", "workflow", "run", workflow, "--ref", branch, "--repo", project])
+                run(["gh", "workflow", "run", workflow, "--ref", branch, "--repo", base])
             else:
                 run(["glab", "ci", "run", "--branch", branch], cwd=repo)
             print("Deployment requested; check CI before sharing a URL.", flush=True)

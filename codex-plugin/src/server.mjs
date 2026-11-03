@@ -6,11 +6,13 @@ import {z} from 'zod';
 import {WorkspaceStore, MAX_SOURCE, checkedPath} from './store.mjs';
 import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
+import {WorkspaceActions} from './actions.mjs';
 
 const uri = 'ui://matsugit/workspace-v1';
 const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
 const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
+const actions = new WorkspaceActions(runtime, store);
 const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
@@ -23,8 +25,21 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.6.1'});
+  const server = new McpServer({name: 'matsugit', version: '0.7.0'});
   new OpenAIExtensions(server);
+  server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
+    inputSchema:z.object({action:z.enum(['options','export','plan','publish']), session:z.string().optional(),
+      text:z.string().max(MAX_SOURCE).optional(), name:z.string().max(512).optional(), theme:z.string().max(80).optional(),
+      target:z.string().max(80).optional(), format:z.enum(['html','zip','pptx','pdf']).optional(),
+      sync_folder:z.boolean().optional(), plan:z.string().optional(), deploy:z.boolean().optional()}),
+    annotations:{readOnlyHint:false, destructiveHint:true, openWorldHint:true}},
+    guard(async (args,context) => result(actions.start(args,getResourcePath(context.mcpReq?._meta)))));
+  server.registerTool('matsugit_action_status', {description:'Read progress for this workspace operation.', ...appOnly,
+    inputSchema:z.object({job:z.string(),session:z.string().optional()}),annotations:readOnly},
+    guard(async ({job,session},context) => result(actions.status(job,session,getResourcePath(context.mcpReq?._meta)))));
+  server.registerTool('matsugit_export_chunk', {description:'Download a bounded chunk of this workspace export.', ...appOnly,
+    inputSchema:z.object({job:z.string(),session:z.string().optional(),offset:z.number().int().nonnegative()}),annotations:readOnly},
+    guard(async ({job,session,offset},context) => {const {chunk,...data}=actions.chunk(job,offset,session,getResourcePath(context.mcpReq?._meta)); return result(data,{chunk});}));
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: runtime.app,
     _meta: {'openai/ui': {preferredDisplayMode: 'fullscreen', availableDisplayModes: ['fullscreen']},
@@ -109,4 +124,4 @@ serveStdio(() => {
 }, {onerror: error => console.error(error)});
 process.once('SIGTERM', () => { store.close(); process.exit(0); });
 process.once('SIGINT', () => { store.close(); process.exit(0); });
-process.once('exit', () => { store.close(); runtime.close(); });
+process.once('exit', () => { const idle = actions.close(); store.close(); if (idle) runtime.close(); });

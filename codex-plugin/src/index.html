@@ -13,7 +13,8 @@
       <button id="open" title="Open Markdown file" aria-label="Open Markdown file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
-      <button id="download" title="Download source" aria-label="Download source"></button>
+      <button id="download" title="Download or export" aria-label="Download or export"></button>
+      <button id="publish" title="Publish document and slides" aria-label="Publish document and slides"></button>
       <button id="present" title="Present slides" aria-label="Present slides"></button>
     </div>
   </header>
@@ -53,5 +54,24 @@
   <button id="present-exit" title="Exit presentation (Escape)" aria-label="Exit presentation"></button>
 </div>
 <dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
+<dialog id="export-dialog" class="delivery-dialog" aria-labelledby="export-title">
+  <div class="recovery-heading"><h2 id="export-title">Export</h2><button id="close-export" title="Close" aria-label="Close"></button></div>
+  <label>Format<select id="export-format"><option value="source">Source</option><option value="pptx">PowerPoint (editable)</option><option value="pdf">PDF slides</option><option value="html">Slide HTML</option><option value="zip">ZIP: document, slides and source</option></select></label>
+  <label>Destination<select id="export-destination"><option value="download">Download</option><option id="sync-destination" value="sync" disabled>Synced folder (not configured)</option></select></label>
+  <small id="export-folder"></small>
+  <p id="pptx-warning" hidden>Editable text and tables; charts and diagrams are images. Complex layouts may differ. Review in PowerPoint before sharing.</p>
+  <button id="export-run" class="delivery-primary">Export</button>
+  <pre id="export-progress" role="status" aria-live="polite"></pre>
+</dialog>
+<dialog id="publish-dialog" class="delivery-dialog" aria-labelledby="publish-title">
+  <div class="recovery-heading"><h2 id="publish-title">Publish</h2><button id="close-publish" title="Close" aria-label="Close"></button></div>
+  <label>Target<select id="publish-target"><option value="">Project default</option></select></label>
+  <button id="publish-review" class="delivery-primary">Review target</button>
+  <div id="publish-confirmation" hidden><pre id="publish-plan"></pre>
+    <label class="auto"><input type="checkbox" id="publish-deploy">Also request the configured CI deployment</label>
+    <button id="publish-confirm" class="delivery-primary">Commit and push</button>
+  </div>
+  <pre id="publish-progress" role="status" aria-live="polite"></pre>
+</dialog>
 <script>/* APP_SCRIPT */</script>
 </body></html>

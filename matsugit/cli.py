@@ -11,6 +11,23 @@ from .publish import publish, setup_ci
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Render editable documents and themed slides together")
     commands = parser.add_subparsers(dest="command", required=True)
+    targets = commands.add_parser('target', help='Configure named publishing checkouts without publishing')
+    targets.add_argument('action', choices=['list', 'set', 'default'])
+    targets.add_argument('name', nargs='?')
+    for flag in ('repo', 'provider', 'branch', 'remote', 'site-dir', 'site-url', 'theme', 'expected-remote'):
+        targets.add_argument('--' + flag)
+    targets.add_argument('--default', action='store_true')
+    targets.add_argument('--json', action='store_true')
+    export = commands.add_parser('export', help='Export a local file, optionally into a configured synced folder')
+    export.add_argument('source', type=Path)
+    export.add_argument('--format', choices=['html', 'zip', 'pptx', 'pdf'], required=True)
+    export.add_argument('--output', type=Path)
+    export.add_argument('--sync-folder', action='store_true')
+    export.add_argument('--theme')
+    export.add_argument('--quarto')
+    export.add_argument('--reference-doc', type=Path)
+    folder = commands.add_parser('export-folder', help='Configure a local OneDrive/synced export folder; no API access')
+    folder.add_argument('directory', type=Path)
     for name in ('status', 'update', 'rollback'):
         p = commands.add_parser(name, help=f'{name.title()} configured versioned renderer bundles')
         select = p.add_mutually_exclusive_group(required=True)
@@ -23,6 +40,7 @@ def main(argv=None):
             p.add_argument('--version', help='Install a specific published version')
     commands.add_parser("setup-editor", help="Provision a verified isolated Pandoc when needed")
     commands.add_parser('setup-charts', help='Install the optional isolated local chart backend')
+    commands.add_parser('setup-export', help='Install isolated Chromium support for PDF and diagram export')
     template = commands.add_parser('template', help='Print or create an editable Markdown/Org starter')
     from .authoring import TEMPLATES, ELEMENTS
     template.add_argument('name', choices=sorted(TEMPLATES.keys() | ELEMENTS.keys()))
@@ -43,23 +61,51 @@ def main(argv=None):
     editor.add_argument("--output", required=True, type=Path)
     editor.add_argument("--no-open", action="store_true")
     editor.add_argument("--port", type=int, default=0)
-    for name in ("render", "publish", "setup-ci"):
+    for name in ("render", "publish", "publish-plan", "setup-ci"):
         p = commands.add_parser(name)
         if name != "setup-ci":
             p.add_argument("source", type=Path)
             p.add_argument('--handout', action='store_true', default=None,
                            help='Also render a slide-ordered presenter handout with notes')
-        for flag in ("repo", "theme", "themes-dir", "quarto", "site-dir", "slug", "branch", "remote"):
+        for flag in ("repo", "theme", "themes-dir", "quarto", "site-dir", "slug", "branch", "remote", "target"):
             p.add_argument("--" + flag)
         if name == "render":
             p.add_argument("--output", required=True, type=Path)
         elif name == "publish":
             p.add_argument("--yes", action="store_true", help="Confirm committing and pushing rendered artifacts")
             p.add_argument("--deploy", action="store_true", help="Also request the explicitly installed Pages workflow")
-        else:
+        elif name == 'setup-ci':
             p.add_argument("--provider", choices=["github", "gitlab"], required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == 'setup-export':
+            from .exports import setup
+            setup()
+            return 0
+        if args.command == 'target':
+            from . import targets
+            if args.action == 'list':
+                data = targets.settings()
+                print(json.dumps({'default': data.get('default_publish_target'), 'targets': data.get('publish_targets', {})}, indent=2))
+            elif args.action == 'default':
+                targets.resolve(args.name)
+                print(targets.save({'default_publish_target': args.name}))
+            else:
+                print(targets.configure(args.name or '', vars(args), args.default))
+            return 0
+        if args.command == 'export-folder':
+            from .targets import save
+            directory = args.directory.expanduser().resolve()
+            if not directory.is_dir():
+                raise Error('Select an existing local sync folder; no account is connected automatically')
+            print(save({'export_directory': str(directory)}))
+            return 0
+        if args.command == 'export':
+            from .exports import export_file
+            result = export_file(config(args.source, vars(args)), args.format, args.output,
+                                 sync_folder=args.sync_folder, reference=args.reference_doc)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         if args.command == 'setup-charts':
             from .charts import setup
             setup()
@@ -101,6 +147,9 @@ def main(argv=None):
             print(f"Rendered: {args.output.resolve()}")
         elif args.command == "publish":
             publish(settings, confirmed=args.yes, deploy=args.deploy)
+        elif args.command == 'publish-plan':
+            from .targets import plan
+            print(json.dumps(plan(settings), indent=2))
         else:
             setup_ci(settings, args.provider)
         return 0

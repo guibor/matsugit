@@ -14,7 +14,7 @@ export class PluginRuntime {
     this.files = Object.entries(files).map(([name, content]) => {
       if (typeof content !== 'string' || name.includes('\\') ||
           name.split('/').some(part => !part || part.startsWith('.')) ||
-          !(name === 'codex-plugin/worker.py' || name.startsWith('matsugit/'))) {
+          !(['codex-plugin/worker.py', 'codex-plugin/actions.py'].includes(name) || name.startsWith('matsugit/'))) {
         throw Error('Invalid bundled matsugit runtime path.');
       }
       return [name, Buffer.from(content, 'base64')];

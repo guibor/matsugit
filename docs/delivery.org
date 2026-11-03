@@ -1,0 +1,106 @@
+#+title: Present, export and publish
+
+* Present now
+In the Codex workspace, click the presentation-screen icon. Arrow keys or Space
+advance; Escape returns to your previous editor layout. If Codex blocks native
+fullscreen, the workspace still becomes a slide-only presentation. This does not
+save, publish or require hosting.
+
+* Downloads and local synced folders
+The download icon opens an export picker:
+
+| Format | What it preserves |
+|--------+-------------------|
+| Source | The current Markdown or Org draft |
+| HTML | Self-contained rendered slides; use ZIP for working document/source links |
+| ZIP | Reading document, slides, editable source and supporting files |
+| PDF | Rendered slide styling, without editable slide objects |
+| PowerPoint | Editable text and native tables; charts/diagrams as images |
+
+PowerPoint is an editable adaptation, not a CSS-to-PowerPoint clone. The selected
+theme's chart palette colors the generated native template. Complex compositions,
+merged cells, fonts and sizing can differ. Review before sharing. For a closer
+corporate match, provide a native PowerPoint reference template:
+#+begin_src sh
+matsugit export deck.md --format pptx --output deck.pptx --reference-doc template.pptx
+#+end_src
+A trusted theme pack can set ="powerpoint": "template.pptx"= in =theme.json=.
+The referenced file is copied like other manifest-listed theme assets. With no
+template, the generated default is widescreen 16:9. Native text and tables stay
+editable; this does not promise native editable Mermaid or Vega-Lite shapes.
+
+For PDF or Mermaid-to-PowerPoint capture, install the isolated browser once:
+#+begin_src sh
+matsugit setup-export
+#+end_src
+No browser is installed implicitly. Capture blocks network requests; render
+accepts only the existing local asset rules, and never executes document code.
+
+CLI examples:
+#+begin_src sh
+matsugit export deck.md --format zip --output deck.zip
+matsugit export deck.org --format pdf --output deck.pdf
+matsugit export deck.md --format html --output deck.html
+#+end_src
+Exports never overwrite an existing output file. The plugin exports the current
+draft without saving over the source; CLI exports the source on disk. ZIP includes
+editable source, and slide HTML can include speaker notes: hidden is not private.
+
+** OneDrive without an API
+Choose an existing local folder already managed by OneDrive (or another sync app):
+#+begin_src sh
+matsugit export-folder "$HOME/Library/CloudStorage/OneDrive-Example/Decks"
+matsugit export deck.md --format pptx --sync-folder
+#+end_src
+Use the actual folder on your machine, not the example above. No account is
+connected, no permissions change, and no cloud API is used. Once configured,
+=Synced folder= appears in the Codex export dialog. On repeated exports a dated
+copy preserves the earlier file. Matsugit confirms the local save only; check the
+sync app for upload status. Source download remains a browser download.
+
+* Configurable Git targets
+Register an existing clean checkout; this does not clone or publish:
+#+begin_src sh
+matsugit target set docs --repo /path/to/docs --provider gitlab --default
+matsugit target set github-docs --repo /path/to/github-docs --provider github
+matsugit target list
+matsugit publish-plan deck.md --target docs
+#+end_src
+Optional settings include =--branch=, =--remote=, =--site-dir=, =--site-url=,
+=--theme= and =--expected-remote=. The last requires an exact credential-free Git
+remote match. The default branch is =main= and the remote is =origin=.
+
+In Codex, click the upload icon, choose a target, and select =Review target=.
+The source must be saved first. Inspect the repository, branch, output directory
+and theme, then explicitly select =Commit and push=. Source or checkout changes
+invalidate the plan. Unknown files are not overwritten, dirty target checkouts
+are refused, and unrelated unpublished commits are not pushed. A push may trigger
+the target's existing CI even when the additional CI checkbox is off.
+
+The default target applies to publication only, not ordinary previews or downloads.
+A source project's =matsugit.json= may set =publish_target=; an explicit project
+=repo= retains its old behavior and takes precedence over the global default.
+=--target= selects a named target explicitly. Current-repository publication remains
+the fallback when no target is configured.
+
+#+begin_src sh
+matsugit publish deck.md --target docs
+#+end_src
+The CLI asks before committing/pushing. =--yes= supplies explicit confirmation;
+=--deploy= additionally requests an already-installed deployment workflow. Do not
+use either merely to preview a document. Hosting availability and access control
+must be checked separately: pushing is not proof that Pages is live or private.
+
+** Existing CI stays intact
+No deployment workflow or hosting setting changes when configuring a target.
+For a new site, =matsugit setup-ci --provider github --repo /path/to/docs= (or
+=gitlab=) writes opt-in CI files and refuses to overwrite existing ones. Review
+them before committing. GitLab requires explicitly including its generated file;
+hosting and authentication remain the operator's responsibility.
+
+For an existing static-site pipeline, point =--site-dir= at a directory it already
+copies. The pushed bundle contains both outputs and source. Such a copy-only path
+does not automatically rebuild after editing the bundled source: republish through
+matsugit, or use the explicit matsugit CI rebuild integration. Private deployment
+wrappers remain separate; the Codex publisher refuses =deployment: tailscale=
+and directs you to the existing private CLI/Emacs command.

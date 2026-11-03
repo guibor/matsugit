@@ -78,9 +78,21 @@ def config(source, overrides=None):
     except Error:
         root = source.parent
     settings = {}
+    project = {}
     for path in (*global_config(), root / "folioforge.json", root / "matsugit.json"):
         if path.is_file():
-            settings.update(read_json(path))
+            data = read_json(path)
+            settings.update(data)
+            if path in (root / 'folioforge.json', root / 'matsugit.json'):
+                project.update(data)
+    overrides = overrides or {}
+    target = overrides.get('target') or project.get('publish_target')
+    if not target and not (overrides.get('repo') or project.get('repo')):
+        target = settings.get('default_publish_target')
+    if target and (overrides.get('target') or overrides.get('command') in ('publish', 'publish-plan', 'setup-ci')):
+        from .targets import resolve
+        settings.update(resolve(target, settings))
+        settings['target'] = target
     settings.update({k: v for k, v in (overrides or {}).items() if v is not None})
     settings["source"] = source
     settings["source_root"] = root
@@ -147,13 +159,13 @@ def install_theme(settings, output):
             theme = Path(__file__).parent / 'themes/default'
         own = read_json(theme / 'theme.json')
         manifest, files = resolve(own['extends'], (*parents, name)) if own.get('extends') else ({}, {})
-        for key in ('document', 'slides', 'charts'):
+        for key in ('document', 'slides', 'charts', 'powerpoint'):
             if key in own:
                 files[own[key]] = inside(theme, own[key])
         for asset in own.get('assets', []):
             files[asset] = inside(theme, asset)
         manifest.update({k:v for k,v in own.items() if k not in ('extends', 'assets')})
-        manifest['assets'] = sorted(set(files) - {manifest.get(k) for k in ('document', 'slides', 'charts')})
+        manifest['assets'] = sorted(set(files) - {manifest.get(k) for k in ('document', 'slides', 'charts', 'powerpoint')})
         return manifest, files
     manifest, files = resolve(settings['theme'])
     (output / "theme").mkdir(parents=True, exist_ok=True)

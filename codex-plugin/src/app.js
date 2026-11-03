@@ -8,9 +8,10 @@ import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, Refre
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
+import {delivery} from './delivery.js';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.6.1'});
+const app = new App({name: 'matsugit', version: '0.7.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -559,7 +560,8 @@ function hostContext(context) {
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   for (const side of ['top','bottom','left','right']) document.documentElement.style.setProperty(`--safe-${side}`, `${context?.safeAreaInsets?.[side] || 0}px`);
 }
-$('save').onclick = save; $('download').onclick = download;
+$('save').onclick = save;
+delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, demo});
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => { state.forceFull ||= event.shiftKey; render(); }; $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };

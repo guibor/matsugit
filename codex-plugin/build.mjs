@@ -35,6 +35,7 @@ async function includeTree(relative) {
   }
 }
 await include('codex-plugin/worker.py');
+await include('codex-plugin/actions.py');
 for (const name of (await readdir(path.join(root, '../matsugit'))).sort().filter(name => name.endsWith('.py'))) {
   await include('matsugit/' + name);
 }

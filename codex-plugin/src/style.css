@@ -16,3 +16,11 @@ body.presenting #source-pane,body.presenting #divider{display:none}
 #presentation-controls:hover,#presentation-controls:focus-within{opacity:1}
 #presentation-controls button{width:34px;height:34px;display:grid;place-items:center}
 #present-position{min-width:24px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums}
+.delivery-dialog{width:min(580px,calc(100vw - 24px));max-height:85dvh;border:1px solid var(--border);border-radius:6px;padding:18px;background:var(--bg);color:var(--fg)}
+.delivery-dialog::backdrop{background:#0005}.delivery-dialog label:not(.auto){display:grid;gap:6px;margin:12px 0}
+.delivery-dialog select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;width:100%}
+.delivery-dialog .recovery-heading button{display:grid;place-items:center;width:32px;height:32px}
+.delivery-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;max-height:32dvh;overflow:auto}
+.delivery-dialog small,.delivery-dialog p{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.delivery-primary{border-color:var(--border);margin-top:12px;padding:6px 12px}
+@media(max-width:400px){.actions{flex-wrap:wrap;justify-content:flex-end;max-width:100%}}

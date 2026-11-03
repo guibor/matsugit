@@ -21,6 +21,11 @@ one slide.
 
 ## Choose the workflow
 
+- **Present, download or publish:** read [delivery.md](references/delivery.md).
+  Present mode is local. Export is distinct from publication; a configured sync
+  folder writes locally, without a cloud API. Always review/confirm a target before
+  pushing. Editable PowerPoint is an adaptation, not exact CSS fidelity.
+
 - **Edit/preview in the Codex workspace:** read [codex-workspace.md](references/codex-workspace.md).
   Prefer the available plugin tools when the user asks for an interactive split
   preview. Keep unsaved workspace edits separate from disk saves and publication.
