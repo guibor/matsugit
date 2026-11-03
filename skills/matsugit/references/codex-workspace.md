@@ -9,6 +9,16 @@ The workspace has Source/Markdown, Render and Split layouts, plus independent
 Document/Slides tabs. It uses the normal matsugit renderer and project/theme
 configuration. Preview is local, uses temporary files and does not save or publish.
 
+Plugin 0.10.0 adds independent Raw/Visual editing in the Markdown pane. Visual
+is a source-preserving view, not an HTML round trip. Use the pencil on a table
+or the table toolbar icon for embedded cell editing, merge/split and formatting.
+Apply changes the draft once; Save writes the file. Unapplied table edits are
+recoverable, and a changed source blocks applying a stale table. Simple tables
+stay pipe Markdown; merged cells use Pandoc grid Markdown. Org prose stays raw,
+with native Org tables supported by the same table tool (not formula tables).
+The copy icon beside the filename copies a real local source path when available;
+never invent a path for an unnamed draft or opaque host resource.
+
 When editing an open workspace, first use `matsugit_get_source` if the host
 exposes its model-context tools. It returns the current unsaved text and revision.
 Apply edits through `matsugit_replace_source` with that revision. On a revision

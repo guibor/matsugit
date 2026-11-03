@@ -9,7 +9,7 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 test('portable, Codex compatibility and workspace release versions agree', () => {
-  const manifests = ['plugin.json', '.codex-plugin/plugin.json', 'codex-plugin/package.json']
+  const manifests = ['plugin.json', '.codex-plugin/plugin.json', '.cursor-plugin/plugin.json', 'codex-plugin/package.json']
     .map(name => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')));
   assert.equal(new Set(manifests.map(manifest => manifest.version)).size, 1);
 });
@@ -41,6 +41,12 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.equal(opened.structuredContent.format, 'slides');
     assert.equal(opened.structuredContent.layout, 'split');
     const {session, etag} = opened.structuredContent;
+    const copied = await client.callTool({name:'matsugit_path',arguments:{session}});
+    assert.equal(copied.structuredContent.path,fs.realpathSync(file));
+    assert.equal((await client.callTool({name:'matsugit_path',arguments:{}})).structuredContent.path,null);
+    assert.equal((await client.callTool({name:'matsugit_path',arguments:{session:'not-opened'}})).isError,true);
+    for (const name of ['matsugit_path','matsugit_table'])
+      assert.deepEqual(tools.find(tool=>tool.name===name)._meta.ui.visibility,['app']);
     const saved = await client.callTool({name: 'matsugit_save', arguments: {session, etag, text: '# Saved\n'}});
     assert.equal(saved.structuredContent.outcome, 'saved');
     const stale = await client.callTool({name: 'matsugit_save', arguments: {session, etag, text: '# Stale\n'}});

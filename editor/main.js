@@ -1,6 +1,7 @@
 import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import {Table, TableRow, TableCell, TableHeader} from '@tiptap/extension-table';
+import {tableExtensions, tableHTML as normalizedTableHTML} from './table-core.js';
 import {createElement, Bold, Italic, Strikethrough, Code, Undo2, Redo2, Combine, Split,
   Link2, Unlink, PanelTop, List, FileCode2} from 'lucide';
 
@@ -14,18 +15,7 @@ const controls = [];
 const error = (text) => { $('error').textContent = text; $('error').hidden = !text; };
 const status = (text) => { $('status').textContent = text; };
 function tableHTML() {
-  const document = new DOMParser().parseFromString(editor.getHTML(), 'text/html');
-  const table = document.querySelector('table');
-  if (table) {
-    // Preserve the header/body distinction which ProseMirror stores as th nodes.
-    const head = document.createElement('thead');
-    for (const row of Array.from(table.rows)) {
-      if (!row.cells.length || !Array.from(row.cells).every(cell => cell.tagName === 'TH')) break;
-      head.append(row);
-    }
-    if (head.rows.length) table.insertBefore(head, table.tBodies[0] || null);
-  }
-  return document.body.innerHTML;
+  return normalizedTableHTML(editor);
 }
 async function api(path, data, keepalive = false) {
   const response = await fetch(`api/${path}`, {
@@ -109,18 +99,10 @@ function update() {
   clearTimeout(timer); timer = setTimeout(preview, 400);
 }
 async function initialize(html) {
-  const aligned = (base) => base.extend({addAttributes() {
-    return {...this.parent(), textAlign: {default: null,
-      parseHTML: element => element.style.textAlign || null,
-      renderHTML: attrs => attrs.textAlign ? {style: `text-align: ${attrs.textAlign}`} : {},
-    }};
-  }});
   // Pandoc's thead/tbody wrappers are normalized by ProseMirror. The server
   // checks semantic equivalence after import, including spans and formatting.
   editor = new Editor({element: $('editor'), content: html,
-    extensions: [StarterKit.configure({heading: false, blockquote: false, codeBlock: false,
-      horizontalRule: false, underline: false, trailingNode: false, link: {openOnClick: false, autolink: false}}),
-      Table.configure({resizable: true, lastColumnResizable: false}), TableRow, aligned(TableCell), aligned(TableHeader)],
+    extensions: tableExtensions({StarterKit, Table, TableRow, TableCell, TableHeader}),
     onUpdate: () => {
       dirty = true; revision++; status(demo ? 'Demo' : 'Unsaved changes'); update();
       clearTimeout(draftTimer); draftTimer = setTimeout(checkpoint, 600);

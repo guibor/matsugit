@@ -31,7 +31,7 @@ export class WorkspaceStore {
     const target = checkedPath(file), text = read(target), id = randomUUID();
     if (this.sessions.size >= 64) throw Error('Too many open workspaces; restart the matsugit plugin.');
     this.sessions.set(id, target);
-    return {session: id, name: path.basename(target), text, etag: hash(text), writable: true};
+    return {session: id, name: path.basename(target), path: target, text, etag: hash(text), writable: true};
   }
   source(session) {
     const file = this.sessions.get(session);

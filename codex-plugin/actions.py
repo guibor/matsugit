@@ -19,6 +19,20 @@ def main(request):
     os.environ.setdefault('GIT_SSH_COMMAND', 'ssh -o BatchMode=yes -o ConnectTimeout=15')
     os.environ['GH_PROMPT_DISABLED'] = '1'
     action = request['action']
+    if action.startswith('table-'):
+        from matsugit.table_editor import TableDocument
+        document = TableDocument(request['source'], fmt=request.get('format', 'markdown'))
+        if action == 'table-open':
+            source = request['source']
+            if request.get('html'):
+                source = document.serialize(request['html'])['markdown']
+                document = TableDocument(source, document.command, document.format)
+            return {'html': document.html, 'source': source}
+        if action == 'table-check':
+            return document.check_import(request['html'])
+        if action == 'table-serialize':
+            return document.serialize(request['html'])
+        raise Error('Unknown table operation')
     if action in ('repositories', 'connect-repository'):
         from matsugit.repositories import discover, connect
         if action == 'repositories':

@@ -21,12 +21,20 @@ export function recoveryDirectory() {
     : path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local/state'), 'matsugit/recovery'));
 }
 const number = (value, fallback, max) => Number.isFinite(value) && value >= 0 ? Math.min(value, max) : fallback;
+function tableDraft(value) {
+  if (!value || !Number.isSafeInteger(value.from) || !Number.isSafeInteger(value.to) ||
+      value.from < 0 || value.to < value.from || value.to > 2*1024*1024 ||
+      !['markdown','org'].includes(value.format)) return null;
+  for (const item of [value.source,value.html]) if (typeof item !== 'string' || Buffer.byteLength(item)>1024*1024 || item.includes('\0')) return null;
+  return {from:value.from,to:value.to,source:value.source,html:value.html,format:value.format};
+}
 export function preferences(value = {}) {
   if (!value || typeof value !== 'object') value = {};
   const position = p => ({hash: typeof p?.hash === 'string' && /^#/.test(p.hash) ? p.hash.slice(0, 1024) : '',
     scroll: number(p?.scroll, 0, 1e9), h: Math.floor(number(p?.h, 0, 100000)), v: Math.floor(number(p?.v, 0, 100000)),
     slideId: typeof p?.slideId === 'string' ? p.slideId.slice(0, 512) : ''});
   return {layout: ['source', 'render', 'split'].includes(value.layout) ? value.layout : 'split',
+    editorMode:value.editorMode==='visual'?'visual':'raw', tableDraft:tableDraft(value.tableDraft),
     format: value.format === 'slides' ? 'slides' : 'document',
     theme: typeof value.theme === 'string' && /^[\w-]{0,80}$/.test(value.theme) ? value.theme : '',
     auto: value.auto !== false, sync: value.sync !== false,
@@ -76,7 +84,7 @@ export class RecoveryStore {
         const record = this.read(name.slice(0, -5));
         if (identity !== undefined && record.identity !== identity) continue;
         items.push({id: record.id, name: record.name, owner: record.owner, updated: record.updated,
-          dirty: record.text !== record.base, token: record.token});
+          dirty: record.text !== record.base || !!record.view.tableDraft, token: record.token});
       } catch { unreadable++; }
     }
     items.sort((a, b) => b.updated - a.updated || a.id.localeCompare(b.id));

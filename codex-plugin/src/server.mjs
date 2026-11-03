@@ -7,12 +7,14 @@ import {WorkspaceStore, MAX_SOURCE, checkedPath} from './store.mjs';
 import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
 import {WorkspaceActions} from './actions.mjs';
+import {TableTools} from './tables.mjs';
 
 const uri = 'ui://matsugit/workspace-v1';
 const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
 const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
 const actions = new WorkspaceActions(runtime, store);
+const tables = new TableTools(runtime);
 const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
@@ -25,8 +27,12 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.9.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.10.0'});
   new OpenAIExtensions(server);
+  server.registerTool('matsugit_table', {description:'Convert or validate a selected table locally. Does not save or publish.', ...appOnly,
+    inputSchema:z.object({operation:z.enum(['open','check','serialize']), source:z.string().max(1024*1024),
+      html:z.string().max(1024*1024).optional(), format:z.enum(['markdown','org']).optional()}), annotations:readOnly},
+    guard(async args => result({converted:true}, await tables.run(args))));
   server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
     inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository']), session:z.string().optional(),
       provider:z.enum(['github','gitlab']).optional(), host:z.string().max(253).optional(), repository:z.string().max(512).optional(), page:z.number().int().min(1).max(1000).optional(),
@@ -61,6 +67,9 @@ serveStdio(() => {
   server.registerTool('matsugit_read', {description: 'Refresh the document already opened in this workspace.', ...appOnly,
     inputSchema: z.object({session: z.string()}), annotations: readOnly},
     guard(async ({session}) => { const {text, ...data} = store.source(session); return result(data, {source: text}); }));
+  server.registerTool('matsugit_path', {description:'Read the real local path of the already-open document, if supplied by the host.', ...appOnly,
+    inputSchema:z.object({session:z.string().optional()}),annotations:readOnly},
+    guard(async ({session},context)=>result({path:store.owner(session,getResourcePath(context.mcpReq?._meta))})));
   server.registerTool('matsugit_save', {description: 'Save explicit workspace edits only if the opened file still matches the expected version. Never force overwrites.', ...appOnly,
     inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1)}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
@@ -125,4 +134,4 @@ serveStdio(() => {
 }, {onerror: error => console.error(error)});
 process.once('SIGTERM', () => { store.close(); process.exit(0); });
 process.once('SIGINT', () => { store.close(); process.exit(0); });
-process.once('exit', () => { const idle = actions.close(); store.close(); if (idle) runtime.close(); });
+process.once('exit', () => { tables.close(); const idle = actions.close(); store.close(); if (idle) runtime.close(); });

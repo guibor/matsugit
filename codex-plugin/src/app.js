@@ -2,19 +2,23 @@ import {App, applyDocumentTheme, applyHostStyleVariables} from '@modelcontextpro
 import {OpenAIExtensions} from '@openai/mcp-extensions/app';
 import {EditorView, basicSetup} from 'codemirror';
 import {markdown} from '@codemirror/lang-markdown';
+import {GFM} from '@lezer/markdown';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2} from 'lucide';
+import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Copy, Table2} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
 import {delivery} from './delivery.js';
+import {visualExtensions, visualMode} from './visual.mjs';
+import {tableDialog} from './table-dialog.js';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.9.0'});
+const app = new App({name: 'matsugit', version: '0.10.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
+  path:null, editorMode:'raw',
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
   bases: {}, revisions: {}, forceFull: false,
@@ -26,14 +30,17 @@ let pendingPatch;
 let recoveryId, recoveryGeneration = 0, recoveryTimer, recoveryPending = false, recoveryPromise, recoveryCandidate;
 let restoredPosition = false;
 let presentation = null;
+let tables;
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
 const notice = (message = '') => { $('notice').hidden = !message; $('notice-text').textContent = message; $('reload').hidden = !state.conflict; };
 const status = message => { $('status').textContent = message; };
 const editability = new Compartment();
 const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.of(value)];
-const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, markdown(), EditorView.lineWrapping,
+const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, markdown({extensions:GFM}), EditorView.lineWrapping,
   authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice}),
+  visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading,
+    open:range=>tables.open(range),preview:source=>tables.preview(source)}),
   editability.of(editable(!demo)),
   EditorView.contentAttributes.of({'aria-label': 'Markdown source'}),
   EditorView.domEventHandlers({focus: () => { sourceInput = Date.now(); }}),
@@ -51,7 +58,36 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
 for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': PanelsTopLeft,
   open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
-  'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2})) $(id).append(createElement(icon));
+  'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
+  'copy-path':Copy, 'edit-table':Table2})) $(id).append(createElement(icon));
+tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,enabled:()=>!demo&&!state.loading});
+$('edit-table').onclick=()=>tables.atSelection();
+function changeEditorMode(mode) {
+  state.editorMode=state.name.toLowerCase().endsWith('.org')?'raw':mode;
+  for(const button of document.querySelectorAll('[data-editor]')) {
+    button.setAttribute('aria-pressed',String(button.dataset.editor===state.editorMode));
+    button.disabled=button.dataset.editor==='visual' && state.name.toLowerCase().endsWith('.org');
+    button.title=button.disabled?'Visual prose editing is available for Markdown; Org source is preserved':'';
+  }
+  const visual=state.editorMode==='visual';
+  $('compact-markup').setAttribute('aria-pressed',String(visual));
+  editor.dispatch({effects:[visualMode.of(visual),compactMarkup.of(visual)]});scheduleRecovery();
+}
+for(const button of document.querySelectorAll('[data-editor]')) button.onclick=()=>changeEditorMode(button.dataset.editor);
+$('copy-path').onclick=async()=>{
+  try {
+    let path=state.path;
+    if(!path && (state.session || state.uri)) path=(await call('matsugit_path',state.session?{session:state.session}:{})).path;
+    if(!path)throw Error('The host has not provided a local path for this document.');
+    try { await navigator.clipboard.writeText(path); }
+    catch {
+      const input=document.createElement('textarea');input.value=path;input.style.position='fixed';input.style.opacity='0';document.body.append(input);input.select();
+      const copied=document.execCommand('copy');input.remove();
+      if(!copied)throw Error('Clipboard access was blocked. Document path: '+path);
+    }
+    status('Document path copied');
+  } catch(error){notice(error.message);}
+};
 $('compact-markup').onclick = () => {
   const compact = $('compact-markup').getAttribute('aria-pressed') !== 'true';
   $('compact-markup').setAttribute('aria-pressed', String(compact));
@@ -64,6 +100,10 @@ async function call(name, args) {
   return {...response.structuredContent, ...response._meta};
 }
 function refreshControls() {
+  $('edit-table').disabled=demo || state.loading;
+  for(const button of document.querySelectorAll('.ff-visual-table button')) button.disabled=demo || state.loading;
+  $('copy-path').disabled=!state.path&&!state.uri&&!state.session;
+  $('copy-path').title=state.path?'Copy document path: '+state.path:'Copy document path';
   $('present').title = state.format === 'slides' ? 'Present slides' : 'Present document';
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
@@ -343,8 +383,9 @@ async function save() {
 }
 async function load(data) {
   if (state.saving) { notice('Wait for the current save before opening another document.'); return; }
-  if (dirty() && !confirm('Discard the unsaved draft and open another document?')) return;
+  if ((dirty() || tables.pending()) && !confirm('Discard the unsaved draft and open another document?')) return;
   await flushRecovery();
+  tables.reset();
   const suppliedRecovery = data.recovery;
   const sequence = ++loadSequence;
   readSequence++;
@@ -357,11 +398,12 @@ async function load(data) {
   disposeUpdates?.(); disposeUpdates = null;
   if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
   Object.assign(state, {uri: data.file?.resourceUri || null, session: data.session || null,
-    name: data.file?.name || data.name || 'Untitled.md', conflict: false, rendered: null, renderedRevision: -1,
+    name: data.file?.name || data.name || 'Untitled.md', path:data.path || null, conflict: false, rendered: null, renderedRevision: -1,
     resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false,
     bases: {}, revisions: {}, forceFull: false,
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
   $('theme').value = ''; $('theme').placeholder = 'Project default'; $('theme').title = 'Theme';
+  changeEditorMode('raw');
   if (['source', 'render', 'split'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
   document.querySelector('button[data-layout="source"]').textContent = state.name.toLowerCase().endsWith('.org') ? 'Org' : 'Markdown';
@@ -386,7 +428,7 @@ async function load(data) {
         const candidate = suppliedRecovery || recovered.candidate;
         if (candidate && !suppliedRecovery) {
           applyView(candidate.view);
-          if (candidate.text !== candidate.base && candidate.text !== state.base) {
+          if ((candidate.text !== candidate.base && candidate.text !== state.base) || candidate.view?.tableDraft) {
             recoveryCandidate = candidate;
             $('recovery-message').textContent = `Unsaved recovery copy from ${new Date(candidate.updated).toLocaleString()}`;
             $('recovery-banner').hidden = false;
@@ -429,6 +471,7 @@ function recoveryScope() {
 function viewState() {
   const style = document.documentElement.style;
   return {layout: state.layout, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
+    editorMode:state.editorMode,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
     positions: state.positions};
@@ -438,6 +481,7 @@ function applyView(view) {
   const loading = state.loading; state.loading = true;
   $('theme').value = view.theme || ''; $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
   changeLayout(view.layout); changeFormat(view.format);
+  changeEditorMode(view.editorMode==='visual'?'visual':'raw');
   state.positions = view.positions; restoredPosition = true; origin = 'preview';
   document.documentElement.style.setProperty('--source-size', view.width + '%');
   document.documentElement.style.setProperty('--source-height', view.height + '%');
@@ -452,6 +496,7 @@ function applyRecovery(record) {
   state.conflict = state.writable && current !== record.base && current !== record.text;
   state.base = current === record.text ? current : record.base;
   applyView(record.view); recoveryCandidate = null; $('recovery-banner').hidden = true;
+  if(record.view?.tableDraft)setTimeout(()=>tables.restore(record.view.tableDraft),0);
 }
 function recoveryFailure(error) {
   $('recovery-status').textContent = 'Recovery unavailable';
@@ -583,9 +628,12 @@ $('file').onchange = async () => {
   notice('Imported browser copy. Download source to save; relative assets require opening the repository file with matsugit_open.');
 };
 document.addEventListener('keydown', event => {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); save(); }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault();
+    if($('table-dialog').open)$('table-apply').click();else save();
+  }
 });
-window.addEventListener('beforeunload', event => { flushRecovery(); if (dirty() && !demo) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { flushRecovery(); if ((dirty() || tables.pending()) && !demo) { event.preventDefault(); event.returnValue = ''; } });
 function resize(value) {
   const percent = Math.max(20, Math.min(80, value));
   document.documentElement.style.setProperty(innerWidth <= 700 ? '--source-height' : '--source-size', percent + '%');
@@ -615,7 +663,7 @@ document.modelContext?.registerTool({name: 'matsugit_replace_source', descriptio
     return JSON.stringify({revision: state.revision, saved: false});
   }});
 // Expose only the editor model to the isolated local UI test harness.
-window.matsugitWorkspace = {editor, state, load, render, save, reload, flushRecovery};
+window.matsugitWorkspace = {editor, state, load, render, save, reload, flushRecovery, tables};
 async function boot() {
 if (demo) {
   await load(demo);

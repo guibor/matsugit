@@ -297,8 +297,41 @@ The initial limits are 2 MiB of source, two concurrent renders, four minutes
 per render and 20 MiB of embedded HTML per output. A failed render retains the
 last successful preview and the editor text. Preview links switch between
 document and slides; external navigation is disabled inside the preview frame.
-No renderer-specific table-grid UI is embedded yet: tables can be edited as
-source here, or with the existing standalone matsugit table editor.
+
+* Raw and Visual editing (0.10.0+)
+
+Choose =Raw= or =Visual= above the source pane, independently of the
+=Document= / =Slides= preview. Raw retains the full Markdown source. Visual
+styles headings, emphasis and links, revealing inline syntax at the cursor,
+and shows pipe/grid tables as tables. Switching modes never rewrites the source.
+Custom slide blocks, YAML, code and unsupported constructs remain source-backed;
+this is not a general HTML-to-Markdown round trip. Raw is the initial default;
+the choice is remembered per recovered workspace.
+
+Click a table's pencil, double-click its cells, or put the cursor in a raw table
+and use the table icon. The embedded editor uses the same Tiptap/ProseMirror
+schema and validated Pandoc conversion as =matsugit edit-table=. It supports
+formatting, links, row/column operations, merge/split and local undo/redo.
+=Apply= makes one undoable source change; it does not save the document.
+Simple tables remain pipe Markdown; merged/multiline cells use Pandoc grid
+Markdown, never a replacement block of HTML. =Save= remains explicit.
+
+Unapplied table edits are included in private recovery checkpoints. If the source
+changes while the table is open, Apply refuses to overwrite it: download the
+table draft and reopen the current table to reconcile. Closing an edited table
+asks before discarding. Cmd/Ctrl-S inside the table dialog applies it; use Save
+afterward to write the document.
+
+The visual source display bounds pipe tables to 250 rows/1000 cells; larger
+tables stay raw, with no lost rows. Conversion supports up to 500 rows/4000 cells
+and 1 MiB. Unsupported table content, such as images or math, fails with source
+unchanged rather than silently dropping it. Full-prose Visual mode is Markdown
+only for now; native Org tables can still use the table icon. Org formula tables
+stay with native Org tools.
+
+The copy icon beside the filename copies the canonical local document path.
+Unnamed/browser-imported drafts have no local path; an opaque host resource
+works only when the host supplies its real path. No path is guessed from its name.
 
 * Develop and verify
 
