@@ -1,8 +1,36 @@
 # matsugit in Cursor
 
-**Install one skill. Ask for a deck. Keep editable Markdown as the source.**
+**Use the same interactive source/document/slides workspace in Cursor.**
 
-matsugit uses Cursor's native Agent Skills support. You do not need a VS Code
+## Interactive workspace
+
+With a current Cursor version supporting MCP Apps, Node 22+, Python 3.10+ and
+Quarto, run from an authenticated matsugit checkout (or use its existing launcher):
+
+```sh
+matsugit setup-cursor --check
+matsugit setup-cursor
+```
+
+For a pip installation, add `--checkout /absolute/path/to/matsugit`. This installs
+the shared MCP workspace into `~/.cursor/mcp.json`, links the existing authoring
+skill, and adds `/matsugit-open`, `/matsugit-slides`, `/matsugit-publish` commands.
+Other servers/settings are preserved; conflicting custom commands or skills are
+refused, not replaced. Enable/reload the matsugit MCP server in Cursor and start
+a new chat. Ask `/matsugit-slides Open /absolute/path/deck.md`. Present, split
+editing, downloads and reviewed source-to-CI publication use the same runtime as
+Codex. `/matsugit-publish` prepares a plan; it does not grant push approval.
+
+Update the checkout and rerun `setup-cursor` to refresh its managed configuration.
+Do not install both this global MCP entry and a duplicate marketplace MCP server.
+The `.cursor-plugin/` manifest also packages the shared skill, MCP and commands
+for Cursor's plugin distribution mechanism. No marketplace submission or team
+policy changes have been made. Actual availability depends on the Cursor host;
+the protocol can be tested without claiming every desktop version is supported.
+
+## Skill-only alternative
+
+matsugit also uses Cursor's native Agent Skills support. You do not need a VS Code
 extension, an MCP server, a custom model, or a second copy of its instructions.
 The same skill teaches authoring, theme creation and local previews.
 
@@ -92,4 +120,5 @@ See [Cursor's skill documentation](https://cursor.com/docs/skills) and the
 [Skills CLI](https://github.com/vercel-labs/skills) for native discovery and
 installation options; [Cursor plugins](https://cursor.com/docs/plugins) cover
 optional marketplace distribution. This integration uses the native skill
-format, not a matsugit-specific plugin API.
+format. The interactive option uses standard MCP Apps, not a separate renderer;
+see [Cursor's MCP documentation](https://cursor.com/docs/mcp).

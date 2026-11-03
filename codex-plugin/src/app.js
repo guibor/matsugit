@@ -362,7 +362,7 @@ async function load(data) {
   if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
   try {
     if (state.uri) {
-      if (!extensions.resources) throw Error('This host does not support file editing. Update Codex Desktop or use the matsugit_open tool.');
+      if (!extensions.resources) throw Error('This host does not support file editing. Use the matsugit_open tool for the selected local file.');
       data = await resourceRead();
     }
     if (sequence !== loadSequence) return;
@@ -573,7 +573,7 @@ $('file').onchange = async () => {
   const file = $('file').files[0]; if (!file) return;
   if (file.size > 2 * 1024 * 1024) return notice('Document exceeds the 2 MiB editor limit.');
   await load({name: file.name, text: await file.text(), writable: false});
-  notice('Imported browser copy. Download source to save; relative assets require opening the repository file in Codex.');
+  notice('Imported browser copy. Download source to save; relative assets require opening the repository file with matsugit_open.');
 };
 document.addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); save(); }

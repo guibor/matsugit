@@ -59,13 +59,23 @@
   <label>Format<select id="export-format"><option value="source">Source</option><option value="pptx">PowerPoint (editable)</option><option value="pdf">PDF slides</option><option value="html">Slide HTML</option><option value="zip">ZIP: document, slides and source</option></select></label>
   <label>Destination<select id="export-destination"><option value="download">Download</option><option id="sync-destination" value="sync" disabled>Synced folder (not configured)</option></select></label>
   <small id="export-folder"></small>
+  <label id="export-replace-row" class="auto" hidden><input id="export-replace" type="checkbox">Replace existing file, including edits made outside matsugit</label>
   <p id="pptx-warning" hidden>Editable text and tables; charts and diagrams are images. Complex layouts may differ. Review in PowerPoint before sharing.</p>
   <button id="export-run" class="delivery-primary">Export</button>
   <pre id="export-progress" role="status" aria-live="polite"></pre>
 </dialog>
 <dialog id="publish-dialog" class="delivery-dialog" aria-labelledby="publish-title">
   <div class="recovery-heading"><h2 id="publish-title">Publish</h2><button id="close-publish" title="Close" aria-label="Close"></button></div>
-  <label>Target<select id="publish-target"><option value="">Project default</option></select></label>
+  <div class="target-picker"><label>Target<select id="publish-target"><option value="">Project default</option></select></label><button id="repository-toggle" title="Connect a GitHub or GitLab repository" aria-label="Connect a repository"></button></div>
+  <div id="repository-picker" hidden>
+    <label>Provider<select id="repository-provider"><option value="github">GitHub</option><option value="gitlab">GitLab</option></select></label>
+    <label>Host<input id="repository-host" value="github.com" autocomplete="off"></label>
+    <button id="repository-list">List repositories</button><button id="repository-more" hidden>More</button>
+    <label>Repository<input id="repository-name" list="repository-options" placeholder="owner/repository" autocomplete="off"></label>
+    <datalist id="repository-options"></datalist>
+    <button id="repository-connect">Connect checkout</button>
+  </div>
+  <label>Build<select id="publish-build"><option value="ci">Source to CI</option><option value="local">Rendered outputs</option></select></label>
   <button id="publish-review" class="delivery-primary">Review target</button>
   <div id="publish-confirmation" hidden><pre id="publish-plan"></pre>
     <label class="auto"><input type="checkbox" id="publish-deploy">Also request the configured CI deployment</label>

@@ -9,6 +9,7 @@ import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-browser-test-'));
 const fixture = process.env.MATSUGIT_SHOWCASE_SOURCE;
+const standardOnly = process.env.MATSUGIT_STANDARD_MCP === '1';
 const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
 const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
@@ -57,8 +58,9 @@ const server = http.createServer(async (req, res) => {
       const message = JSON.parse(raw), params = message.params;
       let result = {};
       if (message.method === 'ui/initialize') result = {protocolVersion: '2026-01-26', hostInfo: {name: 'Isolated test host', version: '1.0.0'},
-        hostCapabilities: {serverTools: {}, serverResources: {}, openLinks: {}, experimental: {'openai/resource': {}}}, hostContext: {theme: 'light', displayMode: 'fullscreen'}};
-      else if (message.method === 'tools/call') result = await client.callTool({...params, _meta: {'openai/resource': {path: source}}});
+        hostCapabilities: {serverTools: {}, serverResources: {}, openLinks: {}, ...(standardOnly ? {} : {experimental: {'openai/resource': {}}})}, hostContext: {theme: 'light', displayMode: 'fullscreen'}};
+      else if (standardOnly && message.method.startsWith('openai/')) throw Error('Host has no OpenAI extensions');
+      else if (message.method === 'tools/call') result = await client.callTool(standardOnly ? params : {...params, _meta: {'openai/resource': {path: source}}});
       else if (message.method === 'resources/read') {
         const latest = await client.callTool({name: 'matsugit_read', arguments: {session}});
         result = {contents: [{uri: params.uri, text: latest._meta.source, _meta: {'openai/resource': latest.structuredContent}}]};

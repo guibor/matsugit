@@ -68,6 +68,9 @@ def site_index(site):
 
 
 def publish(settings, confirmed=False, deploy=False):
+    if settings.get('build', 'local') == 'ci':
+        from .source_ci import publish as publish_source
+        return publish_source(settings, confirmed, deploy)
     repo = settings["repo"]
     remote, branch = settings["remote"], settings["branch"]
     preflight(settings)
@@ -129,14 +132,19 @@ def publish(settings, confirmed=False, deploy=False):
         git(repo, "push", remote, f"{sha}:refs/heads/{branch}")
         print(f"Pushed {sha}. Hosting availability has not been verified.", flush=True)
         if deploy:
-            if provider == "github":
-                workflow = existing(repo / '.github/workflows/matsugit-pages.yml',
-                                    repo / '.github/workflows/folioforge-pages.yml').name
-                run(["gh", "workflow", "run", workflow, "--ref", branch, "--repo", base])
-            else:
-                run(["glab", "ci", "run", "--branch", branch], cwd=repo)
-            print("Deployment requested; check CI before sharing a URL.", flush=True)
+            request_deployment(settings, provider, base)
         return sha
+
+
+def request_deployment(settings, provider, base):
+    repo, branch = settings['repo'], settings['branch']
+    if provider == 'github':
+        workflow = existing(repo / '.github/workflows/matsugit-pages.yml',
+                            repo / '.github/workflows/folioforge-pages.yml').name
+        run(['gh', 'workflow', 'run', workflow, '--ref', branch, '--repo', base])
+    else:
+        run(['glab', 'ci', 'run', '--branch', branch], cwd=repo)
+    print('Deployment requested; check CI before sharing a URL.', flush=True)
 
 
 def setup_ci(settings, provider):

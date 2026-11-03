@@ -42,7 +42,8 @@ matsugit export deck.md --format zip --output deck.zip
 matsugit export deck.org --format pdf --output deck.pdf
 matsugit export deck.md --format html --output deck.html
 #+end_src
-Exports never overwrite an existing output file. The plugin exports the current
+Ordinary exports refuse an existing output unless =--replace= is explicit.
+Synced exports reuse their stable filename as described below. The plugin exports the current
 draft without saving over the source; CLI exports the source on disk. ZIP includes
 editable source, and slide HTML can include speaker notes: hidden is not private.
 
@@ -54,11 +55,26 @@ matsugit export deck.md --format pptx --sync-folder
 #+end_src
 Use the actual folder on your machine, not the example above. No account is
 connected, no permissions change, and no cloud API is used. Once configured,
-=Synced folder= appears in the Codex export dialog. On repeated exports a dated
-copy preserves the earlier file. Matsugit confirms the local save only; check the
-sync app for upload status. Source download remains a browser download.
+=Synced folder= appears in the workspace export dialog. Repeated exports update
+the same =deck.pptx= (or other chosen format). Private local receipts identify
+unchanged matsugit exports; a file edited externally, created elsewhere or owned
+by a different source requires explicit =--replace= or the dialog's replacement
+checkbox. Check with collaborators before discarding their PowerPoint edits.
+Existing dated copies are not deleted. Stable names do not guarantee OneDrive
+version history or successful upload: check the sync app. Source download remains
+a browser download. Updating a source does not export automatically; select Export.
 
 * Configurable Git targets
+In the workspace, click the upload icon and the =+= beside Target to connect an
+online repository. Choose GitHub/GitLab and its hostname, then list repositories
+using the existing =gh=/=glab= login. The list is paginated; an exact
+=owner/repository= or =group/subgroup/project= also works. =Connect checkout=
+clones into a private local matsugit directory or selects an already configured
+target. It does not push, change the default, create a repository, enable Pages,
+modify CI or grant account access. Existing Git authentication must also work.
+Then review =Source to CI= and explicitly commit/push. An unprepared repository
+will ask for CI setup rather than silently installing a deployment pipeline.
+
 Register an existing clean checkout; this does not clone or publish:
 #+begin_src sh
 matsugit target set docs --repo /path/to/docs --provider gitlab --default
@@ -104,3 +120,32 @@ does not automatically rebuild after editing the bundled source: republish throu
 matsugit, or use the explicit matsugit CI rebuild integration. Private deployment
 wrappers remain separate; the Codex publisher refuses =deployment: tailscale=
 and directs you to the existing private CLI/Emacs command.
+
+** Source to CI: build on the server
+Select =Source to CI= in the upload dialog, or configure a target once:
+#+begin_src sh
+matsugit target set docs --repo /path/to/docs --provider gitlab --build ci
+matsugit publish-plan deck.md --target docs
+matsugit publish deck.md --target docs --deploy
+#+end_src
+This commits normalized, editable Markdown/Org, referenced assets and trusted
+theme files. It does not build HTML/slides locally. Pandoc prepares the inert
+source bundle; CI runs Quarto and produces both versions. Org remains Org.
+Use =matsugit setup-editor= if the local Pandoc converter is unavailable.
+
+For a new target first install and review =setup-ci= as above, commit its files,
+and configure the hosting permissions yourself. The generated GitHub workflow
+is manual; GitLab accepts web/API pipelines. A plain push does not override those
+rules: use =--deploy= or the existing CI UI when appropriate. Older CI installations
+without source-bundle support are refused; their files are not silently replaced.
+
+An existing =scripts/build_pages.py= pipeline scanning =topics=, =guides=,
+=presentations= and =exports= can use the =topics= adapter:
+#+begin_src sh
+matsugit target set docs --build ci --ci-layout topics --source-dir topics/matsugit
+#+end_src
+This adapter sends only source/assets; the target's existing renderer controls
+the theme and output routes. It does not copy the local preview theme or alter CI.
+Editing a published bundle in Git is supported by CI. Publishing a separate local
+copy refuses remotely edited source/assets until you reconcile them. Review the
+plan every time; a source-only push is still publication, not a preview.

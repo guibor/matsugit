@@ -1,5 +1,4 @@
 """Explicit local exports. Writing a synced folder is not proof of cloud sync."""
-from datetime import datetime
 import importlib.util
 import json
 import os
@@ -17,6 +16,7 @@ from .layout import slides
 from .charts import prepare as charts, style
 from .components import prepare as components
 from .targets import settings as global_settings
+from . import export_state
 
 
 def setup():
@@ -125,7 +125,7 @@ def color_reference(pandoc, directory, palette):
     return reference
 
 
-def export_file(settings, kind, output=None, *, sync_folder=False, reference=None, source_text=None):
+def export_file(settings, kind, output=None, *, sync_folder=False, reference=None, source_text=None, replace=False):
     if kind not in ('html', 'zip', 'pptx', 'pdf'):
         raise Error('Supported export formats: html, zip, pptx, pdf')
     if output and sync_folder:
@@ -135,12 +135,11 @@ def export_file(settings, kind, output=None, *, sync_folder=False, reference=Non
         if not directory or not Path(directory).expanduser().is_dir():
             raise Error('Configure an existing folder with matsugit export-folder /path/to/OneDrive/Decks')
         output = Path(directory).expanduser() / (settings['slug'] + '.' + kind)
-        if output.exists() or output.is_symlink():
-            output = output.with_name(settings['slug'] + '-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '.' + kind)
     if output is None:
         raise Error('Choose --output FILE or --sync-folder')
     output = Path(output).expanduser().absolute()
-    if output.exists() or output.is_symlink():
+    previous = export_state.check(output, settings['source'], replace) if sync_folder or replace else None
+    if not (sync_folder or replace) and (output.exists() or output.is_symlink()):
         raise Error(f'Export already exists; choose a new filename (nothing overwritten): {output}')
     if not output.parent.is_dir():
         raise Error('Export destination directory does not exist')
@@ -185,13 +184,29 @@ def export_file(settings, kind, output=None, *, sync_folder=False, reference=Non
                  '--reference-doc', str(reference), '-o', str(artifact)],
                 cwd=rendered, text=json.dumps(ast))
             warnings.append('Editable PowerPoint: native text/tables; charts and diagrams are images. CSS layouts, complex blocks and merged cells can differ. Review before sharing.')
-        # Exclusive creation also protects against a file appearing during rendering.
-        with output.open('xb') as destination, artifact.open('rb') as source:
-            try:
+        # Stage beside the destination, then recheck for edits made during rendering.
+        fd, staged = tempfile.mkstemp(prefix='.matsugit-export-', dir=output.parent)
+        try:
+            with os.fdopen(fd, 'wb') as destination, artifact.open('rb') as source:
                 shutil.copyfileobj(source, destination)
-            except BaseException:
-                output.unlink(missing_ok=True)
-                raise
+                destination.flush(); os.fsync(destination.fileno())
+            if export_state.digest(output) != previous:
+                raise Error('Export destination changed during rendering; nothing overwritten')
+            if previous is None:
+                # File-provider folders may not support hard links.
+                with output.open('xb') as destination, open(staged, 'rb') as prepared:
+                    shutil.copyfileobj(prepared, destination)
+                    destination.flush(); os.fsync(destination.fileno())
+            else:
+                os.chmod(staged, output.stat().st_mode & 0o777)
+                os.replace(staged, output)
+        finally:
+            Path(staged).unlink(missing_ok=True)
+        if sync_folder or replace:
+            try:
+                export_state.record(output, settings['source'])
+            except (OSError, Error) as error:
+                warnings.append(f'Export saved, but ownership receipt failed: {error}. Next replacement needs confirmation.')
     return {'path': str(output), 'format': kind, 'warnings': warnings,
             'sync': 'Saved locally. OneDrive upload status is not verified.' if sync_folder else None}
 

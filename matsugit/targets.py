@@ -10,7 +10,7 @@ from .compat import global_config
 from .core import Error, read_json
 
 FIELDS = {'repo', 'provider', 'remote', 'branch', 'site_dir', 'site_url', 'theme',
-          'expected_remote', 'deployment'}
+          'expected_remote', 'deployment', 'build', 'ci_layout', 'source_dir'}
 
 
 def settings():
@@ -58,6 +58,10 @@ def resolve(name, values=None):
         raise Error('Target settings must be nonempty strings')
     if profile.get('deployment', 'ci') not in ('ci', 'push', 'tailscale'):
         raise Error('Unknown deployment policy')
+    if profile.get('build', 'local') not in ('ci', 'local'):
+        raise Error('Build must be ci or local')
+    if profile.get('ci_layout', 'native') not in ('native', 'topics'):
+        raise Error('CI layout must be native or topics')
     return dict(profile, repo=str(Path(profile['repo']).expanduser().resolve()))
 
 
@@ -75,6 +79,9 @@ def configure(name, profile, default=False):
 
 
 def plan(config):
+    if config.get('build', 'local') == 'ci':
+        from .source_ci import plan as source_plan
+        return source_plan(config)
     from .publish import preflight, identity, check_destination
     from .core import inside
     revision = preflight(config)
@@ -90,7 +97,7 @@ def plan(config):
     site = inside(config['repo'], config['site_dir'])
     if (site / 'index.html').exists() and not existing(site / 'matsugit-site.json', site / 'folioforge-site.json').is_file():
         raise Error('Refusing to overwrite an unowned site index')
-    data = {'target': config.get('target'), 'repo': str(config['repo']), 'remote': remote,
+    data = {'build':'local', 'target': config.get('target'), 'repo': str(config['repo']), 'remote': remote,
             'provider': provider, 'project_url': url, 'branch': config['branch'],
             'directory': str(destination.relative_to(config['repo'])), 'theme': config['theme'],
             'revision': revision, 'source_sha256': hashlib.sha256(config['source'].read_bytes()).hexdigest(),

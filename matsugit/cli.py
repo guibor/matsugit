@@ -11,10 +11,13 @@ from .publish import publish, setup_ci
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Render editable documents and themed slides together")
     commands = parser.add_subparsers(dest="command", required=True)
+    cursor = commands.add_parser('setup-cursor', help='Install the shared interactive workspace, skill and commands into local Cursor')
+    cursor.add_argument('--checkout', type=Path)
+    cursor.add_argument('--check', action='store_true')
     targets = commands.add_parser('target', help='Configure named publishing checkouts without publishing')
     targets.add_argument('action', choices=['list', 'set', 'default'])
     targets.add_argument('name', nargs='?')
-    for flag in ('repo', 'provider', 'branch', 'remote', 'site-dir', 'site-url', 'theme', 'expected-remote'):
+    for flag in ('repo', 'provider', 'branch', 'remote', 'site-dir', 'site-url', 'theme', 'expected-remote', 'deployment', 'build', 'ci-layout', 'source-dir'):
         targets.add_argument('--' + flag)
     targets.add_argument('--default', action='store_true')
     targets.add_argument('--json', action='store_true')
@@ -23,6 +26,7 @@ def main(argv=None):
     export.add_argument('--format', choices=['html', 'zip', 'pptx', 'pdf'], required=True)
     export.add_argument('--output', type=Path)
     export.add_argument('--sync-folder', action='store_true')
+    export.add_argument('--replace', action='store_true', help='Explicitly replace an existing export, including external edits')
     export.add_argument('--theme')
     export.add_argument('--quarto')
     export.add_argument('--reference-doc', type=Path)
@@ -76,8 +80,16 @@ def main(argv=None):
             p.add_argument("--deploy", action="store_true", help="Also request the explicitly installed Pages workflow")
         elif name == 'setup-ci':
             p.add_argument("--provider", choices=["github", "gitlab"], required=True)
+        if name in ('publish', 'publish-plan'):
+            p.add_argument('--build', choices=['ci', 'local'], help='Build on CI from source, or render locally before pushing')
+            p.add_argument('--ci-layout', choices=['native', 'topics'])
+            p.add_argument('--source-dir')
     args = parser.parse_args(argv)
     try:
+        if args.command == 'setup-cursor':
+            from .cursor import install
+            print(install(args.checkout, check=args.check))
+            return 0
         if args.command == 'setup-export':
             from .exports import setup
             setup()
@@ -103,7 +115,7 @@ def main(argv=None):
         if args.command == 'export':
             from .exports import export_file
             result = export_file(config(args.source, vars(args)), args.format, args.output,
-                                 sync_folder=args.sync_folder, reference=args.reference_doc)
+                                 sync_folder=args.sync_folder, reference=args.reference_doc, replace=args.replace)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         if args.command == 'setup-charts':

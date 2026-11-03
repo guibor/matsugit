@@ -25,13 +25,14 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.7.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.8.0'});
   new OpenAIExtensions(server);
   server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
-    inputSchema:z.object({action:z.enum(['options','export','plan','publish']), session:z.string().optional(),
+    inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository']), session:z.string().optional(),
+      provider:z.enum(['github','gitlab']).optional(), host:z.string().max(253).optional(), repository:z.string().max(512).optional(), page:z.number().int().min(1).max(1000).optional(),
       text:z.string().max(MAX_SOURCE).optional(), name:z.string().max(512).optional(), theme:z.string().max(80).optional(),
-      target:z.string().max(80).optional(), format:z.enum(['html','zip','pptx','pdf']).optional(),
-      sync_folder:z.boolean().optional(), plan:z.string().optional(), deploy:z.boolean().optional()}),
+      target:z.string().max(80).optional(), build:z.enum(['ci','local']).optional(), format:z.enum(['html','zip','pptx','pdf']).optional(),
+      sync_folder:z.boolean().optional(), replace:z.boolean().optional(), plan:z.string().optional(), deploy:z.boolean().optional()}),
     annotations:{readOnlyHint:false, destructiveHint:true, openWorldHint:true}},
     guard(async (args,context) => result(actions.start(args,getResourcePath(context.mcpReq?._meta)))));
   server.registerTool('matsugit_action_status', {description:'Read progress for this workspace operation.', ...appOnly,

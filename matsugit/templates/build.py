@@ -1,5 +1,6 @@
 """Portable CI entry point, copied with the renderer into the publishing repo."""
 from pathlib import Path
+import html
 import shutil
 import tempfile
 from core import config, render, read_json
@@ -7,6 +8,7 @@ from core import config, render, read_json
 site = Path(__SITE_DIR__).resolve()
 manifests = {p.parent: p for p in site.glob('*/folioforge-manifest.json')}
 manifests.update({p.parent: p for p in site.glob('*/matsugit-manifest.json')})
+manifests.update({p.parent: p for p in site.glob('*/matsugit-source.json')})
 for manifest_file in sorted(manifests.values()):
     manifest = read_json(manifest_file)
     source_name = manifest.get('source_file', 'source.md')
@@ -20,3 +22,7 @@ for manifest_file in sorted(manifests.values()):
         output = Path(temp) / "rendered"
         render(settings, output, edit_url=manifest.get("edit_url"))
         shutil.copytree(output, source.parent, dirs_exist_ok=True)
+links = ''.join(f'<li><a href="{p.parent.name}/index.html">{html.escape(p.parent.name)}</a></li>'
+                for p in sorted(manifests.values()))
+if links:
+    (site / 'index.html').write_text('<!doctype html><meta charset="utf-8"><title>Documents</title><h1>Documents</h1><ul>' + links + '</ul>', encoding='utf-8')

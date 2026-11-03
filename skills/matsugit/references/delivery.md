@@ -31,9 +31,16 @@ matsugit export deck.md --format pptx --sync-folder
 
 Ask for the actual destination if unknown. Do not guess accounts, grant scopes or
 upload a real document in tests. This confirms local save, not remote upload.
-Existing exports are retained; repeated synced-folder exports create dated copies.
+Repeated synced exports update one stable filename. Unchanged matsugit-owned
+exports are replaceable; external edits or untracked files need explicit
+`--replace` (or the dialog checkbox). Never discard a colleague's edits implicitly.
+Old dated files are not deleted. Source edits alone do not trigger an export.
 
 Named publishing targets are configured independently of source and theme:
+The workspace upload dialog's **+** can list repositories through existing
+`gh`/`glab` authentication and connect a local checkout. Connecting is not push
+approval. Never run login, broaden permissions, enable Pages or install CI just
+because a repository was selected. An exact owner/repository name is supported.
 
 ```sh
 matsugit target set docs --repo /local/docs --provider gitlab --default
@@ -46,6 +53,16 @@ The upload icon in Codex offers target review, then an explicit Commit and push
 button. A push may trigger existing CI. Additional deployment is a separate
 checkbox. The source must first be saved; stale plans and dirty target checkouts
 are refused. Configuration and previews never enable hosting or change CI rules.
+
+Choose **Source to CI** for server rendering, or **Rendered outputs** for a local
+build before pushing. Configure `matsugit target set docs --build ci`; then
+`matsugit publish-plan deck.md --target docs` previews the destination. Source CI
+pushes normalized Markdown/Org and referenced assets, not locally generated HTML.
+Native targets need a reviewed current `setup-ci` installation; `--deploy` requests
+its existing workflow. An existing topics-based `scripts/build_pages.py` pipeline
+can use `--ci-layout topics --source-dir topics/matsugit`; it owns the final theme.
+Do not overwrite CI to make a publish command pass. See `docs/delivery.org` for
+the installation boundary, ownership protection and manual deployment rules.
 
 Respect existing project `repo` or `publish_target` settings, private deployment
 wrappers and immutable release contracts. Private Tailscale publishing uses the

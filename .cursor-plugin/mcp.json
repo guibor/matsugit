@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "matsugit": {
+      "command": "node",
+      "args": ["${CURSOR_PLUGIN_ROOT}/codex-plugin/bundle/server.mjs"],
+      "cwd": "${CURSOR_PLUGIN_ROOT}"
+    }
+  }
+}

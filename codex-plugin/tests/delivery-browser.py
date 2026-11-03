@@ -43,6 +43,13 @@ try:
         frame.locator('#close-export').click()
         frame.locator('#publish').click()
         wait(frame, '!document.getElementById("publish-review").disabled')
+        frame.locator('#repository-toggle').click()
+        frame.locator('#repository-host').fill('not/a/host')
+        frame.locator('#repository-list').click()
+        wait(frame, '!document.getElementById("repository-list").disabled')
+        assert 'hostname' in frame.locator('#publish-progress').inner_text()
+        frame.locator('#repository-toggle').click()
+        frame.locator('#publish-build').select_option('ci')
         frame.locator('#publish-review').click()
         wait(frame, '!document.getElementById("publish-review").disabled')
         assert frame.locator('#publish-confirmation').is_hidden()
@@ -57,6 +64,13 @@ try:
             assert bounds['y'] >= 0 and bounds['y'] + bounds['height'] <= height
             page.screenshot(path=f'/tmp/matsugit-export-ui-{width}.png')
             frame.locator('#close-export').click()
+            frame.locator('#publish').click()
+            wait(frame, '!document.getElementById("publish-review").disabled')
+            frame.locator('#repository-toggle').click()
+            bounds = frame.locator('#publish-dialog').bounding_box()
+            assert bounds['x'] >= 0 and bounds['x'] + bounds['width'] <= width
+            assert bounds['y'] >= 0 and bounds['y'] + bounds['height'] <= height
+            frame.locator('#close-publish').click()
         assert source.read_text() == original
         assert not errors, errors
         browser.close()

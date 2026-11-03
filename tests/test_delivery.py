@@ -22,7 +22,7 @@ class DeliveryTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.global_file = self.root / 'global.json'
-        self.env = patch.dict(os.environ, {'MATSUGIT_CONFIG': str(self.global_file)})
+        self.env = patch.dict(os.environ, {'MATSUGIT_CONFIG': str(self.global_file), 'MATSUGIT_EXPORT_STATE_DIR':str(self.root / 'receipts')})
         self.env.start(); self.addCleanup(self.env.stop)
         self.repo = self.root / 'repo'; self.repo.mkdir()
         self.source = self.repo / 'deck.md'
@@ -98,16 +98,37 @@ class DeliveryTests(unittest.TestCase):
                 exports.export_file(config(self.source), 'html', dest)
         self.assertEqual(self.source.read_text(), original)
 
-    def test_sync_folder_keeps_previous_version_no_api(self):
+    def test_sync_folder_replaces_unchanged_export_without_making_copies(self):
         folder = self.root / 'OneDrive'; folder.mkdir()
         targets.save({'export_directory':str(folder)})
         with patch.object(exports, 'render', side_effect=self.fake_render):
             first = exports.export_file(config(self.source), 'zip', sync_folder=True)
             second = exports.export_file(config(self.source), 'zip', sync_folder=True)
-        self.assertNotEqual(first['path'], second['path'])
+        self.assertEqual(first['path'], second['path'])
+        self.assertEqual(len(list(folder.iterdir())), 1)
         self.assertIn('not verified', first['sync'])
         with zipfile.ZipFile(first['path']) as archive:
             self.assertEqual(set(archive.namelist()), {'slides.html','index.html','source.md'})
+
+    def test_modified_sync_export_requires_explicit_replacement(self):
+        targets.save({'export_directory':str(self.root)})
+        with patch.object(exports, 'render', side_effect=self.fake_render):
+            result = exports.export_file(config(self.source), 'html', sync_folder=True)
+            output = Path(result['path']); output.write_text('colleague edits')
+            with self.assertRaisesRegex(Error, 'edited outside'):
+                exports.export_file(config(self.source), 'html', sync_folder=True)
+            self.assertEqual(output.read_text(), 'colleague edits')
+            exports.export_file(config(self.source), 'html', sync_folder=True, replace=True)
+            self.assertEqual(output.read_text(), 'synthetic')
+
+    def test_export_rechecks_destination_after_render(self):
+        output = self.root / 'deck.html'; output.write_text('before')
+        def changed(settings, folder, **kwargs):
+            self.fake_render(settings, folder, **kwargs); output.write_text('external edit')
+        with patch.object(exports, 'render', side_effect=changed):
+            with self.assertRaisesRegex(Error, 'changed during rendering'):
+                exports.export_file(config(self.source), 'html', output, replace=True)
+        self.assertEqual(output.read_text(), 'external edit')
 
     def test_missing_sync_folder_and_unknown_format(self):
         with self.assertRaisesRegex(Error, 'Configure an existing folder'):

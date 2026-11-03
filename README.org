@@ -75,7 +75,16 @@ agent review. Captures use an isolated MCP host, not simulated Codex chrome.
 
 * Use it in Cursor
 
-Install the native skill, then ask Agent to set up a local preview:
+Use the same interactive workspace, skill and slash commands with Cursor MCP Apps:
+#+begin_src sh
+matsugit setup-cursor
+#+end_src
+Enable the matsugit MCP server, start a new chat and ask =/matsugit-slides= to open
+your document. The installer needs a matsugit checkout with its bundled workspace;
+existing launchers already point there. Other MCP settings and custom commands
+are preserved. See the [[file:docs/cursor.md][Cursor quickstart]] for prerequisites and plugin packaging.
+
+Or install only the native skill, then ask Agent to set up a local preview:
 #+begin_src sh
 npx skills add guibor/matsugit --skill matsugit --agent cursor --global
 #+end_src
@@ -83,7 +92,7 @@ npx skills add guibor/matsugit --skill matsugit --agent cursor --global
 In Cursor chat: =/matsugit Set up a small demo deck and preview both the
 document and slides. Use the default theme. Do not publish.=
 
-No plugin or MCP server required. The skill checks for the renderer and Quarto
+The skill-only option needs no plugin or MCP server. It checks for the renderer and Quarto
 and guides their separate installation when needed. It works without Emacs or
 personal themes. While the repository is private, installation requires existing
 Git access. See the [[file:docs/cursor.md][Cursor quickstart]] for local, project and team setup.

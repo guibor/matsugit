@@ -11,14 +11,21 @@ export class WorkspaceActions {
   constructor(runtime, store) { this.runtime = runtime; this.store = store; }
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
-    if (args.action !== 'options') checkedText(args.text);
+    if (['export','plan','publish'].includes(args.action)) checkedText(args.text);
     if (['plan', 'publish'].includes(args.action) && !owner) throw Error('Open and save a local source file before publishing');
     if ([...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner)) throw Error('An export or publication is already running for this document');
+    if (this.jobs.size >= 24) {
+      for (const [id, job] of this.jobs) {
+        if (job.state !== 'running' && !job.file && !this.plans.has(id)) {
+          fs.rmSync(job.directory, {recursive:true,force:true}); this.jobs.delete(id);
+        }
+      }
+    }
     if (this.jobs.size >= 24) throw Error('Reopen this workspace to start more exports; existing downloads are retained until then');
     let fingerprint;
     if (args.action === 'publish') {
       const plan = this.plans.get(args.plan);
-      if (!plan || plan.owner !== owner || plan.target !== args.target || plan.theme !== args.theme) throw Error('Review the publishing target first');
+      if (!plan || plan.owner !== owner || plan.target !== args.target || plan.theme !== args.theme || plan.build !== args.build) throw Error('Review the publishing target first');
       fingerprint = plan.fingerprint;
       this.plans.delete(args.plan);
     }
@@ -43,7 +50,7 @@ export class WorkspaceActions {
       if (code !== 0) { job.state='error'; job.error=job.log || 'Operation failed'; return; }
       try {
         job.result = JSON.parse(stdout); job.state = 'ready';
-        if (args.action === 'plan') this.plans.set(id, {owner, target:args.target, theme:args.theme, fingerprint:job.result.fingerprint});
+        if (args.action === 'plan') this.plans.set(id, {owner, target:args.target, theme:args.theme, build:args.build, fingerprint:job.result.fingerprint});
         if (output) {
           const size = fs.statSync(output).size;
           if (size > 100 * 1024 * 1024) throw Error('Export exceeds the 100 MiB download limit; use the command line');

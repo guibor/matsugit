@@ -19,19 +19,25 @@ def main(request):
     os.environ.setdefault('GIT_SSH_COMMAND', 'ssh -o BatchMode=yes -o ConnectTimeout=15')
     os.environ['GH_PROMPT_DISABLED'] = '1'
     action = request['action']
+    if action in ('repositories', 'connect-repository'):
+        from matsugit.repositories import discover, connect
+        if action == 'repositories':
+            return discover(request['provider'], request['host'], request.get('page', 1))
+        return connect(request['provider'], request['host'], request['repository'])
     if action == 'options':
         data = preferences()
-        selected = config(Path(request['path']), {'command':'publish'}).get('target')
+        selected = config(Path(request['path']), {'command':'publish'})
         return {'targets': data.get('publish_targets', {}),
-                'default': selected,
+                'default': selected.get('target'), 'build':selected.get('build', 'local'),
                 'export_directory': data.get('export_directory')}
     source = Path(request['path'])
     settings = config(source, {'command': 'publish' if action in ('plan', 'publish') else 'export',
-                              'target': request.get('target'), 'theme': request.get('theme'),
+                              'target': request.get('target'), 'theme': request.get('theme'), 'build':request.get('build'),
                               'quarto': os.environ.get('QUARTO', 'quarto')})
     if action == 'export':
         return export_file(settings, request['format'], request.get('output'),
-                           sync_folder=request.get('sync_folder', False), source_text=request['text'])
+                           sync_folder=request.get('sync_folder', False), source_text=request['text'],
+                           replace=bool(request.get('sync_folder') and request.get('replace')))
     if action not in ('plan', 'publish'):
         raise Error('Unknown workspace action')
     if source.read_text(encoding='utf-8') != request['text']:

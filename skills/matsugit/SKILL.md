@@ -31,8 +31,9 @@ one slide.
   preview. Keep unsaved workspace edits separate from disk saves and publication.
 - **First-time setup or missing commands:** read [setup.md](references/setup.md).
   Check the existing environment, install only approved missing prerequisites,
-  then verify a local document and slide preview. In Cursor invoke `/matsugit`;
-  no plugin, MCP server or always-on rule is required.
+  then verify a local document and slide preview. In Cursor `matsugit setup-cursor`
+  installs the shared MCP workspace and `/matsugit-slides` command. A skill-only
+  `/matsugit` setup is also available, without an MCP server or always-on rule.
 - **Write or revise a deck:** read [authoring.md](references/authoring.md) and
   [slide-types.md](references/slide-types.md). Start with the closest recipe in
   [slide-types.md](assets/slide-types.md), not a new layout language.
