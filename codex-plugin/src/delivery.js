@@ -1,31 +1,80 @@
-import {createElement, X, Upload, Plus} from 'lucide';
+import {createElement, X, Upload, Plus, GitPullRequestArrow} from 'lucide';
 
-export function delivery({call, state, text, theme, notice, download, demo}) {
+export function delivery({call, state, text, theme, notice, download, demo, reload, load, hasUnsaved, refreshControls}) {
   const $ = id => document.getElementById(id);
   let busy = false, plan = null, options = {};
   for (const id of ['close-export', 'close-publish']) $(id).append(createElement(X));
   $('publish').append(createElement(Upload));
   $('repository-toggle').append(createElement(Plus));
+  $('git-sync').append(createElement(GitPullRequestArrow));
+  $('close-git-sync').append(createElement(X));
   const scope = () => state.session ? {session:state.session} : {};
   const snapshot = () => ({...scope(), text:text(), name:state.name, theme:theme() || undefined});
   async function run(action, args, progress) {
     const owner = scope();
+    const view = state.session || state.uri;
     let job = await call('matsugit_action', {...owner, action, ...args});
     while (job.state === 'running') {
       await new Promise(resolve => setTimeout(resolve, 500));
       job = await call('matsugit_action_status', {...owner, job:job.job});
       progress.textContent = job.log || 'Working...';
     }
+    if (job.workspace && view === (state.session || state.uri)) {
+      if (text() === args.text && !state.saving && !hasUnsaved()) await load({...job.workspace, layout:state.layout, format:state.format});
+      else { state.conflict = true; notice('Source relocated. Keep/download your draft, then reopen the canonical file before saving.'); }
+    }
     if (job.state !== 'ready') throw Error(job.error || 'Operation failed');
-    return {...job, owner};
+    return {...job, owner, view};
   }
   function lock(value) {
     busy = value;
-    for (const id of ['export-run', 'publish-review', 'publish-confirm', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
+    state.delivering = value;
+    refreshControls();
+    for (const id of ['export-run', 'publish-review', 'publish-confirm', 'publish-move', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
   }
   async function preferences(progress) {
     options = (await run('options', {}, progress)).result;
   }
+  let syncPlan = null;
+  const syncStatus = {
+    'local-changes':'Local changes exist. Commit/reconcile them in Git first; nothing was stashed.',
+    diverged:'Both histories changed. Compare and merge in Git first.',
+    ahead:'Local commits have not been pushed. Nothing to pull.',
+    'up-to-date':'Up to date.', 'updates-available':'Updates available.', updated:'Updated from Git.',
+    'source-removed':'Checkout updated; the source was removed or renamed upstream. Draft retained; reopen the correct file.'
+  };
+  $('close-git-sync').onclick = () => $('git-sync-dialog').close();
+  $('git-sync-check').onclick = async () => {
+    if (busy) return;
+    syncPlan = null; $('git-sync-apply').disabled = true;
+    lock(true); $('git-sync-progress').textContent = 'Checking upstream...';
+    try {
+      const job = await run('sync-plan', {}, $('git-sync-progress'));
+      syncPlan = {id:job.job, session:state.session, source:text()};
+      const data = job.result;
+      $('git-sync-progress').textContent = `${data.repo}\n${data.branch}\n\n${syncStatus[data.status]}\n${data.ahead} ahead, ${data.behind} behind\n\n${data.changes}`;
+      $('git-sync-apply').disabled = data.status !== 'updates-available';
+    } catch (error) { $('git-sync-progress').textContent = error.message; }
+    finally { lock(false); }
+  };
+  $('git-sync').onclick = () => {
+    if (demo || busy) return;
+    $('git-sync-dialog').showModal(); $('git-sync-check').onclick();
+  };
+  $('git-sync-apply').onclick = async () => {
+    if (busy || !syncPlan) return;
+    if (state.conflict || hasUnsaved() || text() !== state.base || text() !== syncPlan.source || state.session !== syncPlan.session) {
+      $('git-sync-progress').textContent = 'Unsaved or external edits exist. Reconcile the draft, then check again.';
+      $('git-sync-apply').disabled = true; return;
+    }
+    lock(true); $('git-sync-apply').disabled = true;
+    try {
+      const job = await run('sync', {text:text(), plan:syncPlan.id}, $('git-sync-progress'));
+      $('git-sync-progress').textContent = syncStatus[job.result.status];
+      if (job.view === (state.session || state.uri)) await reload();
+    } catch (error) { $('git-sync-progress').textContent = error.message; }
+    finally { syncPlan = null; lock(false); }
+  };
   $('download').onclick = async () => {
     if (demo) { download(); return; }
     if (busy) return;
@@ -118,13 +167,14 @@ export function delivery({call, state, text, theme, notice, download, demo}) {
     finally { lock(false); }
   };
   $('publish-build').onchange = invalidate;
+  $('publish-move').onchange = invalidate;
   $('publish-target').onchange = () => {
     invalidate();
     $('publish-build').value = $('publish-target').value ? options.targets[$('publish-target').value]?.build || 'local' : options.build || 'local';
   };
   $('publish').onclick = async () => {
     if (demo || busy) return;
-    invalidate(); $('repository-picker').hidden = true; $('publish-dialog').showModal(); lock(true);
+    invalidate(); $('publish-move').checked = false; $('repository-picker').hidden = true; $('publish-dialog').showModal(); lock(true);
     $('publish-progress').textContent = 'Reading targets...';
     try {
       await preferences($('publish-progress'));
@@ -140,13 +190,14 @@ export function delivery({call, state, text, theme, notice, download, demo}) {
   $('publish-review').onclick = async () => {
     if (busy) return;
     invalidate(); lock(true);
-    const args = {...snapshot(), target:$('publish-target').value || undefined, build:$('publish-build').value};
+    const args = {...snapshot(), target:$('publish-target').value || undefined, build:$('publish-build').value, move_source:$('publish-move').checked};
     try {
       const job = await run('plan', args, $('publish-progress'));
       plan = {id:job.job, args};
       const data = job.result;
       $('publish-plan').textContent = [`Repository: ${data.project_url}`, `Checkout: ${data.repo}`, `Branch: ${data.branch}`,
         `Build: ${data.build === 'ci' ? 'Source to CI' : 'Local render'}`, `Output: ${data.directory}`, `Theme: ${data.theme}`, data.site_url ? `Site: ${data.site_url}` : '', data.warning].filter(Boolean).join('\n');
+      if (data.relocation) $('publish-plan').textContent += '\n\nMove and leave symlinks:\n' + data.relocation.moves.map(m => `${m.source}\n  -> ${m.destination}`).join('\n');
       $('publish-confirmation').hidden = false;
       $('publish-progress').textContent = '';
     } catch (error) { $('publish-progress').textContent = error.message; }
@@ -166,5 +217,5 @@ export function delivery({call, state, text, theme, notice, download, demo}) {
     } catch (error) { $('publish-progress').textContent = error.message; }
     finally { invalidate(); lock(false); }
   };
-  if (demo) $('publish').disabled = true;
+  if (demo) { $('publish').disabled = true; $('git-sync').disabled = true; }
 }

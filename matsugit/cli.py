@@ -11,6 +11,20 @@ from .publish import publish, setup_ci
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Render editable documents and themed slides together")
     commands = parser.add_subparsers(dest="command", required=True)
+    sync = commands.add_parser('sync', help='Fetch/check or explicitly fast-forward the real source checkout; never push')
+    sync.add_argument('source', type=Path)
+    sync.add_argument('--check', action='store_true', help='Fetch and report only; leave working files untouched')
+    sync.add_argument('--yes', action='store_true', help='Confirm fast-forward of a clean checkout')
+    sync.add_argument('--json', action='store_true')
+    adopt = commands.add_parser('adopt', help='Move exact source/assets into a checkout and leave local symlinks; no commit/push')
+    adopt.add_argument('source', type=Path)
+    adopt.add_argument('--repo', required=True, type=Path)
+    adopt.add_argument('--destination', required=True, help='Unused source path relative to the checkout')
+    adopt.add_argument('--yes', action='store_true')
+    adopt.add_argument('--fingerprint', help='Require this reviewed plan fingerprint')
+    inventory = commands.add_parser('source-files', help='List a self-contained source and its referenced local assets')
+    inventory.add_argument('source', type=Path)
+    inventory.add_argument('--root', type=Path, help='For in-place publication, permit assets within this existing repository')
     cursor = commands.add_parser('setup-cursor', help='Install the shared interactive workspace, skill and commands into local Cursor')
     cursor.add_argument('--checkout', type=Path)
     cursor.add_argument('--check', action='store_true')
@@ -81,11 +95,32 @@ def main(argv=None):
         elif name == 'setup-ci':
             p.add_argument("--provider", choices=["github", "gitlab"], required=True)
         if name in ('publish', 'publish-plan'):
+            p.add_argument('--move-source', action='store_true', default=None, help='For source CI: move source/assets into target and leave local symlinks (explicit opt-in)')
             p.add_argument('--build', choices=['ci', 'local'], help='Build on CI from source, or render locally before pushing')
             p.add_argument('--ci-layout', choices=['native', 'topics'])
             p.add_argument('--source-dir')
     args = parser.parse_args(argv)
     try:
+        if args.command == 'source-files':
+            from .adopt import inventory
+            print(json.dumps([str(path) for path in inventory(args.source, root=args.root)]))
+            return 0
+        if args.command == 'adopt':
+            from . import adopt
+            data = adopt.plan(args.source, args.repo, args.destination)
+            if args.fingerprint and args.fingerprint != data['fingerprint']:
+                raise Error('Relocation plan changed; review again')
+            if args.yes:
+                adopt.apply(data)
+            print(json.dumps(data, indent=2))
+            return 0
+        if args.command == 'sync':
+            from .git_sync import sync
+            data = sync(args.source, check=args.check or not args.yes, confirmed=args.yes)
+            print(json.dumps(data, indent=2) if args.json else
+                  f"{data['status']}: {data['repo']} ({data['ahead']} ahead, {data['behind']} behind)\n"
+                  + data['changes'] + ('\nUse --yes to apply a clean fast-forward.' if not args.yes else ''))
+            return 0
         if args.command == 'setup-cursor':
             from .cursor import install
             print(install(args.checkout, check=args.check))

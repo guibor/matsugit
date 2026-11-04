@@ -79,6 +79,8 @@ def configure(name, profile, default=False):
 
 
 def plan(config):
+    if config.get('move_source') and config.get('build', 'local') != 'ci':
+        raise Error('Move-and-link requires Source to CI, not rendered-output publication')
     if config.get('build', 'local') == 'ci':
         from .source_ci import plan as source_plan
         return source_plan(config)

@@ -82,3 +82,19 @@ test('cancel is scoped to its document and cannot cancel a completed render', ()
     assert.throws(() => store.start({text: '# B', session: b.session, base: 'ready'}), /Unknown preview/);
   } finally { store.jobs.clear(); store.close(); fs.rmSync(directory, {recursive: true, force: true}); }
 });
+test('explicit relocation rebinds source without replacing its symlink on save', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-link-test-'));
+  const original = path.join(directory, 'note.md'), target = path.join(directory, 'canonical.md');
+  fs.writeFileSync(original, '# Original\n');
+  const store = new WorkspaceStore(directory);
+  try {
+    const opened = store.open(original);
+    fs.renameSync(original, target); fs.symlinkSync(target, original);
+    assert.throws(() => store.source(opened.session), /path changed/);
+    const rebound = store.relocated(original, target, '# Original\n');
+    assert.equal(store.owner(opened.session, original), target);
+    assert.equal(store.save(rebound.session, '# Updated\n', rebound.etag).outcome, 'saved');
+    assert.ok(fs.lstatSync(original).isSymbolicLink());
+    assert.equal(fs.readFileSync(original, 'utf8'), '# Updated\n');
+  } finally { store.close(); fs.rmSync(directory, {recursive:true,force:true}); }
+});

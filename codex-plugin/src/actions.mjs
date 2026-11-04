@@ -11,8 +11,8 @@ export class WorkspaceActions {
   constructor(runtime, store) { this.runtime = runtime; this.store = store; }
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
-    if (['export','plan','publish'].includes(args.action)) checkedText(args.text);
-    if (['plan', 'publish'].includes(args.action) && !owner) throw Error('Open and save a local source file before publishing');
+    if (['export','plan','publish','sync'].includes(args.action)) checkedText(args.text);
+    if (['plan', 'publish', 'sync-plan', 'sync'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
     if ([...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner)) throw Error('An export or publication is already running for this document');
     if (this.jobs.size >= 24) {
       for (const [id, job] of this.jobs) {
@@ -22,11 +22,12 @@ export class WorkspaceActions {
       }
     }
     if (this.jobs.size >= 24) throw Error('Reopen this workspace to start more exports; existing downloads are retained until then');
-    let fingerprint;
-    if (args.action === 'publish') {
+    let fingerprint, relocation;
+    if (['publish','sync'].includes(args.action)) {
       const plan = this.plans.get(args.plan);
-      if (!plan || plan.owner !== owner || plan.target !== args.target || plan.theme !== args.theme || plan.build !== args.build) throw Error('Review the publishing target first');
+      if (!plan || plan.action !== (args.action === 'sync' ? 'sync-plan' : 'plan') || plan.owner !== owner || plan.target !== args.target || plan.theme !== args.theme || plan.build !== args.build || plan.move_source !== args.move_source) throw Error('Review this operation first');
       fingerprint = plan.fingerprint;
+      relocation = plan.relocation;
       this.plans.delete(args.plan);
     }
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-action-'));
@@ -47,10 +48,17 @@ export class WorkspaceActions {
     child.on('error', error => { job.state='error'; job.error=error.message; });
     child.on('close', code => {
       if (job.state === 'error') return;
+      if (relocation && fs.existsSync(owner) && fs.lstatSync(owner).isSymbolicLink()
+          && fs.realpathSync(owner) === relocation.destination) {
+        try {
+          job.workspace = this.store.relocated(owner, relocation.destination, args.text);
+          for (const item of this.jobs.values()) if (item.owner === owner) item.owner = relocation.destination;
+        } catch (error) { job.state='error'; job.error=error.message; return; }
+      }
       if (code !== 0) { job.state='error'; job.error=job.log || 'Operation failed'; return; }
       try {
         job.result = JSON.parse(stdout); job.state = 'ready';
-        if (args.action === 'plan') this.plans.set(id, {owner, target:args.target, theme:args.theme, build:args.build, fingerprint:job.result.fingerprint});
+        if (['plan','sync-plan'].includes(args.action)) this.plans.set(id, {action:args.action, owner, target:args.target, theme:args.theme, build:args.build, move_source:args.move_source, relocation:job.result.relocation, fingerprint:job.result.fingerprint});
         if (output) {
           const size = fs.statSync(output).size;
           if (size > 100 * 1024 * 1024) throw Error('Export exceeds the 100 MiB download limit; use the command line');
@@ -63,7 +71,7 @@ export class WorkspaceActions {
   status(id, session, hostPath) {
     const job = this.jobs.get(id);
     if (!job || job.owner !== this.store.owner(session, hostPath)) throw Error('Unknown operation for this document');
-    return {job:id, state:job.state, error:job.error, log:job.log, result:job.result, size:job.size};
+    return {job:id, state:job.state, error:job.error, log:job.log, result:job.result, workspace:job.workspace, size:job.size};
   }
   chunk(id, offset, session, hostPath) {
     this.status(id, session, hostPath);

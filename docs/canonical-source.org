@@ -1,0 +1,76 @@
+#+title: One canonical source, with safe Git sync
+
+* Move and leave a link
+
+Core 0.15 / plugin 0.11 add explicit move-and-link for Source to CI publication.
+In the workspace, open Publish, choose the target and =Source to CI=, enable
+=Move source and assets into target; leave local symlinks=, then Review target.
+Review the complete move list before Commit and push. Nothing moves on review.
+
+The original location becomes a relative symlink. Markdown/Org bytes, including
+YAML, Unicode and source-only comments, stay intact in the publishing checkout.
+Referenced local assets move with matching symlinks, retaining relative URLs.
+Source comments are therefore present in Git: renderer hiding is not secrecy.
+Only the destination checkout is committed; any original repository's symlink
+changes are left unstaged for you to review separately.
+
+The source and assets must be self-contained in the source folder or children.
+Existing destinations, hidden files, symlinked attachments, parent-directory
+references and linked documents are refused rather than rewritten or overwritten.
+Organize a self-contained document folder or keep ordinary copy export for those
+cases. The move is not supported for Quarto inputs or local-render publishing.
+Native CI receives its reviewed theme; an existing topics renderer keeps its own
+theme and pipeline. This operation neither installs CI nor changes site access.
+
+On another computer, clone the publishing repository and open its real file.
+Symlinks only work while their relative target checkout exists. They do not
+perform network synchronization and may not be portable through cloud-drive apps.
+Editors should follow symlinks when saving; matsugit saves the canonical path.
+
+CLI publication (review before confirming):
+#+begin_src sh
+matsugit publish-plan /path/deck.md --target docs --build ci --move-source
+matsugit publish /path/deck.md --target docs --build ci --move-source
+#+end_src
+
+Subsequent publication from the canonical file uses it in place, without another
+bundle/copy. A unique configured target matching the real checkout takes priority
+over the host default; explicit =--target= still wins. Staged or unrelated changes
+stop publication. If upstream changes the source during the pre-publication pull,
+the publisher stops for review instead of committing an older snapshot over it.
+If push fails, the canonical files, links and local commit stay recoverable;
+review the checkout and retry =git push= there.
+
+Standalone local relocation, without publication:
+#+begin_src sh
+matsugit adopt /path/deck.org --repo /path/docs --destination topics/deck.org
+matsugit adopt /path/deck.org --repo /path/docs --destination topics/deck.org --yes
+#+end_src
+The first call only prints the plan. Scripts can pass its =--fingerprint= to the
+second call to reject intervening edits. A partially failed move restores the
+originals where safe and reports any retained recovery copies; it never replaces
+a concurrently changed file during recovery.
+
+* Edit in GitLab or GitHub, then sync locally
+
+A web edit creates an upstream commit. Existing CI rules determine whether it
+rebuilds the site; nothing automatically pulls into a laptop. Use the Git sync
+icon in the workspace: Check for updates, inspect status, then Pull updates.
+The real source checkout is used even when opened through a symlink. Sync is
+explicit; there is no new periodic network job or automatic background pull.
+
+#+begin_src sh
+matsugit sync /path/original-link.md --check
+matsugit sync /path/original-link.md --yes
+#+end_src
+
+Checking fetches but leaves working files untouched. Applying requires a clean
+checkout and fast-forwards only; staged/untracked changes or divergence require
+Git reconciliation. No auto-stash, reset, automatic merge, commit or push occurs.
+Unsaved editor drafts block the UI action. If you type while a pull is running,
+normal version checking retains that draft and flags the conflict. A clean editor
+reloads and refreshes its preview after the update. Network failures leave remote
+status unknown; local editing remains available. No remote account is added.
+
+Use ordinary Git/Magit to compare and resolve divergent versions. This first
+version deliberately does not embed a conflict-resolution editor.

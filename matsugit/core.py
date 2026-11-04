@@ -89,6 +89,14 @@ def config(source, overrides=None):
                 project.update(data)
     overrides = overrides or {}
     target = overrides.get('target') or project.get('publish_target')
+    if not target and not overrides.get('repo'):
+        # An already-published source (including a symlink visit) stays in its
+        # own target instead of being copied into the host's default target.
+        matches = [name for name, profile in settings.get('publish_targets', {}).items()
+                   if isinstance(profile, dict) and profile.get('repo')
+                   and Path(profile['repo']).expanduser().resolve() == root]
+        if len(matches) == 1:
+            target = matches[0]
     if not target and not (overrides.get('repo') or project.get('repo')):
         target = settings.get('default_publish_target')
     if target and (overrides.get('target') or overrides.get('command') in ('publish', 'publish-plan', 'setup-ci')):
@@ -96,6 +104,7 @@ def config(source, overrides=None):
         settings.update(resolve(target, settings))
         settings['target'] = target
     settings.update({k: v for k, v in (overrides or {}).items() if v is not None})
+    settings['move_source'] = bool(overrides.get('move_source'))  # Never enabled by document/project configuration.
     settings["source"] = source
     settings["source_root"] = root
     settings["repo"] = (root / Path(settings.get("repo", root)).expanduser()).resolve()

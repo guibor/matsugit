@@ -63,3 +63,11 @@ It needs existing repository access, Node 22+, Python 3.10+, Git, Quarto and a
 Codex Desktop build with MCP Apps. Do not install missing prerequisites or change
 credentials without authorization. Start a new session after plugin installation.
 The plugin includes its renderer; optional chart dependencies remain separate.
+# Canonical source and Git sync (plugin 0.11+)
+
+The Git sync toolbar icon checks upstream and explicitly pulls a clean checkout;
+no background pull is enabled. Unsaved drafts remain protected, and clean views
+reload after a pull. In Publish, Source to CI offers an opt-in move-and-link
+checkbox. Review every source/asset move; original paths become local symlinks.
+Source bytes are preserved in Git, including comments. Existing copy publication
+and local previews are unchanged. Do not promise automatic conflict merging.

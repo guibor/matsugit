@@ -38,6 +38,13 @@ def main(request):
         if action == 'repositories':
             return discover(request['provider'], request['host'], request.get('page', 1))
         return connect(request['provider'], request['host'], request['repository'])
+    if action in ('sync-plan', 'sync'):
+        from matsugit.git_sync import sync
+        source = Path(request['path'])
+        if action == 'sync' and source.read_bytes().decode('utf-8') != request['text']:
+            raise Error('Unsaved or external edits exist. Reconcile the draft before syncing; text retained')
+        return sync(source, check=action == 'sync-plan', confirmed=action == 'sync',
+                    expected=request.get('fingerprint'))
     if action == 'options':
         data = preferences()
         selected = config(Path(request['path']), {'command':'publish'})
@@ -47,6 +54,7 @@ def main(request):
     source = Path(request['path'])
     settings = config(source, {'command': 'publish' if action in ('plan', 'publish') else 'export',
                               'target': request.get('target'), 'theme': request.get('theme'), 'build':request.get('build'),
+                              'move_source': request.get('move_source'),
                               'quarto': os.environ.get('QUARTO', 'quarto')})
     if action == 'export':
         return export_file(settings, request['format'], request.get('output'),
@@ -54,7 +62,7 @@ def main(request):
                            replace=bool(request.get('sync_folder') and request.get('replace')))
     if action not in ('plan', 'publish'):
         raise Error('Unknown workspace action')
-    if source.read_text(encoding='utf-8') != request['text']:
+    if source.read_bytes().decode('utf-8') != request['text']:
         raise Error('Save the current draft before publishing. The original file was not changed')
     current = plan(settings)
     if settings.get('deployment') not in (None, 'ci', 'push'):

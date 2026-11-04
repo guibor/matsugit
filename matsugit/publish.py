@@ -68,6 +68,8 @@ def site_index(site):
 
 
 def publish(settings, confirmed=False, deploy=False):
+    if settings.get('move_source') and settings.get('build', 'local') != 'ci':
+        raise Error('Move-and-link requires Source to CI, not rendered-output publication')
     if settings.get('build', 'local') == 'ci':
         from .source_ci import publish as publish_source
         return publish_source(settings, confirmed, deploy)

@@ -15,6 +15,13 @@ AI service. No separate slide copy drifting away from the source.
 
 * Edit and preview inside Codex
 
+*One canonical file, including web edits.* With Source to CI publishing, choose
+=Move source and assets into target; leave local symlinks= to avoid a second
+editable copy. This is explicit opt-in, with a reviewed file list. Existing
+copy publication remains available. The Git sync icon checks for upstream edits
+and offers a safe fast-forward; it never pushes, stashes or discards drafts.
+See [[file:docs/canonical-source.org][canonical source and Git synchronization]] for limits and CLI use.
+
 The local Codex plugin puts the source and both outputs in one workspace:
 =Markdown=, =Render= or =Split=, with =Document= and =Slides= previews. Edit with
 CodeMirror, preview an unsaved draft, and save explicitly with file-version

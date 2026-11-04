@@ -39,6 +39,15 @@ export class WorkspaceStore {
     const text = read(file);
     return {text, etag: hash(text), writable: true};
   }
+  relocated(previous, destination, expectedText) {
+    // Called only for the explicit reviewed relocation, never to follow an
+    // arbitrary symlink swapped underneath an already-open workspace.
+    if (!fs.lstatSync(previous).isSymbolicLink() || checkedPath(previous) !== destination
+        || read(destination) !== expectedText) throw Error('Relocation changed unexpectedly; reopen the source.');
+    for (const [id, file] of this.sessions) if (file === previous) this.sessions.set(id, destination);
+    for (const job of this.jobs.values()) if (job.owner === previous) job.owner = destination;
+    return this.open(destination);
+  }
   save(session, text, etag) {
     checkedText(text);
     const file = this.sessions.get(session);

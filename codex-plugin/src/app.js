@@ -14,7 +14,7 @@ import {visualExtensions, visualMode} from './visual.mjs';
 import {tableDialog} from './table-dialog.js';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.10.0'});
+const app = new App({name: 'matsugit', version: '0.11.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -107,7 +107,7 @@ function refreshControls() {
   $('present').title = state.format === 'slides' ? 'Present slides' : 'Present document';
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
-  $('save').disabled = !!demo || state.saving || !state.writable || !state.etag || state.conflict || !dirty();
+  $('save').disabled = !!demo || state.saving || state.delivering || !state.writable || !state.etag || state.conflict || !dirty();
   $('refresh').disabled = !!demo || state.loading;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh preview (Shift: rebuild)';
   $('filename').textContent = state.name;
@@ -613,7 +613,8 @@ function hostContext(context) {
   for (const side of ['top','bottom','left','right']) document.documentElement.style.setProperty(`--safe-${side}`, `${context?.safeAreaInsets?.[side] || 0}px`);
 }
 $('save').onclick = save;
-delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, demo});
+delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, demo, reload, load,
+  hasUnsaved:() => dirty() || tables.pending(), refreshControls});
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => { state.forceFull ||= event.shiftKey; render(); }; $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };

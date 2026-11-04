@@ -57,6 +57,9 @@ def check_destination(destination, source):
 
 
 def plan(settings):
+    from . import canonical
+    if canonical.selected(settings):
+        return canonical.plan(settings)
     revision = preflight(settings)
     kind, directory = layout(settings)
     repo = settings['repo']
@@ -108,6 +111,9 @@ def prepare(settings, output, reviewed):
 
 
 def publish(settings, confirmed=False, deploy=False):
+    from . import canonical
+    if canonical.selected(settings):
+        return canonical.publish(settings, confirmed, deploy)
     from .publish import request_deployment
     reviewed = plan(settings)
     if not confirmed and input('Commit and push source + assets for CI? [y/N] ').strip().lower() != 'y':

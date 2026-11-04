@@ -72,3 +72,16 @@ existing wrapper, not the general plugin publisher. No public hosting, credentia
 or new permissions are implied by a request to prepare a deck. Never test with
 real private source. ZIP/source and HTML speaker notes may contain non-visible
 material: hidden does not mean safe to publish.
+# Canonical source and upstream edits
+
+For source CI, `publish-plan SOURCE --target TARGET --build ci --move-source`
+reviews an explicit move-and-link operation. `publish` with the same options
+asks before committing/pushing. Never enable it silently: source/assets move,
+original paths become symlinks, and exact source (including comments) enters Git.
+Self-contained assets are required; existing destinations and ambiguous links
+are refused. Local-render publishing retains its existing copy workflow.
+
+`matsugit sync SOURCE --check` fetches/reports without touching working files;
+`--yes` applies a clean fast-forward. Follow the real source checkout, not a host
+default. Never force, auto-stash, or discard a draft to make sync succeed. For
+conflicts use Git/Magit and retain both versions. See `docs/canonical-source.org`.
