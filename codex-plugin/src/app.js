@@ -19,9 +19,10 @@ import {setOutlineDepth, outlineKeys} from './outline.mjs';
 import {updateThemePicker} from './theme-picker.mjs';
 import {mergeResult} from './merge-result.mjs';
 import {mergeDialog} from './merge-dialog.mjs';
+import {saveStatus, paintSaveStatus} from './save-status.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.14.2'});
+const app = new App({name: 'matsugit', version: '0.14.3'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -178,6 +179,7 @@ function refreshControls() {
   $('present').title = state.format === 'slides' ? 'Present slides' : 'Present document';
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
+  paintSaveStatus($('save-state'), saveStatus(state, dirty(), tables.pending()));
   $('save').disabled = !!demo || state.saving || state.merging || state.delivering || !state.writable || !state.etag || state.conflict || !dirty();
   $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving || state.merging;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
@@ -471,6 +473,7 @@ async function reload(force = false, manual = false, expectedEtag = null) {
       }
     } else {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
+      state.saveError = null; state.lastSavedAt = null;
       state.conflict = false;
       if (data.text !== text()) { tables.reset(); replaceText(data.text, {baseline:true}); }
       notice(); scheduleRender();
@@ -504,6 +507,7 @@ async function applyMerged(data, merged, snapshot) {
   // never the agent's newly accepted changes or the entire initial document.
   replaceText(latest.text, {baseline:true});
   state.base = latest.text; state.etag = latest.etag; state.writable = latest.writable;
+  state.saveError = null; state.lastSavedAt = null;
   if (merged !== latest.text) replaceText(merged);
   state.conflict = false;
   notice('Changes merged into your draft. Review and Save when ready; a pre-merge recovery copy was kept.');
@@ -537,11 +541,11 @@ async function save() {
     const result = state.uri ? await extensions.resources.write(state.uri, {text: value, ifMatch: state.etag})
       : await call('matsugit_save', {session: state.session, text: value, etag: state.etag});
     if (sequence !== loadSequence) return;
-    if (result.outcome === 'saved') { state.base = value; state.etag = result.etag; state.conflict = false; notice(); }
+    if (result.outcome === 'saved') { state.base = value; state.etag = result.etag; state.conflict = false; state.saveError = null; state.lastSavedAt = Date.now(); notice(); }
     else if (result.outcome === 'conflict') {
       state.conflict = true; notice('Save refused: the file changed outside this editor. Your draft is retained.');
     } else throw Error(result.outcome === 'too-large' ? 'The file exceeds the host write limit.' : 'The host did not save the file.');
-  } catch (error) { if (sequence === loadSequence) notice(error.message); }
+  } catch (error) { if (sequence === loadSequence) { state.saveError = error.message; notice(error.message); } }
   finally { if (sequence === loadSequence) { readSequence++; state.saving = false; refreshControls(); scheduleRecovery(); await flushRecovery(); } }
 }
 function offerIncoming(data) {
@@ -572,7 +576,7 @@ async function load(data, {acceptRevision = null} = {}) {
   if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
   Object.assign(state, {uri: data.file?.resourceUri || null, session: data.session || null,
     name: data.file?.name || data.name || 'Untitled.md', path:data.path || null, conflict: false, rendered: null, renderedRevision: -1,
-    resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false,
+    resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false, saveError:null, lastSavedAt:null,
     bases: {}, revisions: {}, forceFull: false,
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
   themeCatalog = {}; themeSequence++;

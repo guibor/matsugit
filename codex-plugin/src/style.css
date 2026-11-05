@@ -7,6 +7,7 @@
 :root .ff-block-label{font:12px system-ui,sans-serif;color:var(--role-color);letter-spacing:0;display:inline-flex;align-items:center;gap:8px;min-height:21px}
 .ff-block-label select{font:inherit;color:inherit;border:0;border-bottom:1px dotted currentColor;background:transparent;padding:0 2px;max-width:100px}
 #theme{font:inherit;color:inherit;width:180px;max-width:180px;min-width:0;text-overflow:ellipsis}#theme:focus-visible{outline:2px solid var(--accent);outline-offset:1px}@media(max-width:700px){#theme{width:140px}}
+#save-state{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;font-size:11px;color:var(--muted)}#save-state svg{width:14px;height:14px}#save-state[data-kind=dirty]{color:var(--accent)}#save-state[data-kind=review],#save-state[data-kind=error]{color:var(--color-text-warning,#946000)}#dirty{display:none}@media(prefers-color-scheme:dark){#save-state[data-kind=review],#save-state[data-kind=error]{color:var(--color-text-warning,#f6c56b)}}
 #compact-markup[aria-pressed=true]{background:var(--muted-bg);color:var(--accent)}
 body.presenting #app{padding:0;min-height:0}
 body.presenting #app>header,body.presenting #app>nav,body.presenting #app>footer,body.presenting #recovery-banner{display:none}

@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             frame.locator('#auto').uncheck()
             frame.locator('#sync').uncheck()
             frame.locator('[data-layout="source"]').click()
+            assert frame.locator('#save-state').inner_text() == 'Saved'
 
             def current():
                 return frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
@@ -56,12 +57,14 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             mine = original.replace('Alpha original','Alpha mine')
             incoming = original.replace('Gamma original','Gamma agent')
             edit(mine)
+            assert frame.locator('#save-state').inner_text() == 'Unsaved'
             source.write_text(incoming)
             reread()
             merged = mine.replace('Gamma original','Gamma agent')
             assert current() == merged, (current(), frame.locator('#notice-text').inner_text())
             assert source.read_text() == incoming
             assert not frame.evaluate('matsugitWorkspace.state.conflict')
+            assert frame.locator('#save-state').inner_text() == 'Unsaved'
             records = [json.loads(f.read_text()) for f in Path(ready['recovery']).glob('*.json')]
             assert any(r['text'] == mine for r in records)
             frame.locator('#undo').click()
@@ -71,15 +74,42 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving')
             assert source.read_text() == merged
+            assert frame.locator('#save-state').inner_text() == 'Saved'
+            assert 'Saved to the source file at' in frame.locator('#save-state').get_attribute('title')
             print('PASS: non-overlapping auto merge, safety copy, rebased Undo/Redo, explicit Save', flush=True)
 
             local = merged.replace('Alpha mine', 'Alpha local choice').replace('Beta original', 'Beta local choice')
             remote = merged.replace('Alpha mine', 'Alpha agent choice').replace('Beta original', 'Beta agent choice')
             edit(local)
+            save_requests = []
+            def hold_save(route):
+                request = route.request.post_data_json
+                if request.get('params',{}).get('name') == 'matsugit_save':
+                    save_requests.append(route)
+                else:
+                    route.continue_()
+            page.route('**/rpc', hold_save)
+            frame.locator('#save').click()
+            deadline = time.monotonic() + 10
+            while not save_requests and time.monotonic() < deadline:
+                page.wait_for_timeout(50)
+            assert save_requests
+            assert frame.locator('#save-state').inner_text() == 'Saving...'
+            save_requests[0].fulfill(json={'result':{'isError':True,'content':[{'type':'text','text':'Synthetic save failure'}]}})
+            wait(frame, '!matsugitWorkspace.state.saving')
+            assert frame.locator('#save-state').inner_text() == 'Not saved'
+            assert source.read_text() == merged
+            page.unroute('**/rpc', hold_save)
+            for width in (1440,390):
+                page.set_viewport_size({'width':width,'height':1000})
+                assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                page.screenshot(path=str(shots/f'save-state-{width}.png'))
+            page.set_viewport_size({'width':1440,'height':1000})
             source.write_text(remote)
             reread()
             assert current() == local
             assert frame.evaluate('matsugitWorkspace.state.conflict')
+            assert frame.locator('#save-state').inner_text() == 'Review changes'
             frame.locator('#reload').click()
             frame.locator('#incoming-merge').click()
             frame.locator('#merge-dialog').wait_for(state='visible')

@@ -143,6 +143,12 @@ changing the machine default does not override an explicit project choice.
 
 * Saving and concurrent edits
 
+Plugin 0.14.3 shows file state beside the filename: =Unsaved=, =Saving...=,
+=Saved=, =Not saved= or =Review changes=. Hover for the last save time or the
+failure reason. =Table edits= means a table draft still needs applying. A local
+import without a writable file connection is labeled =Local copy= or =Unsaved
+copy=. The footer's =Recovery saved= means a backup only, not a file save.
+
 Host-selected files use Codex resource permissions and version tokens. Files
 opened through =matsugit_open= use opaque sessions scoped to the selected
 file, SHA-256 version checks and an atomic replacement. Saving requires the
