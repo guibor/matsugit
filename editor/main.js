@@ -1,9 +1,12 @@
 import {Editor} from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import {Table, TableRow, TableCell, TableHeader} from '@tiptap/extension-table';
-import {tableExtensions, tableHTML as normalizedTableHTML} from './table-core.js';
+import {TableMap, CellSelection} from '@tiptap/pm/tables';
+import {Fragment, Slice} from '@tiptap/pm/model';
+import {tsvParseRows} from 'd3-dsv';
+import {tableExtensions, tableHTML as normalizedTableHTML, selectTableAxis, alignTableColumns, spreadsheetPaste} from './table-core.js';
 import {createElement, Bold, Italic, Strikethrough, Code, Undo2, Redo2, Combine, Split,
-  Link2, Unlink, PanelTop, List, FileCode2} from 'lucide';
+  Link2, Unlink, PanelTop, List, FileCode2, Rows3, Columns3, AlignLeft, AlignCenter, AlignRight} from 'lucide';
 
 const $ = (id) => document.getElementById(id);
 const token = location.hash.slice(1);
@@ -103,6 +106,7 @@ async function initialize(html) {
   // checks semantic equivalence after import, including spans and formatting.
   editor = new Editor({element: $('editor'), content: html,
     extensions: tableExtensions({StarterKit, Table, TableRow, TableCell, TableHeader}),
+    editorProps:spreadsheetPaste({parseRows:tsvParseRows,Fragment,Slice,TableMap,message:error}),
     onUpdate: () => {
       dirty = true; revision++; status(demo ? 'Demo' : 'Unsaved changes'); update();
       clearTimeout(draftTimer); draftTimer = setTimeout(checkpoint, 600);
@@ -123,6 +127,10 @@ async function initialize(html) {
   separator();
   menu('Rows', [['addRowBefore', 'Insert above'], ['addRowAfter', 'Insert below'], ['deleteRow', 'Delete row']]);
   menu('Columns', [['addColumnBefore', 'Insert left'], ['addColumnAfter', 'Insert right'], ['deleteColumn', 'Delete column']]);
+  button('Select row',Rows3,()=>selectTableAxis(editor,'row',TableMap,CellSelection));
+  button('Select column',Columns3,()=>selectTableAxis(editor,'column',TableMap,CellSelection));
+  for(const [label,icon,align] of [['Align column left',AlignLeft,'left'],['Align column center',AlignCenter,'center'],['Align column right',AlignRight,'right']])
+    button(label,icon,()=>alignTableColumns(editor,align,TableMap));
   button('Merge selected cells', Combine, () => editor.chain().focus().mergeCells().run());
   button('Split merged cell', Split, () => editor.chain().focus().splitCell().run());
   button('Header row', PanelTop, () => editor.chain().focus().toggleHeaderRow().run());

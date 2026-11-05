@@ -17,6 +17,9 @@ test('visual table detection preserves exact source and GFM cell boundaries',()=
 test('fences and YAML are source, not editable table widgets',()=>{
   assert.equal(tableRanges('---\ntitle: Example\ntext: |\n  '+pipe.replaceAll('\n','\n  ')+'\n---\n\n```md\n'+pipe+'\n```').length,0);
 });
+test('visual tables retain column alignment instead of making every cell left-aligned',()=>{
+  assert.deepEqual(tableRanges('| A | B | C |\n| :--- | :---: | ---: |\n| a | b | c |')[0].alignments,['left','center','right']);
+});
 test('merged grid candidates retain their full ranges',()=>{
   const grid='+-----+-----+\n| A         |\n+=====+=====+\n| B   | C   |\n+-----+-----+';
   assert.deepEqual(tableRanges('Before\n\n'+grid+'\n\nAfter').map(t=>t.source),[grid]);

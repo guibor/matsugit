@@ -1,11 +1,12 @@
 import {App, applyDocumentTheme, applyHostStyleVariables} from '@modelcontextprotocol/ext-apps';
 import {OpenAIExtensions} from '@openai/mcp-extensions/app';
 import {EditorView, basicSetup} from 'codemirror';
+import {keymap} from '@codemirror/view';
 import {markdown} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Copy, Table2} from 'lucide';
+import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Copy, Table2, Check, LoaderCircle} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
@@ -14,7 +15,7 @@ import {visualExtensions, visualMode} from './visual.mjs';
 import {tableDialog} from './table-dialog.js';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.11.0'});
+const app = new App({name: 'matsugit', version: '0.12.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -31,6 +32,22 @@ let recoveryId, recoveryGeneration = 0, recoveryTimer, recoveryPending = false, 
 let restoredPosition = false;
 let presentation = null;
 let tables;
+let refreshRequested = false, copying = false, feedbackTimer;
+const actionTimers = new Map();
+function actionFeedback(id, phase, message) {
+  const button = $(id);
+  clearTimeout(actionTimers.get(id));
+  button.dataset.feedback = phase;
+  button.setAttribute('aria-busy', String(phase === 'busy'));
+  button.replaceChildren(createElement(phase === 'busy' ? LoaderCircle : phase === 'done' ? Check : phase === 'error' ? X : id === 'copy-path' ? Copy : RefreshCw));
+  if (message) {
+    clearTimeout(feedbackTimer);
+    $('action-feedback').textContent = message;
+    $('action-feedback').hidden = false;
+    feedbackTimer = setTimeout(() => { $('action-feedback').hidden = true; }, 4000);
+  }
+  if (phase === 'done' || phase === 'error') actionTimers.set(id, setTimeout(() => actionFeedback(id, ''), 2500));
+}
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
 const notice = (message = '') => { $('notice').hidden = !message; $('notice-text').textContent = message; $('reload').hidden = !state.conflict; };
@@ -40,7 +57,8 @@ const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.
 const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, markdown({extensions:GFM}), EditorView.lineWrapping,
   authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice}),
   visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading,
-    open:range=>tables.open(range),preview:source=>tables.preview(source)}),
+    open:(range,placement)=>tables.open(range,null,placement),preview:source=>tables.preview(source),detach:root=>tables.detach(root)}),
+  keymap.of([{key:'Alt-.',run:()=>{tables.atSelection();return true;}}]),
   editability.of(editable(!demo)),
   EditorView.contentAttributes.of({'aria-label': 'Markdown source'}),
   EditorView.domEventHandlers({focus: () => { sourceInput = Date.now(); }}),
@@ -75,6 +93,8 @@ function changeEditorMode(mode) {
 }
 for(const button of document.querySelectorAll('[data-editor]')) button.onclick=()=>changeEditorMode(button.dataset.editor);
 $('copy-path').onclick=async()=>{
+  if (copying) return;
+  copying = true; actionFeedback('copy-path', 'busy'); refreshControls();
   try {
     let path=state.path;
     if(!path && (state.session || state.uri)) path=(await call('matsugit_path',state.session?{session:state.session}:{})).path;
@@ -85,8 +105,9 @@ $('copy-path').onclick=async()=>{
       const copied=document.execCommand('copy');input.remove();
       if(!copied)throw Error('Clipboard access was blocked. Document path: '+path);
     }
-    status('Document path copied');
-  } catch(error){notice(error.message);}
+    status('Document path copied'); actionFeedback('copy-path', 'done', 'Document path copied');
+  } catch(error){notice(error.message); actionFeedback('copy-path', 'error', 'Could not copy path');}
+  finally { copying = false; refreshControls(); }
 };
 $('compact-markup').onclick = () => {
   const compact = $('compact-markup').getAttribute('aria-pressed') !== 'true';
@@ -101,15 +122,16 @@ async function call(name, args) {
 }
 function refreshControls() {
   $('edit-table').disabled=demo || state.loading;
-  for(const button of document.querySelectorAll('.ff-visual-table button')) button.disabled=demo || state.loading;
-  $('copy-path').disabled=!state.path&&!state.uri&&!state.session;
+  for(const button of document.querySelectorAll('.ff-visual-table>div:first-child>button')) button.disabled=demo || state.loading;
+  $('copy-path').disabled=copying || (!state.path&&!state.uri&&!state.session);
   $('copy-path').title=state.path?'Copy document path: '+state.path:'Copy document path';
   $('present').title = state.format === 'slides' ? 'Present slides' : 'Present document';
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
   $('save').disabled = !!demo || state.saving || state.delivering || !state.writable || !state.etag || state.conflict || !dirty();
-  $('refresh').disabled = !!demo || state.loading;
-  $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh preview (Shift: rebuild)';
+  $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving;
+  $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
+  $('refresh').setAttribute('aria-label', $('refresh').title);
   $('filename').textContent = state.name;
   $('filename').title = state.name;
   $('reload').hidden = !state.conflict;
@@ -268,6 +290,8 @@ async function render(manual = true) {
   const cancel = job => call('matsugit_preview_cancel', {job, ...owner}).catch(() => {});
   state.pendingRender = false;
   state.rendering = true; refreshControls(); status('Preparing preview');
+  actionFeedback('refresh', 'busy');
+  let completed = false;
   try {
     const base = state.forceFull ? undefined : state.bases[format];
     state.forceFull = false;
@@ -325,14 +349,19 @@ async function render(manual = true) {
       $('theme').placeholder = job.theme ? `${job.theme} (default)` : 'Project default';
       $('theme').title = job.theme ? `Resolved theme: ${job.theme}` : 'Theme';
       if (!state.conflict) notice();
+      completed = true;
     }
   } catch (error) {
     if (current()) {
       notice(error.message); $('empty-label').textContent = 'Preview unavailable';
+      if (refreshRequested) { refreshRequested = false; actionFeedback('refresh', 'error', 'Preview failed'); }
     }
   } finally {
     if (sequence === previewSequence) {
       state.rendering = false; refreshControls();
+      if (completed && !state.pendingRender && current() && refreshRequested) {
+        refreshRequested = false; actionFeedback('refresh', 'done', 'Preview refreshed');
+      } else if (!state.pendingRender && $('refresh').dataset.feedback === 'busy') actionFeedback('refresh', '');
       if (state.pendingRender) { state.pendingRender = false; debounce = setTimeout(() => render(), 0); }
       else if (revision !== state.revision || format !== state.format) scheduleRender();
     }
@@ -348,14 +377,15 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
   const result = await call('matsugit_read', {session});
   return {...result, text: result.source};
 }
-async function reload(force = false) {
-  if ((!state.uri && !state.session) || state.loading || state.saving) return;
+async function reload(force = false, manual = false) {
+  if ((!state.uri && !state.session) || state.loading || state.saving || (state.refreshing && !manual)) return false;
   const sequence = loadSequence;
   const read = ++readSequence;
   try {
     const data = await resourceRead();
-    if (sequence !== loadSequence || read !== readSequence || state.saving || (!force && data.etag === state.etag)) return;
-    if (dirty() && data.text !== text() && !force) {
+    if (sequence !== loadSequence || read !== readSequence || state.saving) return false;
+    if (!force && data.etag === state.etag) return !state.conflict;
+    if ((dirty() || tables.pending()) && data.text !== text() && !force) {
       state.conflict = true; notice('The file changed outside this editor. Your draft is retained. Download it or reload the file.');
     } else {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
@@ -363,7 +393,25 @@ async function reload(force = false) {
       scheduleRecovery();
     }
     refreshControls();
-  } catch (error) { if (sequence === loadSequence && read === readSequence) notice(error.message); }
+    return !state.conflict;
+  } catch (error) { if (sequence === loadSequence && read === readSequence) notice(error.message); return false; }
+}
+async function refresh(forceFull = false) {
+  if ($('refresh').disabled) return;
+  const sequence = loadSequence;
+  state.refreshing = true; refreshControls();
+  actionFeedback('refresh', 'busy', 'Checking for file changes');
+  status('Checking for file changes');
+  const ready = !state.uri && !state.session || await reload(false, true);
+  state.refreshing = false; refreshControls();
+  if (sequence !== loadSequence) { actionFeedback('refresh', ''); return; }
+  if (!ready) {
+    actionFeedback('refresh', 'error', state.conflict ? 'External changes: your draft is retained' : 'Could not refresh from file');
+    return;
+  }
+  state.forceFull ||= forceFull;
+  refreshRequested = true;
+  await render();
 }
 async function save() {
   if ($('save').disabled) return;
@@ -388,6 +436,7 @@ async function load(data) {
   tables.reset();
   const suppliedRecovery = data.recovery;
   const sequence = ++loadSequence;
+  refreshRequested = false; actionFeedback('refresh', '');
   readSequence++;
   state.loading = true;
   recoveryId = null; recoveryGeneration = 0; recoveryPending = false; recoveryCandidate = null;
@@ -617,7 +666,7 @@ delivery({call, state, text, theme:() => $('theme').value.trim(), notice, downlo
   hasUnsaved:() => dirty() || tables.pending(), refreshControls});
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
-$('refresh').onclick = event => { state.forceFull ||= event.shiftKey; render(); }; $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
+$('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };
 $('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); scheduleRecovery(); };
 $('reload').onclick = () => { if (confirm('Discard this editor draft and reload the latest file?')) reload(true); };

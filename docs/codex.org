@@ -67,7 +67,10 @@ open the global matsugit workspace to start an unsaved draft.
 - =Split=: source and preview, with a draggable/keyboard-resizable divider.
 - =Document= / =Slides=: choose the rendered output independently of layout.
 - The selected slide is retained across preview refreshes when it still exists.
-- =Auto=: render after a pause in editing. The refresh icon renders manually.
+- =Auto=: render after a pause in editing. Refresh first checks the file for
+  external changes, then renders the latest source even with Auto off. Unsaved
+  text or table edits are retained on conflict; no automatic overwrite occurs.
+  A spinner, completion checkmark and brief notification acknowledge the action.
   Shift-click the refresh icon to force a complete rebuild of the selected view.
 - =Sync=: follow the edited heading in the document/slide preview, and follow
   preview navigation back to its source heading. Turn it off to browse panes
@@ -308,10 +311,17 @@ Custom slide blocks, YAML, code and unsupported constructs remain source-backed;
 this is not a general HTML-to-Markdown round trip. Raw is the initial default;
 the choice is remembered per recovered workspace.
 
-Click a table's pencil, double-click its cells, or put the cursor in a raw table
-and use the table icon. The embedded editor uses the same Tiptap/ProseMirror
+Click a table cell to edit in place, or use its pencil. Expand opens a larger
+editor without discarding your draft. In Raw, put the cursor in a table and use
+the table icon or =Alt-.=. The embedded editor uses the same Tiptap/ProseMirror
 schema and validated Pandoc conversion as =matsugit edit-table=. It supports
 formatting, links, row/column operations, merge/split and local undo/redo.
+Tab/Shift-Tab move between cells; select entire rows/columns and align columns
+from the toolbar. Paste a spreadsheet's tab-separated cells directly into the
+grid, including quoted multiline values. Formulas stay literal text; they never
+execute. Oversized pastes are rejected without replacing the current selection.
+Rendered Document/Slides previews stay output-only; edit in the source pane's
+Visual view or the table editor, not in the output iframe.
 =Apply= makes one undoable source change; it does not save the document.
 Simple tables remain pipe Markdown; merged/multiline cells use Pandoc grid
 Markdown, never a replacement block of HTML. =Save= remains explicit.

@@ -25,8 +25,11 @@ export function tableRanges(source, tree = md.parse(source)) {
       for (let cell = row.firstChild; cell; cell = cell.nextSibling) if (cell.name === 'TableCell') cells.push(source.slice(cell.from, cell.to));
       rows.push(cells);
     }
-    if (rows.length <= 250 && rows.reduce((sum, row) => sum + row.length, 0) <= 1000)
-      tables.push({from:node.from, to:node.to, source:source.slice(node.from,node.to), rows, kind:'pipe'});
+    if (rows.length <= 250 && rows.reduce((sum, row) => sum + row.length, 0) <= 1000) {
+      const delimiter=source.slice(node.from,node.to).split('\n')[1];
+      const alignments=(delimiter.match(/:?-+:?/g) || []).map(value=>value.startsWith(':') ? value.endsWith(':')?'center':'left' : value.endsWith(':')?'right':null);
+      tables.push({from:node.from, to:node.to, source:source.slice(node.from,node.to), rows, alignments, kind:'pipe'});
+    }
     return false;
   }});
   // Grid tables are a Pandoc extension. Only identify a bounded candidate here;
@@ -105,11 +108,12 @@ class VisualTable extends WidgetType {
     const toolbar=document.createElement('div'), edit=document.createElement('button');
     edit.title='Edit table'; edit.setAttribute('aria-label','Edit table'); edit.append(createElement(Pencil));
     edit.disabled=!this.actions.enabled();
-    edit.onclick=()=>{if(this.actions.enabled())this.actions.open(table);}; toolbar.append(edit); root.append(toolbar);
+    const open=cell=>{if(this.actions.enabled())this.actions.open(table,{mount:root,cell,measure:()=>view.requestMeasure()});};
+    edit.onclick=()=>open(); toolbar.append(edit); root.append(toolbar);
     const body=document.createElement('div'); body.className='ff-table-scroll'; root.append(body);
     if (table.rows) {
       const el=document.createElement('table');
-      table.rows.forEach((row,i)=>{const tr=el.insertRow();row.forEach(value=>{const cell=document.createElement(i?'td':'th');cell.append(inlineDOM(value));tr.append(cell);});});
+      table.rows.forEach((row,i)=>{const tr=el.insertRow();row.forEach((value,c)=>{const cell=document.createElement(i?'td':'th');cell.style.textAlign=table.alignments[c] || '';cell.append(inlineDOM(value));tr.append(cell);});});
       body.append(el);
     } else {
       const label=document.createElement('pre'); label.textContent=table.source; body.append(label);
@@ -118,9 +122,13 @@ class VisualTable extends WidgetType {
         body.replaceChildren(safeTableDOM(html)); view.requestMeasure();
       }).catch(error=>{edit.title='Edit table: '+error.message;});
     }
-    body.ondblclick=()=>{if(this.actions.enabled())this.actions.open(table);};
+    body.onclick=event=>{
+      const cell=event.target.closest('th,td');
+      if(cell)open({row:cell.parentElement.rowIndex,column:cell.cellIndex});
+    };
     return root;
   }
+  destroy(root) { this.actions.detach?.(root); }
   ignoreEvent() { return true; }
 }
 

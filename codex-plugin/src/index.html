@@ -51,6 +51,7 @@
   </div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span></footer>
 </main>
+<div id="action-feedback" role="status" aria-live="polite" hidden></div>
 <div id="presentation-controls" hidden aria-label="Presentation controls">
   <button id="present-previous" title="Previous slide" aria-label="Previous slide"></button>
   <span id="present-position" aria-live="polite"></span>
@@ -59,7 +60,7 @@
 </div>
 <dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
 <dialog id="table-dialog" aria-labelledby="table-title">
-  <div class="recovery-heading"><h2 id="table-title">Edit table</h2><button id="table-close" title="Close table editor" aria-label="Close table editor"></button></div>
+  <div class="recovery-heading"><h2 id="table-title">Edit table</h2><span id="table-cell" aria-live="polite"></span><button id="table-expand" title="Expand table editor" aria-label="Expand table editor"></button><button id="table-close" title="Close table editor" aria-label="Close table editor"></button></div>
   <div id="table-toolbar" role="toolbar" aria-label="Table formatting"></div>
   <div id="table-content"></div>
   <div class="table-footer"><span id="table-status" role="status"></span><button id="table-download" title="Download table draft" aria-label="Download table draft"></button><button id="table-apply" disabled></button></div>

@@ -471,7 +471,12 @@ document renderer still accepts HTML-table source as well.
 
 The editor provides row/column operations, cell merge/split, wrapping, semantic
 formatting, links, lists, header rows, source preview and undo/redo. Column
-resizing affects the editor view; source widths are normalized on export.
+alignment and row/column selection are available in the toolbar. Paste a
+spreadsheet's tab-separated cells, including quoted multiline values; formulas
+remain literal text. In the Codex/Cursor Visual pane, click a cell to edit in
+place, or expand the editor. Raw offers the table icon and =Alt-.=.
+Apply updates the source draft; Save writes it. Rendered output remains read-only.
+Column resizing affects the editor view; source widths are normalized on export.
 Import and output are checked for lossy conversion before saving. Unsupported
 content (including images, math, nested tables, raw HTML and captions inside the
 selection) is refused rather than silently discarded. Maximum: 1 MiB, 500 rows,

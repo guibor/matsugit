@@ -27,7 +27,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.11.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.12.0'});
   new OpenAIExtensions(server);
   server.registerTool('matsugit_table', {description:'Convert or validate a selected table locally. Does not save or publish.', ...appOnly,
     inputSchema:z.object({operation:z.enum(['open','check','serialize']), source:z.string().max(1024*1024),

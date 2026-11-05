@@ -2,8 +2,12 @@ Bundled license information:
 
 lucide/dist/esm/createElement.js:
 lucide/dist/esm/defaultAttributes.js:
+lucide/dist/esm/icons/align-center.js:
+lucide/dist/esm/icons/align-left.js:
+lucide/dist/esm/icons/align-right.js:
 lucide/dist/esm/icons/bold.js:
 lucide/dist/esm/icons/code.js:
+lucide/dist/esm/icons/columns-3.js:
 lucide/dist/esm/icons/combine.js:
 lucide/dist/esm/icons/file-code-2.js:
 lucide/dist/esm/icons/italic.js:
@@ -11,6 +15,7 @@ lucide/dist/esm/icons/link-2.js:
 lucide/dist/esm/icons/list.js:
 lucide/dist/esm/icons/panel-top.js:
 lucide/dist/esm/icons/redo-2.js:
+lucide/dist/esm/icons/rows-3.js:
 lucide/dist/esm/icons/split.js:
 lucide/dist/esm/icons/strikethrough.js:
 lucide/dist/esm/icons/undo-2.js:
