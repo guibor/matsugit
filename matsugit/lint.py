@@ -7,6 +7,7 @@ from .compat import env
 from .layout import plain, classes, slides, metadata
 from .components import prepare
 from .charts import dataset, is_chart
+from .diagrams import is_diagram
 
 
 def walk(node):
@@ -46,6 +47,8 @@ def inspect(ast):
                     return {}
                 if measure and is_chart(n):
                     return {'t': 'Str', 'c': dataset(n).get('caption', '')}
+                if measure and is_diagram(n):
+                    return {'t': 'Str', 'c': dict(n['c'][0][2]).get('caption', '')}
                 return {k:visible(v, measure) for k,v in n.items()}
             return n
         nodes = list(walk(visible(blocks)))

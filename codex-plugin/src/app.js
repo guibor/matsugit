@@ -4,6 +4,7 @@ import {EditorView, basicSetup} from 'codemirror';
 import {keymap} from '@codemirror/view';
 import {markdown} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
+import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
 import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Copy, Table2, Check, LoaderCircle} from 'lucide';
@@ -13,9 +14,10 @@ import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
 import {delivery} from './delivery.js';
 import {visualExtensions, visualMode} from './visual.mjs';
 import {tableDialog} from './table-dialog.js';
+import {setOutlineDepth, outlineKeys} from './outline.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.12.0'});
+const app = new App({name: 'matsugit', version: '0.13.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -59,10 +61,15 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
   visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading,
     open:(range,placement)=>tables.open(range,null,placement),preview:source=>tables.preview(source),detach:root=>tables.detach(root)}),
   keymap.of([{key:'Alt-.',run:()=>{tables.atSelection();return true;}}]),
+  outlineKeys(() => state.name.toLowerCase().endsWith('.org')),
   editability.of(editable(!demo)),
   EditorView.contentAttributes.of({'aria-label': 'Markdown source'}),
   EditorView.domEventHandlers({focus: () => { sourceInput = Date.now(); }}),
   EditorView.updateListener.of(update => {
+    if (update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(foldEffect) || e.is(unfoldEffect)))) {
+      for (const button of document.querySelectorAll('[data-depth]'))
+        button.setAttribute('aria-pressed', String(button.dataset.depth === '0' && !foldedRanges(update.state).size));
+    }
     if (update.docChanged && !state.loading) { state.revision++; refreshControls(); scheduleRender(); }
     if ((update.docChanged || update.selectionSet) && !state.loading) scheduleRecovery();
     if ((update.selectionSet || update.docChanged) && !state.loading && !followingPreview) {
@@ -121,6 +128,13 @@ async function call(name, args) {
   return {...response.structuredContent, ...response._meta};
 }
 function refreshControls() {
+  const headings = sourceOutline();
+  const maxDepth = Math.max(0, ...headings.map(h => h.level));
+  for (const button of document.querySelectorAll('[data-depth]')) {
+    const depth = Number(button.dataset.depth);
+    button.hidden = depth > maxDepth;
+    button.disabled = state.loading || (depth > 0 && !headings.some(h => h.level <= depth));
+  }
   $('edit-table').disabled=demo || state.loading;
   for(const button of document.querySelectorAll('.ff-visual-table>div:first-child>button')) button.disabled=demo || state.loading;
   $('copy-path').disabled=copying || (!state.path&&!state.uri&&!state.session);
@@ -140,6 +154,10 @@ function refreshControls() {
     : dirty() ? 'Unsaved changes' : demo ? 'Read-only design preview' : state.etag ? 'Saved' : 'Local draft');
   updateModelContext();
 }
+for (const button of document.querySelectorAll('[data-depth]')) button.onclick = () => {
+  setOutlineDepth(editor, Number(button.dataset.depth), state.name.toLowerCase().endsWith('.org'));
+  for (const other of document.querySelectorAll('[data-depth]')) other.setAttribute('aria-pressed', String(other === button));
+};
 function replaceText(value) {
   const selection = editor.state.selection.main;
   const wasLoading = state.loading;

@@ -74,6 +74,18 @@ Explain what the table supports, separately from the table itself.
 Illustrative values. Replace with observed evidence.
 :::
 ''',
+    'd2': '''## How the mechanism works
+### Name the critical gate or dependency
+
+```d2
+direction: right
+evidence: Evidence
+review: Review
+decision: Decision
+evidence -> review: informs
+review -> decision: enables
+```
+''',
     'process': '''## How the mechanism works
 ### Name the critical gate or dependency
 

@@ -58,6 +58,7 @@ def main(argv=None):
             p.add_argument('--version', help='Install a specific published version')
     commands.add_parser("setup-editor", help="Provision a verified isolated Pandoc when needed")
     commands.add_parser('setup-charts', help='Install the optional isolated local chart backend')
+    commands.add_parser('setup-diagrams', help='Install the optional local D2 backend (Node.js 22+ and npm)')
     commands.add_parser('setup-export', help='Install isolated Chromium support for PDF and diagram export')
     template = commands.add_parser('template', help='Print or create an editable Markdown/Org starter')
     from .authoring import TEMPLATES, ELEMENTS
@@ -152,6 +153,10 @@ def main(argv=None):
             result = export_file(config(args.source, vars(args)), args.format, args.output,
                                  sync_folder=args.sync_folder, reference=args.reference_doc, replace=args.replace)
             print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == 'setup-diagrams':
+            from .diagrams import setup
+            setup()
             return 0
         if args.command == 'setup-charts':
             from .charts import setup

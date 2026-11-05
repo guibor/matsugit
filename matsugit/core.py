@@ -18,6 +18,7 @@ if __package__:
     from .components import prepare as evidence_components
     from .canvas import prepare as canvas_components
     from .charts import prepare as chart_components
+    from .diagrams import prepare as diagram_components
     from .handout import prepare as handout_layout
 else:  # The standalone CI bundle imports core directly.
     from compat import env, existing, global_config
@@ -25,6 +26,7 @@ else:  # The standalone CI bundle imports core directly.
     from components import prepare as evidence_components
     from canvas import prepare as canvas_components
     from charts import prepare as chart_components
+    from diagrams import prepare as diagram_components
     from handout import prepare as handout_layout
 
 
@@ -170,13 +172,13 @@ def install_theme(settings, output):
             theme = Path(__file__).parent / 'themes/default'
         own = read_json(theme / 'theme.json')
         manifest, files = resolve(own['extends'], (*parents, name)) if own.get('extends') else ({}, {})
-        for key in ('document', 'slides', 'charts', 'powerpoint'):
+        for key in ('document', 'slides', 'charts', 'diagrams', 'powerpoint'):
             if key in own:
                 files[own[key]] = inside(theme, own[key])
         for asset in own.get('assets', []):
             files[asset] = inside(theme, asset)
         manifest.update({k:v for k,v in own.items() if k not in ('extends', 'assets')})
-        manifest['assets'] = sorted(set(files) - {manifest.get(k) for k in ('document', 'slides', 'charts', 'powerpoint')})
+        manifest['assets'] = sorted(set(files) - {manifest.get(k) for k in ('document', 'slides', 'charts', 'diagrams', 'powerpoint')})
         return manifest, files
     manifest, files = resolve(settings['theme'])
     (output / "theme").mkdir(parents=True, exist_ok=True)
@@ -332,6 +334,11 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
     return ast
 
 
+def prepare_diagrams(ast, output, theme, colours=None, cache=None):
+    appearance = read_json(inside(output / 'theme', theme['diagrams'])) if theme.get('diagrams') else {}
+    return diagram_components(ast, output, appearance, colours, cache)
+
+
 def render(settings, output, edit_url=None, *, source_text=None,
            formats=('document', 'slides'), _prepared=None, _transform=None):
     output = Path(output).resolve()
@@ -345,7 +352,8 @@ def render(settings, output, edit_url=None, *, source_text=None,
         theme = install_theme(settings, output)
         ast = normalize(settings, output, source_text=source_text)
         colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
-        display_ast = canvas_components(evidence_components(chart_components(ast, output, colours)), output)
+        display_ast = canvas_components(evidence_components(chart_components(
+            prepare_diagrams(ast, output, theme, colours), output, colours)), output)
     else:
         theme, ast, display_ast = _prepared
     document_ast = _transform(display_ast, 'document') if _transform else display_ast

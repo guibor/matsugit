@@ -11,7 +11,7 @@ from urllib.parse import unquote, urlsplit
 import zipfile
 import xml.etree.ElementTree as ET
 
-from .core import Error, install_theme, normalize, render, run, read_json
+from .core import Error, install_theme, normalize, render, run, read_json, prepare_diagrams
 from .layout import slides
 from .charts import prepare as charts, style
 from .components import prepare as components
@@ -168,7 +168,7 @@ def export_file(settings, kind, output=None, *, sync_folder=False, reference=Non
             if contains(ast):
                 raise Error('HTML canvases cannot be embedded in editable PowerPoint. Use HTML/ZIP/PDF, or replace the canvas with an image first')
             palette = read_json(rendered / 'theme' / theme['charts']) if theme.get('charts') else {}
-            ast = slides(components(charts(ast, rendered, palette)))
+            ast = slides(components(charts(prepare_diagrams(ast, rendered, theme, palette), rendered, palette)))
             if not ast['meta'].get('slide-title-page', {'c':True})['c']:
                 ast['meta'] = {k:v for k,v in ast['meta'].items() if k not in ('title', 'subtitle')}
             names = []

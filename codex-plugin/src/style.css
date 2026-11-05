@@ -32,6 +32,7 @@ body.presenting #source-pane,body.presenting #divider{display:none}
 .identity #copy-path{width:28px;height:28px;min-height:28px;flex:none;display:grid;place-items:center;color:var(--muted)}
 #source-pane{display:flex;flex-direction:column}.source-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);flex:none}
 .source-tools .segmented button{font-size:12px;min-height:26px;padding:3px 10px}.source-tools>button{width:30px;height:30px;display:grid;place-items:center}
+.source-tools{flex-wrap:wrap;justify-content:flex-start}.source-tools>button{margin-left:auto}.source-tools .outline-depth button{min-width:26px;padding:3px 6px}.outline-depth button[hidden]{display:none}
 #editor{flex:1;min-height:0;height:auto}.ff-visual .cm-content{font-family:var(--font-sans,system-ui,sans-serif);font-size:14px}
 .ff-visual-heading{font-weight:650;line-height:1.5;padding-top:12px!important;padding-bottom:6px!important;overflow-wrap:anywhere}
 .ff-heading-1{font-size:23px}.ff-heading-2{font-size:20px}.ff-heading-3{font-size:17px}.ff-heading-4,.ff-heading-5,.ff-heading-6{font-size:15px}

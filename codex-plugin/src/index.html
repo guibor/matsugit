@@ -40,7 +40,19 @@
   <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
   <div id="workspace" data-layout="split">
     <section id="source-pane" aria-label="Source">
-      <div class="source-tools"><div class="segmented" aria-label="Editor appearance"><button data-editor="raw" aria-pressed="true">Raw</button><button data-editor="visual" aria-pressed="false">Visual</button></div><button id="edit-table" title="Edit table at cursor" aria-label="Edit table at cursor"></button></div>
+      <div class="source-tools">
+        <div class="segmented" aria-label="Editor appearance"><button data-editor="raw" aria-pressed="true">Raw</button><button data-editor="visual" aria-pressed="false">Visual</button></div>
+        <div class="segmented outline-depth" role="group" aria-label="Outline depth">
+          <button data-depth="0" aria-pressed="true" title="Show all headings and content">All</button>
+          <button data-depth="1" aria-pressed="false" title="Show headings through level 1">1</button>
+          <button data-depth="2" aria-pressed="false" title="Show headings through level 2">2</button>
+          <button data-depth="3" aria-pressed="false" title="Show headings through level 3">3</button>
+          <button data-depth="4" aria-pressed="false" title="Show headings through level 4">4</button>
+          <button data-depth="5" aria-pressed="false" title="Show headings through level 5">5</button>
+          <button data-depth="6" aria-pressed="false" title="Show headings through level 6">6</button>
+        </div>
+        <button id="edit-table" title="Edit table at cursor" aria-label="Edit table at cursor"></button>
+      </div>
       <div id="editor"></div>
     </section>
     <div id="divider" role="separator" aria-label="Resize source and preview" aria-orientation="vertical" tabindex="0" aria-valuenow="50" aria-valuemin="20" aria-valuemax="80"></div>

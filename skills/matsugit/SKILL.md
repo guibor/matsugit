@@ -54,6 +54,14 @@ one slide.
 
 ## Content guidance is separate
 
+For diagrams, prefer D2 for relationship maps, nested systems and branching
+processes when automatic layout fits. Mermaid remains fully supported, particularly
+for existing diagrams and sequence syntax. Do not migrate working Mermaid without
+reason. Keep comparisons, timelines and implications in semantic blocks when that
+is simpler. Read [diagrams.md](references/diagrams.md) for setup, source examples,
+theme ownership and security limits. Keep meaning in text and styling in the theme.
+
+
 This skill owns the source format and rendering contract, not a mandatory
 storytelling style. Use the user's brief or, when available and relevant,
 `bcg-slides` for consulting argument structure and `ackman-slides` for cumulative

@@ -1,7 +1,8 @@
-# Include this file explicitly. The runner must provide Python 3.10+ and Quarto.
+# Include explicitly. The runner needs Python 3.10+, Quarto, Node.js 22+ and npm.
 # It runs only for an explicitly requested API/web pipeline, not ordinary pushes.
 matsugit-pages:
   script:
+    - python3 .matsugit-ci/diagrams.py --setup
     - python3 .matsugit-ci/charts.py --setup
     - python3 .matsugit-ci/build.py
   pages:

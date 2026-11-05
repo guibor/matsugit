@@ -98,9 +98,9 @@ def fingerprint(settings, output, theme):
     files = {str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()
              for p in (output / 'theme').rglob('*') if p.is_file()}
     # Immutable per plugin process, but also safe across a local renderer update.
-    for root in (Path(__file__).parent / 'runtime', Path(__file__).parent):
+    for root in (Path(__file__).parent / 'runtime', Path(__file__).parent / 'diagram_runtime', Path(__file__).parent):
         for p in root.glob('*'):
-            if p.is_file() and p.suffix in ('.py', '.css', '.js'):
+            if p.is_file() and p.suffix in ('.py', '.css', '.js', '.mjs', '.json'):
                 files[str(p)] = hashlib.sha256(p.read_bytes()).hexdigest()
     executable = shutil.which(str(settings['quarto']))
     version = [(str(p), p.stat().st_size, p.stat().st_mtime_ns)
@@ -122,7 +122,8 @@ def render(settings, output, text, format='document', base=None):
         shutil.copytree(Path(base) / 'chart-cache', cache)
     ast = core.normalize(settings, output, source_text=text, editable_source=False)
     colours = core.read_json(core.inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
-    display = core.canvas_components(core.evidence_components(core.chart_components(ast, output, colours, cache=cache)), output)
+    display = core.canvas_components(core.evidence_components(core.chart_components(
+        core.prepare_diagrams(ast, output, theme, colours, cache), output, colours, cache=cache)), output)
     target = slides(display) if format == 'slides' else display
     annotated, snapshot = annotate(target)
     snapshot.update(signature=signature, format=format)

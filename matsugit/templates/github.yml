@@ -17,6 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: quarto-dev/quarto-actions/setup@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare isolated D2 backend
+        run: python3 .matsugit-ci/diagrams.py --setup
       - name: Prepare isolated chart backend
         run: python3 .matsugit-ci/charts.py --setup
       - name: Render documents before slides, without executing document code

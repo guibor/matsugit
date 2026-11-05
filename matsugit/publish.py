@@ -167,6 +167,7 @@ def setup_ci(settings, provider):
         ".matsugit-ci/canvas.py": Path(__file__).parent / "canvas.py",
         ".matsugit-ci/relationships.py": Path(__file__).parent / "relationships.py",
         ".matsugit-ci/charts.py": Path(__file__).parent / "charts.py",
+        ".matsugit-ci/diagrams.py": Path(__file__).parent / "diagrams.py",
         ".matsugit-ci/vega.py": Path(__file__).parent / "vega.py",
         ".matsugit-ci/handout.py": Path(__file__).parent / "handout.py",
         ".matsugit-ci/build.py": templates / "build.py",
@@ -177,6 +178,8 @@ def setup_ci(settings, provider):
         ".matsugit-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
         ".matsugit-ci/runtime/layout.css": Path(__file__).parent / "runtime/layout.css",
     }
+    for name in ('package.json', 'package-lock.json', 'render.mjs'):
+        sources['.matsugit-ci/diagram_runtime/' + name] = Path(__file__).parent / 'diagram_runtime' / name
     for name in sources:
         if (repo / name).exists():
             raise Error(f"Refusing to overwrite existing CI file: {name}")

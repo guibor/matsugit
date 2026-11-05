@@ -2,5 +2,6 @@
   "document": "document.css",
   "slides": "slides.scss",
   "charts": "charts.json",
+  "diagrams": "diagrams.json",
   "assets": []
 }

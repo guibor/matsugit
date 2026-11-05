@@ -1,0 +1,6 @@
+{
+  "name": "matsugit-diagram-runtime",
+  "private": true,
+  "type": "module",
+  "dependencies": {"@d2lang/d2": "0.1.34"}
+}

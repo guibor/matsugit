@@ -40,6 +40,7 @@ for (const name of (await readdir(path.join(root, '../matsugit'))).sort().filter
   await include('matsugit/' + name);
 }
 await includeTree('matsugit/runtime');
+await includeTree('matsugit/diagram_runtime');
 await includeTree('matsugit/themes/default');
 const runtime = gzipSync(JSON.stringify({app, files})).toString('base64');
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matsugit"
-version = "0.16.0"
+version = "0.17.0"
 description = "Editable documents and themed slides, published together through Git"
 requires-python = ">=3.10"
 dependencies = []
@@ -19,7 +19,7 @@ matsugit = "matsugit.cli:main"
 folioforge = "matsugit.cli:main"
 
 [tool.setuptools.package-data]
-matsugit = ["themes/default/*", "templates/*", "editor_assets/*", "runtime/*"]
+matsugit = ["themes/default/*", "templates/*", "editor_assets/*", "runtime/*", "diagram_runtime/*.json", "diagram_runtime/*.mjs"]
 
 [tool.setuptools.packages.find]
 include = ["matsugit*", "folioforge*"]

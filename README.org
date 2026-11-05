@@ -34,7 +34,17 @@ or use =+= to insert a slide recipe, columns, notes or a hidden agent comment.
 The source stays ordinary Markdown or Org, with explicit saving and undo.
 
 The Markdown pane has independent =Raw= and =Visual= editing modes. Visual
-keeps headings, links and tables readable while preserving the original source.
+also supports the same outline-depth buttons as Raw: =All= reveals the complete
+source; =1=, =2=, =3= and deeper levels keep headings through that depth visible.
+These are local folds, not document edits or export options. Individual folds can
+still be opened with the editor's gutter controls. On a heading, =Tab= cycles
+folded / children / expanded; =Shift-Tab= cycles top-level / all headings / all
+content. =Cmd-Enter= (Mac) or =Ctrl-Enter= (Linux/Windows) cycles the containing
+section from its body. =Alt-j= / =Alt-k= visit the next / previous visible heading;
+=Alt-h= visits the parent. These shortcuts also work in Org source. Ordinary
+letters are never speed keys, and Tab outside headings retains editor behavior.
+
+Visual keeps headings, links and tables readable while preserving the original source.
 Click a table's pencil to edit cells, format text, add rows or merge cells in the
 workspace; =Apply= updates the draft and =Save= writes the file. The copy icon
 beside the filename copies the actual source path, not a temporary preview URL.
@@ -319,6 +329,16 @@ permissions. A private GitHub repository does NOT guarantee private Pages.
 GitLab Pages access control must also be reviewed before publishing private data.
 
 * Tables and slides
+** Diagrams, still editable text
+Use =d2= fences for relationship maps, nested systems and branching processes.
+The shared renderer uses upstream D2 with automatic layout, theme-owned colors
+and a cache for unchanged diagrams. Mermaid remains supported; semantic
+comparison/implication blocks remain the simplest choice for those slide types.
+Run =matsugit setup-diagrams= once (Node.js 22+ and npm), then insert =/d2= in
+the workspace or =matsugit template d2 --fragment=. Org uses =#+begin_src d2=.
+See [[file:docs/diagrams.md][D2 authoring, theme tokens, CI setup and security boundaries]].
+
+** Tables
 Plain pipe tables cannot encode merged cells. Use HTML =rowspan=/=colspan=
 inside Markdown, or merged grid tables when your Quarto/Pandoc supports them.
 Spans are retained as HTML, not flattened into pipe tables. Example:

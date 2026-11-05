@@ -153,7 +153,9 @@ Takeaways are conclusions, not sources or notes: write a short implication in
 `::: takeaway`. Shared themes render a high-contrast conclusion band. Never
 invent a takeaway that the supplied evidence or reference does not support.
 
-Mermaid fences render diagrams without executing general document code:
+D2 fences are preferred for relationship maps and nested systems; see
+[diagrams.md](diagrams.md). Use `matsugit setup-diagrams` once with authorization.
+Mermaid remains supported and its fences render without executing general document code:
 
 ````markdown
 ```mermaid

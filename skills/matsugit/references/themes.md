@@ -72,6 +72,11 @@ contract is still a gap; do not invent a supported `tokens.json` manifest field.
 Some runtime rules load after theme CSS: use scoped selectors with appropriate
 specificity and inspect computed styles, rather than adding global `!important`.
 
+D2 diagrams accept an optional `diagrams` manifest entry pointing to a JSON
+file with `layout` and D2 `palette` tokens. They inherit chart colors by default.
+See [diagrams.md](diagrams.md); diagrams currently use bundled Source Sans Pro
+rather than loading theme web fonts. Mermaid styling is independent and unchanged.
+
 Charts use a separate optional `charts.json`:
 
 ```json
