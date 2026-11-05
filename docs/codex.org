@@ -58,6 +58,12 @@ MCP Apps-capable UI, and is not a workaround for a terminal-only host.
 
 * Open and work
 
+With plugin 0.14.1+, the workspace's own save endpoint does not rewrite a file
+when the content is unchanged. This preserves its inode and modification time
+for editors such as Emacs. Revision checks still run first; an obsolete revision
+cannot bypass a real conflict. Host-managed file handlers control their own
+write behavior, and other programs can still rewrite the source independently.
+
 Ask Codex: "Open /absolute/path/deck.md in matsugit with a split slide preview."
 Alternatively choose the matsugit action for a supported file in Codex, or
 open the global matsugit workspace to start an unsaved draft.

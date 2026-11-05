@@ -38,6 +38,28 @@ test('paths, document size, source text and theme options are constrained', () =
   assert.throws(() => store.start({text: '# X', format: 'other'}));
   assert.throws(() => store.status('unknown'));
 });
+
+test('saving identical source does not rewrite the file or bypass conflicts', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-unchanged-test-'));
+  const file = path.join(directory, 'note.md'), store = new WorkspaceStore(directory);
+  try {
+    fs.writeFileSync(file, '# Same text\r\n', {mode: 0o600});
+    fs.utimesSync(file, 1000000000, 1000000000);
+    const opened = store.open(file), before = fs.statSync(file, {bigint: true});
+    for (let i = 0; i < 3; i++) {
+      assert.deepEqual(store.save(opened.session, opened.text, opened.etag),
+        {outcome: 'saved', etag: opened.etag});
+    }
+    const after = fs.statSync(file, {bigint: true});
+    assert.equal(after.ino, before.ino);
+    assert.equal(after.mtimeNs, before.mtimeNs);
+    assert.equal(after.ctimeNs, before.ctimeNs);
+    fs.writeFileSync(file, '# External edit\n');
+    // Matching today's contents is not permission to ignore a stale revision.
+    assert.equal(store.save(opened.session, '# External edit\n', opened.etag).outcome, 'conflict');
+    assert.equal(fs.readFileSync(file, 'utf8'), '# External edit\n');
+  } finally { store.close(); fs.rmSync(directory, {recursive: true, force: true}); }
+});
 test('large preview transfers are bounded and preserve Unicode across chunks', () => {
   const store = new WorkspaceStore('/tmp');
   const html = 'x'.repeat(256 * 1024 - 1) + '\u{1f680}' + 'y'.repeat(256 * 1024);

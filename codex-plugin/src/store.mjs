@@ -54,6 +54,8 @@ export class WorkspaceStore {
     if (!file) throw Error('Workspace expired; reopen the document.');
     const current = this.source(session);
     if (!etag || current.etag !== etag) return {outcome: 'conflict', etag: current.etag};
+    // Identical saves must not invalidate another editor's visited-file timestamp.
+    if (current.text === text) return {outcome: 'saved', etag: current.etag};
     const temporary = path.join(path.dirname(file), `.matsugit-${randomUUID()}.tmp`);
     try {
       fs.writeFileSync(temporary, text, {flag: 'wx', mode: fs.statSync(file).mode & 0o777});

@@ -27,6 +27,9 @@ The local Codex plugin puts the source and both outputs in one workspace:
 CodeMirror, preview an unsaved draft, and save explicitly with file-version
 checks. The same matsugit renderer handles themes, tables, Mermaid and
 semantic slide blocks; previewing never publishes.
+Identical-content saves leave the file and timestamp untouched (plugin 0.14.1+),
+so other editors are not told the file changed when no text changed.
+Stale file versions still require conflict resolution, even for identical saves.
 
 Source and preview can follow the same heading in both directions. Semantic
 gutter hints distinguish titles, claims and takeaways; type =/= on a blank line

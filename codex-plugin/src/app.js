@@ -18,7 +18,7 @@ import {tableDialog} from './table-dialog.js';
 import {setOutlineDepth, outlineKeys} from './outline.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.14.0'});
+const app = new App({name: 'matsugit', version: '0.14.1'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
