@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {randomUUID, createHash} from 'node:crypto';
-import {spawn} from 'node:child_process';
+import {spawn, execFile} from 'node:child_process';
 
 export const MAX_SOURCE = 2 * 1024 * 1024;
 const formats = new Set(['.md', '.markdown', '.qmd', '.org']);
@@ -26,6 +26,7 @@ function read(file) {
 export class WorkspaceStore {
   sessions = new Map();
   jobs = new Map();
+  themeRequests = new Set();
   constructor(root) { this.root = root; }
   open(file) {
     const target = checkedPath(file), text = read(target), id = randomUUID();
@@ -75,6 +76,25 @@ export class WorkspaceStore {
     }
     if (hostPath) return checkedPath(hostPath);
     return null;
+  }
+  themes(session, hostPath) {
+    const owner = this.owner(session, hostPath);
+    if (this.themeRequests.size >= 4) throw Error('Theme discovery busy; try again shortly');
+    const root = typeof this.root === 'function' ? this.root() : this.root;
+    return new Promise((resolve, reject) => {
+      const child = execFile(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
+        [path.join(root, 'codex-plugin/actions.py')],
+        {cwd: os.tmpdir(), env: {...process.env, PWD: os.tmpdir()}, timeout: 15000, maxBuffer: 65536},
+        (error, stdout, stderr) => {
+          this.themeRequests.delete(child);
+          if (error) { reject(Error(stderr.trim() || 'Could not discover installed themes')); return; }
+          try { resolve(JSON.parse(stdout)); } catch { reject(Error('Invalid theme list')); }
+        });
+      this.themeRequests.add(child);
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify({action: 'themes',
+        path: owner || path.join(os.tmpdir(), 'matsugit-untitled', 'Untitled.md')}));
+    });
   }
   recoveryOwner(session, hostPath) {
     // Checkpoints must still work if the original was deleted or moved. This
@@ -184,6 +204,7 @@ export class WorkspaceStore {
     try { process.platform === 'win32' ? child.kill() : process.kill(-child.pid, 'SIGTERM'); } catch {}
   }
   close() {
+    for (const child of this.themeRequests) child.kill();
     for (const job of this.jobs.values()) {
       if (job.state === 'rendering') this.stopChild(job.child);
       fs.rmSync(job.directory, {recursive: true, force: true});

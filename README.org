@@ -30,6 +30,12 @@ semantic slide blocks; previewing never publishes.
 Identical-content saves leave the file and timestamp untouched (plugin 0.14.1+),
 so other editors are not told the file changed when no text changed.
 Stale file versions still require conflict resolution, even for identical saves.
+The =Theme= dropdown lists installed packs automatically and preserves the
+project default; switching styles does not rewrite your source.
+Independent external edits merge into your draft; overlapping changes have a
+side-by-side review with per-conflict choices. Merging never saves automatically.
+Semantic =source= blocks are omitted unless =publish-sources: true= is set in
+the document's YAML, consistently in local previews and rendered outputs.
 
 Source and preview can follow the same heading in both directions. Semantic
 gutter hints distinguish titles, claims and takeaways; type =/= on a blank line

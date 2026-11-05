@@ -163,6 +163,27 @@ class ResourceHTML(HTMLParser):
         self.output.append(f"<!--{data}-->")
 
 
+def theme_options(settings):
+    """List installed theme names without rendering or exposing their contents."""
+    names = {'default'}
+    root = settings['themes_dir']
+    if root.is_dir():
+        for candidate in root.iterdir():
+            if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}', candidate.name):
+                continue
+            try:
+                manifest = inside(root, candidate.name) / 'theme.json'
+                if (not manifest.resolve().is_relative_to(root.resolve())
+                        or not manifest.is_file() or manifest.stat().st_size > 65536):
+                    continue
+                data = read_json(manifest)
+                if data.get('extends') or (data.get('document') and data.get('slides')):
+                    names.add(candidate.name)
+            except (Error, OSError, ValueError):
+                continue
+    return {'default': settings['theme'], 'themes': sorted(names)}
+
+
 def install_theme(settings, output):
     def resolve(name, parents=()):
         if name in parents or len(parents) >= 8:
@@ -238,10 +259,10 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
     if fmt == "markdown":
         text = diagram_fences(text)
     if __package__:
-        from .source import read, write_org
+        from .source import read, write_org, visible_sources
     else:
-        from source import read, write_org
-    ast = read(text, fmt, pandoc)
+        from source import read, write_org, visible_sources
+    ast = visible_sources(read(text, fmt, pandoc))
     # Keep declarative display settings, not filters/includes/executable settings.
     ast["meta"] = display_metadata(ast.get("meta", {}))
 

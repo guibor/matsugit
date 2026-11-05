@@ -19,6 +19,9 @@ def main(request):
     os.environ.setdefault('GIT_SSH_COMMAND', 'ssh -o BatchMode=yes -o ConnectTimeout=15')
     os.environ['GH_PROMPT_DISABLED'] = '1'
     action = request['action']
+    if action == 'themes':
+        from matsugit.core import theme_options
+        return theme_options(config(Path(request['path'])))
     if action.startswith('table-'):
         from matsugit.table_editor import TableDocument
         document = TableDocument(request['source'], fmt=request.get('format', 'markdown'))

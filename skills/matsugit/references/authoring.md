@@ -105,7 +105,7 @@ outside the body-region container.
 | `implication` | Exactly two regions | One whole panel leads to the other |
 | `mapping` | Two-column table, 1-6 rows | Each point leads to its corresponding point |
 | `annotated` | One evidence block, 1-3 callouts | Saved pointers to unique named evidence |
-| `source` | Authored text/links | Visible attribution, period and scope |
+| `source` | Authored text/links | Attribution, period and scope; rendered only with `publish-sources: true` |
 | `notes` | Authored text | Presenter guidance; not a secrecy boundary |
 
 Semantic components are not numerical models. Metrics, totals, timelines and

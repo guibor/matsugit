@@ -9,7 +9,7 @@ except ImportError:
     from layout import metadata, plain
 
 DISPLAY = {'slide-layout', 'slide-section-dividers', 'slide-empty-slides',
-           'slide-aspect-ratio', 'slide-title-page'}
+           'slide-aspect-ratio', 'slide-title-page', 'publish-sources'}
 BOOLEAN = DISPLAY - {'slide-layout', 'slide-aspect-ratio'}
 OPAQUE = {'src', 'example', 'export', 'comment', 'agent-comment'}
 
@@ -60,6 +60,21 @@ def strip_agent_comments(node):
     if not isinstance(node, dict):
         return node
     return {key: strip_agent_comments(value) for key, value in node.items()}
+
+
+def visible_sources(ast):
+    """Sources are opt-in semantic Divs, not headings, links or code examples."""
+    if ast.get('meta', {}).get('publish-sources', {}).get('c') is True:
+        return ast
+    def visit(node):
+        if isinstance(node, list):
+            return [visit(item) for item in node
+                    if not (isinstance(item, dict) and item.get('t') == 'Div'
+                            and 'source' in item['c'][0][1])]
+        if isinstance(node, dict):
+            return {key: visit(value) for key, value in node.items()}
+        return node
+    return visit(ast)
 
 
 def read(text, fmt, command):

@@ -181,7 +181,13 @@ Ask the committee to name an accountable sponsor.
 ```
 
 `assertion` is a prominent statement in the body. `takeaway` is one separate
-bottom conclusion per slide. `source` is visible attribution. `notes` is presenter
+bottom conclusion per slide. `source` is optional supporting attribution. It is
+omitted from documents and slides unless YAML explicitly contains
+`publish-sources: true` (default: `false`). Org uses `#+PUBLISH_SOURCES: true`.
+This is structural filtering, not CSS hiding: ordinary links, footnotes,
+headings named Sources, code examples and quote `attribution` blocks remain.
+The original source is never edited; explicit source downloads retain your draft.
+`notes` is presenter
 content, included in the optional handout; review it before sharing exports.
 
 The slide claim normally uses H3. An explicit `::: claim` block is also supported

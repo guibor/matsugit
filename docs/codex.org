@@ -58,6 +58,13 @@ MCP Apps-capable UI, and is not a workaround for a terminal-only host.
 
 * Open and work
 
+Plugin 0.14.2 adds a real =Theme= dropdown, populated from the active machine's
+configured =themes_dir= before rendering. It includes inherited theme packs and
+the built-in =default= theme. The first item follows the document/project default;
+choosing another theme affects this workspace, not the source or machine default.
+=Refresh= also rescans installed themes. Discovery does not need Quarto and does
+not install themes, publish, or send their files to a service.
+
 With plugin 0.14.1+, the workspace's own save endpoint does not rewrite a file
 when the content is unchanged. This preserves its inode and modification time
 for editors such as Emacs. Revision checks still run first; an obsolete revision
@@ -82,9 +89,8 @@ open the global matsugit workspace to start an unsaved draft.
   preview navigation back to its source heading. Turn it off to browse panes
   independently. Matching uses heading text and hierarchy, not guessed pixels;
   body paragraphs follow their containing heading, not an exact scroll fraction.
-- =Theme=: blank uses project defaults; enter the name of an installed theme
-  to try it for this preview. This does not change your source or project settings.
-  Its placeholder shows the resolved theme after a successful render.
+- =Theme=: choose the first item to follow project defaults, or an installed
+  theme to try it for this preview. This does not change your source or settings.
 - Save icon or =Ctrl/Cmd-S=: save explicitly. Rendering never saves the source.
 - Download icon: download the current source, including unsaved edits.
 
@@ -142,13 +148,30 @@ opened through =matsugit_open= use opaque sessions scoped to the selected
 file, SHA-256 version checks and an atomic replacement. Saving requires the
 version originally read; the plugin does not offer force overwrite.
 
-When an agent or editor changes a file, a clean workspace reloads it. A dirty
-workspace retains the draft and blocks saving until you reconcile the conflict.
+When an agent or editor changes a file, a clean workspace reloads it. Plugin
+0.14.2 uses a three-way merge for independent edits in a dirty workspace, with
+the last shared file as the base. It retains a separate pre-merge recovery copy,
+merges into the draft, and leaves Save to you. Identical edits are not duplicated.
+It does not guess how to combine changes to the same lines.
+
+For overlapping changes choose =Review changes=, then =Merge changes=. Each
+conflict shows your draft and the file side by side, with an expandable common
+base. Choose =Use mine=, =Use file=, =Keep both=, or edit the resolution. Navigate
+with the arrow buttons or =Alt-Left/Right=. =Apply to draft= requires all conflicts
+to be resolved and rechecks the incoming file version. Save remains separate.
+Cancel leaves both versions untouched. Ordinary typing is never a review shortcut.
+
+Undo after a merge returns to the incoming file, not the old version without the
+agent's edits; Redo restores the merged draft. The full pre-merge text remains in
+recovery. Pending table edits, an active Redo branch, different documents, a failed
+backup or a newer file during review prevent automatic replacement. Apply/cancel
+table edits first. Large or expensive merges run in a bounded background worker;
+a timeout retains both versions for manual review or external merging.
 Both file-entrypoint and tool-opened workspaces poll for changes every three
 seconds, in addition to supported host notifications. Superseded renders are
 canceled; they cannot replace a newer preview. Clicking refresh during a render
 queues the latest draft, including when =Auto= is off.
-Download the draft before choosing =Reload file= if you need both versions.
+The existing =Use incoming file= action also preserves a separate draft backup.
 The text editor uses UTF-8 and may normalize line endings when you explicitly save.
 Version 0.4.0 checkpoints drafts separately from Save, as described below.
 Save or download before intentional upgrades and closing important work. Neither
@@ -171,8 +194,8 @@ that keystrokes typed immediately before a crash can be recovered.
 
 Reopen the same file in matsugit. View settings return automatically; an
 unsaved draft is offered with =Restore draft= and =Not now=. Restoring does not
-write the file. If it changed elsewhere, Save remains blocked: download the
-draft to reconcile it, or explicitly reload the latest file. =Not now= leaves the
+write the file. If it changed elsewhere, use =Review changes= to merge the
+draft, or explicitly use the latest file. =Not now= leaves the
 older recovery copy in the history list. If an agent saved exactly the recovered
 text, it is recognized as already saved.
 

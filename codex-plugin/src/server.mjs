@@ -8,6 +8,7 @@ import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
 import {WorkspaceActions} from './actions.mjs';
 import {TableTools} from './tables.mjs';
+import {MergeService} from './merge-service.mjs';
 
 const uri = 'ui://matsugit/workspace-v1';
 const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
@@ -15,6 +16,7 @@ const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
 const actions = new WorkspaceActions(runtime, store);
 const tables = new TableTools(runtime);
+const merges = new MergeService();
 const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
@@ -27,7 +29,10 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.14.1'});
+  const server = new McpServer({name: 'matsugit', version: '0.14.2'});
+  server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
+    inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
+    guard(async args => result({computed:true}, {merge:await merges.plan(args)})));
   new OpenAIExtensions(server);
   server.registerTool('matsugit_table', {description:'Convert or validate a selected table locally. Does not save or publish.', ...appOnly,
     inputSchema:z.object({operation:z.enum(['open','check','serialize']), source:z.string().max(1024*1024),
@@ -70,6 +75,9 @@ serveStdio(() => {
   server.registerTool('matsugit_path', {description:'Read the real local path of the already-open document, if supplied by the host.', ...appOnly,
     inputSchema:z.object({session:z.string().optional()}),annotations:readOnly},
     guard(async ({session},context)=>result({path:store.owner(session,getResourcePath(context.mcpReq?._meta))})));
+  server.registerTool('matsugit_themes', {description:'List installed theme names and the opened document\'s default. No render, file writes or publication.', ...appOnly,
+    inputSchema:z.object({session:z.string().optional()}),annotations:readOnly},
+    guard(async ({session},context)=>result(await store.themes(session,getResourcePath(context.mcpReq?._meta)))));
   server.registerTool('matsugit_save', {description: 'Save explicit workspace edits only if the opened file still matches the expected version. Never force overwrites.', ...appOnly,
     inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1)}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
@@ -134,4 +142,4 @@ serveStdio(() => {
 }, {onerror: error => console.error(error)});
 process.once('SIGTERM', () => { store.close(); process.exit(0); });
 process.once('SIGINT', () => { store.close(); process.exit(0); });
-process.once('exit', () => { tables.close(); const idle = actions.close(); store.close(); if (idle) runtime.close(); });
+process.once('exit', () => { merges.close(); tables.close(); const idle = actions.close(); store.close(); if (idle) runtime.close(); });

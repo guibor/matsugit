@@ -16,13 +16,16 @@ test('portable, Codex compatibility and workspace release versions agree', () =>
 test('built plugin initializes and exposes the app, file handler and versioned file operations', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-protocol-'));
   const file = path.join(directory, 'deck.md');
+  const launch = path.join(directory, 'removed-launch');
+  fs.mkdirSync(launch);
   fs.writeFileSync(file, '# Original\n');
   const client = new Client({name: 'matsugit-test', version: '1.0.0'});
-  const transport = new StdioClientTransport({command: process.execPath, args: [path.join(root, 'codex-plugin/bundle/server.mjs')], stderr: 'pipe'});
+  const transport = new StdioClientTransport({command: process.execPath, args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd:launch, stderr: 'pipe'});
   let stderr = ''; transport.stderr?.on('data', part => stderr += part);
   client.onerror = error => { stderr += String(error); };
   try {
     await client.connect(transport);
+    fs.rmdirSync(launch);
     assert.equal(client.getServerVersion().version,
       JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8')).version);
     const {tools} = await client.listTools();
@@ -41,8 +44,26 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.equal(opened.structuredContent.format, 'slides');
     assert.equal(opened.structuredContent.layout, 'split');
     const {session, etag} = opened.structuredContent;
+    const merge = await client.callTool({name:'matsugit_merge', arguments:{base:'A\n\nB\n', local:'Mine\n\nB\n', incoming:'A\n\nFile\n'}});
+    assert.equal(merge.isError, undefined, JSON.stringify(merge));
+    assert.equal(merge._meta.merge.conflicts, 0);
+    assert.equal(merge._meta.merge.segments.map(s=>s.text).join(''), 'Mine\n\nFile\n');
+    assert.deepEqual(tools.find(tool=>tool.name==='matsugit_merge')._meta.ui.visibility,['app']);
+    assert.equal(fs.readFileSync(file,'utf8'), '# Original\n');
+    fs.mkdirSync(path.join(directory, 'themes', 'alpha'), {recursive: true});
+    fs.mkdirSync(path.join(directory, 'themes', 'beta'), {recursive: true});
+    for (const name of ['alpha', 'beta']) fs.writeFileSync(path.join(directory, 'themes', name, 'theme.json'), '{"extends":"default"}');
+    fs.writeFileSync(path.join(directory, 'matsugit.json'), JSON.stringify({theme: 'alpha', themes_dir: 'themes'}));
+    const catalog = await client.callTool({name: 'matsugit_themes', arguments: {session}});
+    assert.equal(catalog.isError, undefined, JSON.stringify(catalog));
+    assert.deepEqual(catalog.structuredContent, {default: 'alpha', themes: ['alpha', 'beta', 'default']});
+    assert.equal((await client.callTool({name: 'matsugit_themes', arguments: {session: 'expired'}})).isError, true);
+    assert.deepEqual(tools.find(tool => tool.name === 'matsugit_themes')._meta.ui.visibility, ['app']);
+    assert.equal(tools.find(tool => tool.name === 'matsugit_themes').annotations.readOnlyHint, true);
     const copied = await client.callTool({name:'matsugit_path',arguments:{session}});
     assert.equal(copied.structuredContent.path,fs.realpathSync(file));
+    const hostThemes = await client.callTool({name: 'matsugit_themes', arguments: {}, _meta: {'openai/resource': {path: file}}});
+    assert.deepEqual(hostThemes.structuredContent, catalog.structuredContent);
     assert.equal((await client.callTool({name:'matsugit_path',arguments:{}})).structuredContent.path,null);
     assert.equal((await client.callTool({name:'matsugit_path',arguments:{session:'not-opened'}})).isError,true);
     for (const name of ['matsugit_path','matsugit_table'])

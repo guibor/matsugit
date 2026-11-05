@@ -45,7 +45,10 @@ try:
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==incoming, 'Undo crossed the external baseline'
         frame.evaluate('matsugitWorkspace.editor.dispatch({changes:{from:0,insert:"My unsaved text\\n"},userEvent:"input.type"})')
         edited=frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
-        Path(ready['source']).write_text(incoming+'\nSecond agent edit\n')
+        # Both versions insert at the same location, so this is a real conflict.
+        # Independent edits now merge automatically (covered in merge-browser.py).
+        second='Agent opening\n'+incoming+'\nSecond agent edit\n'
+        Path(ready['source']).write_text(second)
         frame.evaluate('matsugitWorkspace.reload()')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==edited
         assert frame.evaluate('matsugitWorkspace.state.conflict')
@@ -79,7 +82,7 @@ try:
         frame.locator('#reload').click()
         frame.locator('#incoming-dialog').wait_for(state='visible')
         assert frame.locator('#incoming-local').input_value()==edited
-        assert frame.locator('#incoming-file').input_value()==incoming+'\nSecond agent edit\n'
+        assert frame.locator('#incoming-file').input_value()==second
         if os.environ.get('MATSUGIT_SCREENSHOTS'):
             page.screenshot(path=str(Path(os.environ['MATSUGIT_SCREENSHOTS'])/'draft-review.png'))
         frame.locator('#incoming-keep').click()
@@ -87,7 +90,7 @@ try:
         # The reviewed version must still be current when explicitly accepted.
         frame.locator('#reload').click()
         frame.locator('#incoming-dialog').wait_for(state='visible')
-        latest=incoming+'\nThird agent edit\n'
+        latest='Agent opening revised\n'+incoming+'\nThird agent edit\n'
         Path(ready['source']).write_text(latest)
         frame.locator('#incoming-use').click()
         frame.wait_for_function('()=>!document.getElementById("incoming-use").disabled')

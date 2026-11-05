@@ -43,12 +43,14 @@ await includeTree('matsugit/runtime');
 await includeTree('matsugit/diagram_runtime');
 await includeTree('matsugit/themes/default');
 const runtime = gzipSync(JSON.stringify({app, files})).toString('base64');
+const mergeWorker = await build({entryPoints: [path.join(root, 'src/merge-worker.mjs')], bundle: true,
+  write: false, platform: 'node', format: 'cjs', target: 'node22', legalComments: 'inline', metafile: true});
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
-  define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime)},
+  define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime), __MATSUGIT_MERGE_WORKER__: JSON.stringify(mergeWorker.outputFiles[0].text)},
   legalComments: 'inline', metafile: true, banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
 const packages = new Set();
-for (const file of [...Object.keys(browser.metafile.inputs), ...Object.keys(server.metafile.inputs)]) {
+for (const file of [...Object.keys(browser.metafile.inputs), ...Object.keys(server.metafile.inputs), ...Object.keys(mergeWorker.metafile.inputs)]) {
   const parts = file.split('node_modules/');
   if (parts.length < 2) continue;
   const tail = parts.at(-1).split('/');

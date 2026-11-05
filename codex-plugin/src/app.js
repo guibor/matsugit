@@ -16,9 +16,12 @@ import {delivery} from './delivery.js';
 import {visualExtensions, visualMode} from './visual.mjs';
 import {tableDialog} from './table-dialog.js';
 import {setOutlineDepth, outlineKeys} from './outline.mjs';
+import {updateThemePicker} from './theme-picker.mjs';
+import {mergeResult} from './merge-result.mjs';
+import {mergeDialog} from './merge-dialog.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.14.1'});
+const app = new App({name: 'matsugit', version: '0.14.2'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -37,6 +40,26 @@ let presentation = null;
 let tables;
 let refreshRequested = false, copying = false, feedbackTimer;
 let incomingDocument = null;
+let mergeAttempt = null;
+const mergeReview = mergeDialog();
+let themeCatalog = {}, themeSequence = 0;
+async function refreshThemes() {
+  if (demo) return;
+  const sequence = ++themeSequence, documentSequence = loadSequence;
+  $('theme').setAttribute('aria-busy', 'true');
+  try {
+    const catalog = await call('matsugit_themes', state.session ? {session: state.session} : {});
+    if (sequence !== themeSequence || documentSequence !== loadSequence) return;
+    themeCatalog = catalog;
+    updateThemePicker($('theme'), catalog);
+    $('theme').title = 'Installed themes; default follows this document\'s configuration';
+  } catch (error) {
+    if (sequence === themeSequence && documentSequence === loadSequence)
+      $('theme').title = `Theme discovery failed: ${error.message}. Refresh to retry.`;
+  } finally {
+    if (sequence === themeSequence) $('theme').setAttribute('aria-busy', 'false');
+  }
+}
 const actionTimers = new Map();
 function actionFeedback(id, phase, message) {
   const button = $(id);
@@ -155,8 +178,8 @@ function refreshControls() {
   $('present').title = state.format === 'slides' ? 'Present slides' : 'Present document';
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
-  $('save').disabled = !!demo || state.saving || state.delivering || !state.writable || !state.etag || state.conflict || !dirty();
-  $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving;
+  $('save').disabled = !!demo || state.saving || state.merging || state.delivering || !state.writable || !state.etag || state.conflict || !dirty();
+  $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving || state.merging;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
   $('refresh').setAttribute('aria-label', $('refresh').title);
   $('filename').textContent = state.name;
@@ -382,8 +405,10 @@ async function render(manual = true) {
       state.lastRefresh = {kind: job.kind, changed: job.changed, format};
       if (job.kind !== 'patch') showPreview();
       state.resolvedTheme = job.theme;
-      $('theme').placeholder = job.theme ? `${job.theme} (default)` : 'Project default';
-      $('theme').title = job.theme ? `Resolved theme: ${job.theme}` : 'Theme';
+      if (!themeCatalog.default && !$('theme').value && job.theme) {
+        themeCatalog.default = job.theme;
+        updateThemePicker($('theme'), themeCatalog);
+      }
       if (!state.conflict) notice();
       completed = true;
     }
@@ -414,7 +439,7 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
   return {...result, text: result.source};
 }
 async function reload(force = false, manual = false, expectedEtag = null) {
-  if ((!state.uri && !state.session) || state.loading || state.saving || (state.refreshing && !manual)) return false;
+  if ((!state.uri && !state.session) || state.loading || state.saving || state.merging || (state.refreshing && !manual)) return false;
   const sequence = loadSequence;
   const read = ++readSequence;
   const revision = state.revision, table = JSON.stringify(tables.snapshot());
@@ -432,6 +457,18 @@ async function reload(force = false, manual = false, expectedEtag = null) {
     if (!force && data.etag === state.etag) return !state.conflict;
     if ((state.conflict || dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
       state.conflict = true; notice('The file changed outside this editor. Your draft is retained. Review both versions before choosing.');
+      const key = `${state.revision}:${data.etag}`;
+      if (dirty() && !redoDepth(editor.state) && !tables.pending() && !incomingDocument
+          && !$('incoming-dialog').open && !mergeReview.isOpen() && mergeAttempt !== key) {
+        mergeAttempt = key;
+        const snapshot = mergeSnapshot();
+        state.merging = true; refreshControls();
+        try {
+          const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:data.text});
+          if (!merge.conflicts) await applyMerged(data, mergeResult(merge), snapshot);
+        } catch(error) { if (sequence === loadSequence) notice(`Draft retained. ${error.message}`); }
+        finally { state.merging = false; }
+      }
     } else {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
       state.conflict = false;
@@ -443,8 +480,39 @@ async function reload(force = false, manual = false, expectedEtag = null) {
     return !state.conflict;
   } catch (error) { if (sequence === loadSequence && read === readSequence) notice(error.message); return false; }
 }
+function mergeSnapshot() {
+  return {sequence:loadSequence, revision:state.revision, text:text(), base:state.base, view:viewState()};
+}
+function checkMergeSnapshot(snapshot) {
+  if (snapshot.sequence !== loadSequence || snapshot.revision !== state.revision || snapshot.base !== state.base
+      || JSON.stringify(snapshot.view.tableDraft) !== JSON.stringify(tables.snapshot()) || incomingDocument)
+    throw Error('The draft changed. Nothing was replaced; review the versions again.');
+  if (tables.pending()) throw Error('Apply or cancel the table edit before merging.');
+}
+async function applyMerged(data, merged, snapshot) {
+  checkMergeSnapshot(snapshot);
+  if (!data.etag) throw Error('The host did not provide a file version; cannot safely apply this merge.');
+  if (new TextEncoder().encode(merged).length > 2 * 1024 * 1024) throw Error('Merged draft exceeds the 2 MiB editor limit.');
+  const copy = await call('matsugit_recovery_begin', {...recoveryScope(), name:state.name});
+  await call('matsugit_recovery_checkpoint', {...recoveryScope(), id:copy.id, generation:0,
+    text:snapshot.text, base:snapshot.base, view:snapshot.view});
+  const latest = await resourceRead();
+  checkMergeSnapshot(snapshot);
+  if (latest.etag !== data.etag || latest.text !== data.text)
+    throw Error('The file changed again. Draft retained; reopen Review changes for the latest version.');
+  // Rebase undo onto the incoming file. Undo removes only our merged edits,
+  // never the agent's newly accepted changes or the entire initial document.
+  replaceText(latest.text, {baseline:true});
+  state.base = latest.text; state.etag = latest.etag; state.writable = latest.writable;
+  if (merged !== latest.text) replaceText(merged);
+  state.conflict = false;
+  notice('Changes merged into your draft. Review and Save when ready; a pre-merge recovery copy was kept.');
+  actionFeedback('refresh', 'done', 'External edits merged into draft; review and Save');
+  scheduleRecovery(); scheduleRender(); refreshControls();
+}
 async function refresh(forceFull = false) {
   if ($('refresh').disabled) return;
+  void refreshThemes();
   const sequence = loadSequence;
   state.refreshing = true; refreshControls();
   actionFeedback('refresh', 'busy', 'Checking for file changes');
@@ -481,13 +549,14 @@ function offerIncoming(data) {
   notice('An incoming document was not opened because you have a draft. Review the versions or keep editing.');
 }
 async function load(data, {acceptRevision = null} = {}) {
-  if (state.saving) { notice('Wait for the current save before opening another document.'); return; }
+  if (state.saving || state.merging) { notice('Wait for the current save or merge before opening another document.'); return; }
   if ((dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && acceptRevision !== state.revision) { offerIncoming(data); return; }
   const before = state.revision, table = JSON.stringify(tables.snapshot()), previousLoad = loadSequence;
   await flushRecovery();
   if (previousLoad !== loadSequence) return;
   if (before !== state.revision || table !== JSON.stringify(tables.snapshot())) { offerIncoming(data); return; }
   incomingDocument = null;
+  mergeAttempt = null;
   tables.reset();
   const suppliedRecovery = data.recovery;
   const sequence = ++loadSequence;
@@ -506,7 +575,8 @@ async function load(data, {acceptRevision = null} = {}) {
     resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false,
     bases: {}, revisions: {}, forceFull: false,
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
-  $('theme').value = ''; $('theme').placeholder = 'Project default'; $('theme').title = 'Theme';
+  themeCatalog = {}; themeSequence++;
+  updateThemePicker($('theme'), themeCatalog, ''); $('theme').title = 'Theme';
   changeEditorMode('raw');
   if (['source', 'render', 'split'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
@@ -555,7 +625,7 @@ async function load(data, {acceptRevision = null} = {}) {
     // Do not replace the latest recovery with the file before a pending choice.
     if (!recoveryCandidate) scheduleRecovery();
     if (demo) { state.rendered = demo.rendered; showPreview(); }
-    else await render();
+    else { void refreshThemes(); await render(); }
   } catch (error) {
     if (sequence === loadSequence) {
       state.loading = false;
@@ -583,7 +653,7 @@ function viewState() {
 function applyView(view) {
   if (!view) return;
   const loading = state.loading; state.loading = true;
-  $('theme').value = view.theme || ''; $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
+  updateThemePicker($('theme'), themeCatalog, view.theme || ''); $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
   $('slide-separators').checked = view.slideSeparators === true;
@@ -742,11 +812,32 @@ async function reviewIncoming() {
     $('incoming-status').textContent = '';
     $('incoming-local').value = text(); $('incoming-file').value = data.text;
     $('incoming-name').textContent = requested?.name || requested?.file?.name || state.name;
+    $('incoming-merge').disabled = !!requested || tables.pending();
+    $('incoming-merge').title = requested ? 'Different documents do not have a shared merge base' : tables.pending() ? 'Apply or cancel the table edit before merging' : 'Merge changes from the last shared version';
     $('incoming-dialog').showModal();
   } catch(error) { notice(error.message); }
 }
 $('incoming-keep').onclick = () => $('incoming-dialog').close();
 $('incoming-download').onclick = download;
+$('incoming-merge').onclick = async () => {
+  const choice = reviewedIncoming, snapshot = mergeSnapshot();
+  if (!choice || choice.requested || choice.sequence !== loadSequence || state.merging) return;
+  state.merging = true; refreshControls(); $('incoming-merge').disabled = true;
+  $('incoming-status').textContent = 'Comparing changes...';
+  try {
+    checkMergeSnapshot(snapshot);
+    const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:choice.data.text});
+    checkMergeSnapshot(snapshot);
+    $('incoming-dialog').close();
+    mergeReview.open(merge, async merged => {
+      if (state.saving || state.merging) throw Error('Wait for the current operation.');
+      state.merging = true; refreshControls();
+      try { await applyMerged(choice.data, merged, snapshot); }
+      finally { state.merging = false; refreshControls(); }
+    });
+  } catch(error) { $('incoming-status').textContent = error.message; }
+  finally { state.merging = false; $('incoming-merge').disabled = false; refreshControls(); }
+};
 $('incoming-use').onclick = async () => {
   const choice = reviewedIncoming;
   if (!choice || choice.sequence !== loadSequence || state.saving || state.loading) return;
