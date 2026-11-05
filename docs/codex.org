@@ -101,6 +101,33 @@ file is opened. The file-picker button imports a browser copy: it has no
 write-back permission or access to adjacent assets. Download that copy, or open
 the actual repository file through Codex.
 
+** External change review and publication status (0.15)
+
+The =Review latest external changes= comparison button opens the latest external
+edit, grouped by slide/section headings. Each changed block shows Before and
+External edit. Leave its checkbox selected to accept it; clear it to reject it.
+=Preview merge= computes the resulting draft, invoking the existing conflict
+resolver for overlaps. =Apply to draft= preserves a recovery copy and checks
+the current file version again. It never saves automatically.
+
+This also works after a clean automatic merge. Rejecting an agent change is
+rebased over later independent typing; overlaps still need a decision. The
+review record is for the latest external revision in this open viewer, not a
+persistent Git history. Opening another file clears it. Recovery copies remain
+available separately.
+
+The publication button reads a local receipt on opening a file, without a network
+request. It shows =Not pushed=, =Changes not pushed=, =Pushed=, =Building=,
+=CI failed= or =Published=. Save status stays separate. Click for the target,
+pushed/deployed revisions and pipeline link; use its refresh icon to explicitly
+query GitHub/GitLab with existing =gh= / =glab= authentication. This never logs in,
+pushes, starts CI or changes permissions. See [[file:delivery.org][verification limits]].
+
+Receipts track publication through this workspace, not arbitrary command-line
+pushes. Matching is based on the opened source's contents; changing a referenced
+asset separately still requires republishing. Cached deployment results show
+their last check time and are not a continuous availability monitor.
+
 ** Source hints and insertion
 
 The source remains normal editable text. Subtle line colours and gutter markers

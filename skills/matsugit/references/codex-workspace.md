@@ -37,6 +37,22 @@ to replace the editing session without review. Pristine viewers still follow
 clean external changes automatically. These checks cannot prevent another
 program from writing the file itself; the retained editor copy is independent.
 
+Plugin 0.15 adds **Review latest external changes**: every external hunk, grouped
+by section/slide, can be accepted or rejected before **Preview merge** and
+**Apply to draft**. It also reviews the latest clean auto-merge. Rejection is
+rebased over later independent edits; overlaps require explicit choices. This
+review record lasts for the current open viewer, while recovery is persistent.
+No review operation saves the original file automatically.
+
+The separate publication badge shows **Not pushed**, **Changes not pushed**,
+**Pushed**, **Building**, **CI failed**, or **Published**. Its detail view records
+the pushed revision, pipeline and last verified deployed revision. Provider checks
+are explicit and read-only using existing gh/glab access; no login or permission
+changes. A green pipeline alone never proves publication. GitLab requires an
+existing configured deployment environment to verify its SHA; without it the
+result stays unverified. These receipts cover workspace pushes on this computer,
+not arbitrary CLI pushes or independent asset changes.
+
 Plugin 0.14.0 makes Visual headings compact and distinguishes the slide title
 from its smaller, lighter claim. S/T/C/R gutter markers show explanations on
 hover, keyboard focus or click; Escape dismisses them. The optional **Slide

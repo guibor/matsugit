@@ -12,8 +12,8 @@ export class WorkspaceActions {
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
     if (['export','plan','publish','sync'].includes(args.action)) checkedText(args.text);
-    if (['plan', 'publish', 'sync-plan', 'sync'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
-    if ([...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner)) throw Error('An export or publication is already running for this document');
+    if (['plan', 'publish', 'sync-plan', 'sync', 'publication-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
+    if (args.action !== 'publication-status' && [...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner && j.action !== 'publication-status')) throw Error('An export or publication is already running for this document');
     if (this.jobs.size >= 24) {
       for (const [id, job] of this.jobs) {
         if (job.state !== 'running' && !job.file && !this.plans.has(id)) {

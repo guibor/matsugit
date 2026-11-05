@@ -34,8 +34,16 @@ The =Theme= dropdown lists installed packs automatically and preserves the
 project default; switching styles does not rewrite your source.
 Independent external edits merge into your draft; overlapping changes have a
 side-by-side review with per-conflict choices. Merging never saves automatically.
+Plugin 0.15 adds a review of *all* external changes, grouped by heading, with
+selective acceptance and a resulting-draft preview. The comparison icon labelled
+=Review latest external changes= also reviews a clean auto-merge; later independent
+typing is retained when rejecting a change. Publication status is separate from
+Save: =Pushed= is not =Published=. Check the recorded revision and pipeline from
+the status button, using your existing provider login only.
 Semantic =source= blocks are omitted unless =publish-sources: true= is set in
 the document's YAML, consistently in local previews and rendered outputs.
+Presenter notes stay out of reading documents unless =include-notes: true=;
+slide HTML and presenter handouts can still contain those notes.
 
 Source and preview can follow the same heading in both directions. Semantic
 gutter hints distinguish titles, claims and takeaways; type =/= on a blank line

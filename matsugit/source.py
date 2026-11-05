@@ -2,6 +2,8 @@
 from copy import deepcopy
 import json
 import re
+import shlex
+from uuid import uuid4
 
 try:
     from .layout import metadata, plain
@@ -9,7 +11,7 @@ except ImportError:
     from layout import metadata, plain
 
 DISPLAY = {'slide-layout', 'slide-section-dividers', 'slide-empty-slides',
-           'slide-aspect-ratio', 'slide-title-page', 'publish-sources'}
+           'slide-aspect-ratio', 'slide-title-page', 'publish-sources', 'include-notes'}
 BOOLEAN = DISPLAY - {'slide-layout', 'slide-aspect-ratio'}
 OPAQUE = {'src', 'example', 'export', 'comment', 'agent-comment'}
 
@@ -64,17 +66,74 @@ def strip_agent_comments(node):
 
 def visible_sources(ast):
     """Sources are opt-in semantic Divs, not headings, links or code examples."""
-    if ast.get('meta', {}).get('publish-sources', {}).get('c') is True:
+    return visible_blocks(ast, 'source', 'publish-sources')
+
+
+def visible_notes(ast):
+    """Presenter notes are opt-in in reading documents, retained in slides."""
+    return visible_blocks(ast, 'notes', 'include-notes')
+
+
+def visible_blocks(ast, role, flag):
+    if ast.get('meta', {}).get(flag, {}).get('c') is True:
         return ast
     def visit(node):
         if isinstance(node, list):
             return [visit(item) for item in node
                     if not (isinstance(item, dict) and item.get('t') == 'Div'
-                            and 'source' in item['c'][0][1])]
+                            and role in item['c'][0][1])]
         if isinstance(node, dict):
             return {key: visit(value) for key, value in node.items()}
         return node
     return visit(ast)
+
+
+def org_block_parameters(text):
+    """Carry special-block arguments through older Pandoc Org readers.
+
+    Pandoc 3.6 ignores BEGIN arguments but supports ATTR_HTML on special blocks.
+    Opaque IDs avoid re-encoding quoted values into that reader's different syntax.
+    """
+    key = 'data-matsugit-' + uuid4().hex
+    parameters, output, opaque = {}, [], None
+    native = OPAQUE | {'quote', 'verse', 'center'}
+    for line in text.splitlines(keepends=True):
+        begin = re.match(r'^(\s*)#\+begin_([\w-]+)([^\r\n]*)(\r?\n)?$', line, re.I)
+        end = re.match(r'^\s*#\+end_([\w-]+)\s*$', line, re.I)
+        if opaque:
+            if end and end[1].lower() == opaque: opaque = None
+        elif begin:
+            role = begin[2].lower()
+            if role in OPAQUE:
+                opaque = role
+            elif role not in native and begin[3].strip():
+                tokens = shlex.split(begin[3])
+                if len(tokens) % 2 or any(not re.fullmatch(r':[\w-]+', token) for token in tokens[::2]):
+                    raise ValueError('Org block parameters need :name "value" pairs')
+                attrs = {tokens[i][1:]:tokens[i+1] for i in range(0,len(tokens),2)}
+                identifier = str(len(parameters)); parameters[identifier] = attrs
+                output.append(f'{begin[1]}#+attr_html: :{key} {identifier}\n')
+                line = f'{begin[1]}#+begin_{begin[2]}{begin[4] or ""}'
+        output.append(line)
+    return ''.join(output), key, parameters
+
+
+def restore_org_parameters(ast, key, parameters):
+    remaining = set(parameters)
+    def visit(node):
+        if isinstance(node, list): return [visit(item) for item in node]
+        if not isinstance(node, dict): return node
+        if node.get('t') == 'Div':
+            attrs = node['c'][0]
+            values = dict(attrs[2]); identifier = values.pop(key, None)
+            if identifier is not None:
+                if identifier not in remaining: raise ValueError('Unexpected Org block parameter marker')
+                remaining.remove(identifier); values.update(parameters[identifier])
+                attrs[2] = list(map(list, values.items()))
+        return {name:visit(value) for name,value in node.items()}
+    ast = visit(ast)
+    if remaining: raise ValueError('Pandoc did not preserve Org block parameters')
+    return ast
 
 
 def read(text, fmt, command):
@@ -86,10 +145,12 @@ def read(text, fmt, command):
         raise ValueError('Source format must be markdown or org')
     if fmt == 'org':
         text = check_org(text)
+        text, parameter_key, parameters = org_block_parameters(text)
     else:
         text = markdown(text)
     ast = strip_agent_comments(json.loads(pandoc(command, text, fmt, 'json')))
     if fmt == 'org':
+        ast = restore_org_parameters(ast, parameter_key, parameters)
         seen = set()
         blocks = []
         for block in ast['blocks']:

@@ -7,6 +7,8 @@
   <header>
     <div class="identity"><span id="brand-icon"></span><strong>matsugit</strong><span id="filename">Untitled.md</span><button id="copy-path" title="Copy document path" aria-label="Copy document path" disabled></button><span id="dirty" hidden aria-hidden="true">*</span><span id="save-state" role="status" aria-live="polite">Local copy</span></div>
     <div class="actions">
+      <button id="publication-state" title="Publication status" aria-label="Publication status" disabled>Not pushed</button>
+      <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" disabled></button>
       <button id="compact-markup" title="Use compact structural labels" aria-label="Use compact structural labels" aria-pressed="false"></button>
       <button id="recover" title="Recover workspaces" aria-label="Recover workspaces"></button>
       <button id="insert" title="Insert slide or element" aria-label="Insert slide or element"></button>
@@ -73,11 +75,18 @@
   <button id="present-exit" title="Exit presentation (Escape)" aria-label="Exit presentation"></button>
 </div>
 <dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
+<dialog id="changes-dialog" aria-labelledby="changes-title">
+  <h2 id="changes-title">External changes</h2>
+  <div id="changes-list"></div>
+  <section id="changes-result-panel" hidden><h3>Resulting draft</h3><textarea id="changes-result" aria-label="Resulting draft" readonly></textarea></section>
+  <p id="changes-status" role="status"></p>
+  <div class="incoming-actions"><button id="changes-cancel">Cancel</button><button id="changes-preview">Preview merge</button><button id="changes-apply" disabled>Apply to draft</button></div>
+</dialog>
 <dialog id="incoming-dialog" aria-labelledby="incoming-title">
   <h2 id="incoming-title">Review incoming changes</h2><p id="incoming-name"></p>
   <div class="incoming-versions"><label>Your current draft<textarea id="incoming-local" readonly></textarea></label><label>Incoming file<textarea id="incoming-file" readonly></textarea></label></div>
   <p id="incoming-status" role="status"></p>
-  <div class="incoming-actions"><button id="incoming-keep">Keep editing my draft</button><button id="incoming-download">Download my draft</button><button id="incoming-merge">Merge changes</button><button id="incoming-use">Use incoming file</button></div>
+  <div class="incoming-actions"><button id="incoming-keep">Keep editing my draft</button><button id="incoming-download">Download my draft</button><button id="incoming-review">Review all changes</button><button id="incoming-merge">Merge changes</button><button id="incoming-use">Use incoming file</button></div>
 </dialog>
 <dialog id="merge-dialog" aria-labelledby="merge-title">
   <div class="merge-heading"><h2 id="merge-title">Merge changes</h2><span id="merge-count" role="status"></span><button id="merge-previous" title="Previous conflict (Alt-Left)" aria-label="Previous conflict"></button><button id="merge-next" title="Next conflict (Alt-Right)" aria-label="Next conflict"></button></div>
@@ -102,6 +111,12 @@
   <pre id="git-sync-progress" role="status" aria-live="polite"></pre>
   <button id="git-sync-check">Check for updates</button>
   <button id="git-sync-apply" disabled>Pull updates</button>
+</dialog>
+<dialog id="publication-dialog" class="delivery-dialog" aria-labelledby="publication-title">
+  <div class="recovery-heading"><h2 id="publication-title">Publication status</h2><button id="publication-close" title="Close" aria-label="Close"></button></div>
+  <pre id="publication-details"></pre>
+  <div class="incoming-actions"><a id="publication-pipeline" target="_blank" rel="noopener noreferrer" hidden>Pipeline</a><a id="publication-site" target="_blank" rel="noopener noreferrer" hidden>Site</a><button id="publication-check" title="Check provider status" aria-label="Check provider status"></button></div>
+  <p id="publication-progress" role="status"></p>
 </dialog>
 <dialog id="export-dialog" class="delivery-dialog" aria-labelledby="export-title">
   <div class="recovery-heading"><h2 id="export-title">Export</h2><button id="close-export" title="Close" aria-label="Close"></button></div>

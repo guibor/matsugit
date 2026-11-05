@@ -1,6 +1,6 @@
 import {createElement, X, Upload, Plus, GitPullRequestArrow} from 'lucide';
 
-export function delivery({call, state, text, theme, notice, download, demo, reload, load, hasUnsaved, refreshControls}) {
+export function delivery({call, state, text, theme, notice, download, demo, reload, load, hasUnsaved, refreshControls, publication}) {
   const $ = id => document.getElementById(id);
   let busy = false, plan = null, options = {};
   for (const id of ['close-export', 'close-publish']) $(id).append(createElement(X));
@@ -212,6 +212,7 @@ export function delivery({call, state, text, theme, notice, download, demo, relo
     lock(true);
     try {
       const job = await run('publish', {...checked.args, plan:checked.id, deploy:$('publish-deploy').checked}, $('publish-progress'));
+      if (job.result.publication && job.view === (state.session || state.uri)) publication?.pushed(job.result.publication);
       $('publish-progress').textContent = `${job.result.status}\n${job.result.revision}`;
       notice(job.result.status);
     } catch (error) { $('publish-progress').textContent = error.message; }

@@ -1,5 +1,31 @@
 #+title: Present, export and publish
 
+* Publication verification
+
+Plugin 0.15 records successful workspace pushes in private local state under
+=~/.local/state/matsugit/publications/= (or =XDG_STATE_HOME=). These receipts
+contain revisions, URLs and a source hash, never document text or credentials.
+The publication status button distinguishes saved local text from a pushed
+revision and a provider-verified deployment. Network checks happen only when
+requested; missing CLI authentication leaves deployment unverified.
+
+For GitHub, verification uses the latest =github-pages= deployment/status, or
+the latest branch-based Pages build, and requires the exact pushed SHA.
+A passing Actions workflow alone is not publication.
+
+For GitLab, the pipeline SHA and branch are checked, but a green pipeline is
+not proof of deployment. GitLab's Pages metadata has no commit SHA. If your
+existing pipeline records a deployment environment, set
+=deployment_environment= to its exact name in the named target's JSON settings.
+Only a successful latest deployment for that environment with the matching SHA
+is labelled =Published=. Without that evidence the UI honestly says =Pushed=.
+No CI/Pages settings are changed automatically, and older manually configured
+pipelines continue to work as before.
+
+Provider contracts: [[https://docs.gitlab.com/api/pages/][GitLab Pages]],
+[[https://docs.gitlab.com/api/deployments/][GitLab deployments]],
+[[https://docs.github.com/en/rest/deployments/statuses][GitHub deployment statuses]].
+
 * Present now
 In the Codex or Cursor workspace, select Document or Slides, then click the
 presentation-screen icon. The selected format stays selected. Slide arrows/Space

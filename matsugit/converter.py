@@ -39,7 +39,7 @@ def converter():
         candidates.append([env("MATSUGIT_PANDOC")])
     candidates.append([str(tools_dir() / "pandoc")])
     if os.environ.get("QUARTO") or shutil.which("quarto"):
-        candidates.append([os.environ.get("QUARTO", "quarto"), "pandoc"])
+        candidates.append([os.environ.get("QUARTO") or "quarto", "pandoc"])
     candidates.append(["pandoc"])
     for command in candidates:
         try:

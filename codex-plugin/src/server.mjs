@@ -29,7 +29,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.14.3'});
+  const server = new McpServer({name: 'matsugit', version: '0.15.0'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => result({computed:true}, {merge:await merges.plan(args)})));
@@ -39,7 +39,7 @@ serveStdio(() => {
       html:z.string().max(1024*1024).optional(), format:z.enum(['markdown','org']).optional()}), annotations:readOnly},
     guard(async args => result({converted:true}, await tables.run(args))));
   server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
-    inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository','sync-plan','sync']), session:z.string().optional(),
+    inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository','sync-plan','sync','publication-status']), session:z.string().optional(), check:z.boolean().optional(),
       provider:z.enum(['github','gitlab']).optional(), host:z.string().max(253).optional(), repository:z.string().max(512).optional(), page:z.number().int().min(1).max(1000).optional(),
       text:z.string().max(MAX_SOURCE).optional(), name:z.string().max(512).optional(), theme:z.string().max(80).optional(),
       target:z.string().max(80).optional(), build:z.enum(['ci','local']).optional(), format:z.enum(['html','zip','pptx','pdf']).optional(),

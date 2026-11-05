@@ -19,6 +19,9 @@ def main(request):
     os.environ.setdefault('GIT_SSH_COMMAND', 'ssh -o BatchMode=yes -o ConnectTimeout=15')
     os.environ['GH_PROMPT_DISABLED'] = '1'
     action = request['action']
+    if action == 'publication-status':
+        from matsugit.publication import status
+        return status(Path(request['path']), check=bool(request.get('check')))
     if action == 'themes':
         from matsugit.core import theme_options
         return theme_options(config(Path(request['path'])))
@@ -75,8 +78,14 @@ def main(request):
     if request.get('fingerprint') != current['fingerprint']:
         raise Error('Source or target changed since confirmation. Review a new publishing plan')
     sha = publish(settings, confirmed=True, deploy=bool(request.get('deploy')))
-    return {'revision': sha, 'project_url': current['project_url'], 'site_url': current['site_url'],
+    from matsugit.publication import record
+    result = {'revision': sha, 'project_url': current['project_url'], 'site_url': current['site_url'],
             'status': 'Pushed. Verify CI and site access before sharing; deployment is not yet verified.'}
+    try:
+        result['publication'] = record(source, current, sha, settings.get('deployment_environment'))
+    except (Error, OSError) as error:
+        result['status'] += ' Could not save local publication receipt: ' + str(error)
+    return result
 
 
 if __name__ == '__main__':

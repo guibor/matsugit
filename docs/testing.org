@@ -1,0 +1,51 @@
+#+title: Renderer and workspace regression checks
+
+* Fast checks
+#+begin_src sh
+npm ci --prefix codex-plugin
+npm run build --prefix codex-plugin
+npm test --prefix codex-plugin
+QUARTO= python3 -m unittest discover -s tests
+#+end_src
+
+Node 22+, Python 3.10+ and a span-aware Pandoc are required. The empty QUARTO
+setting skips optional heavyweight rendering tests; converter discovery still
+uses installed Pandoc/Quarto. =matsugit setup-editor= explicitly provisions the
+isolated converter when needed.
+
+* Local / preview / CI parity
+#+begin_src sh
+MATSUGIT_PARITY_RENDER=1 python3 -m unittest discover -s tests -p test_render_parity.py -v
+#+end_src
+
+The fast contract covers Markdown and native Org, sources and reading-note
+visibility both on/off, built-in and synthetic themes, columns, tables, claims,
+quotes, takeaways and literal syntax examples. It compares generated inputs and
+theme/runtime files against a freshly installed native CI renderer.
+
+The opt-in check renders real HTML through local export, the plugin preview
+engine and the actual installed CI entrypoint. It verifies visible content and
+embedded CSS with Quarto's bundled Pandoc, including older readers that ignore
+Org BEGIN-block parameters. The test uses only synthetic content and never
+publishes, pushes, authenticates, or changes an existing CI checkout.
+
+This checks the native matsugit CI bundle, not every third-party or older private
+renderer. The =topics= adapter intentionally uses the destination's own renderer;
+updating the plugin cannot silently update that separate deployment.
+
+* Browser safety
+#+begin_src sh
+python3 -m pip install playwright
+python3 -m playwright install chromium
+python3 codex-plugin/tests/merge-browser.py
+python3 codex-plugin/tests/review-status-browser.py
+#+end_src
+
+The browser tests exercise the real built MCP workspace with temporary synthetic
+files: concurrent drafts, recovery-copy failures, stale versions, selective
+review, conflict choices, explicit saving, publication receipts and narrow/wide
+viewports. Provider status tests mock GitHub/GitLab responses; real deployment
+access is not required. =ci/checks.yml= is the complete GitHub Actions recipe to
+run these automatically. It is not activated by plugin installation: installing
+it at =.github/workflows/checks.yml= requires a maintainer with permission to
+write workflows. No account scopes are requested or expanded by matsugit.

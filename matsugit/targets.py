@@ -10,7 +10,7 @@ from .compat import global_config
 from .core import Error, read_json
 
 FIELDS = {'repo', 'provider', 'remote', 'branch', 'site_dir', 'site_url', 'theme',
-          'expected_remote', 'deployment', 'build', 'ci_layout', 'source_dir'}
+          'expected_remote', 'deployment', 'deployment_environment', 'build', 'ci_layout', 'source_dir'}
 
 
 def settings():

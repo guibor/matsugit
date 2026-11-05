@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from copy import deepcopy
 
-from matsugit.source import visible_sources, read
+from matsugit.source import visible_sources, visible_notes, read
 from matsugit.layout import metadata, plain
 from matsugit.core import config, normalize, render
 from matsugit.preview import pandoc_command, annotate
@@ -15,6 +15,16 @@ QUARTO = os.environ.get('QUARTO', shutil.which('quarto'))
 
 
 class SourceVisibilityTests(unittest.TestCase):
+    def test_notes_filter_only_removes_semantic_blocks_without_mutation(self):
+        note = {'t':'Div','c':[['',['notes'],[]],[{'t':'Para','c':[{'t':'Str','c':'Presenter'}]}]]}
+        literal = {'t':'CodeBlock','c':[['',[],[]],'::: notes\nExample\n:::']}
+        ast = {'meta':{},'blocks':[note,literal,{'t':'Div','c':[['',['notebook'],[]],[]]}]}
+        original = deepcopy(ast)
+        self.assertEqual(visible_notes(ast)['blocks'], ast['blocks'][1:])
+        self.assertEqual(ast,original)
+        ast['meta']['include-notes'] = {'t':'MetaBool','c':True}
+        self.assertEqual(visible_notes(ast),ast)
+
     def test_only_exact_semantic_divs_are_removed(self):
         source = {'t':'Div','c':[['',['source'],[]],[{'t':'Para','c':[{'t':'Str','c':'hidden'}]}]]}
         examples = [{'t':'CodeBlock','c':[['',[],[]], '::: source\nliteral\n:::']},

@@ -377,7 +377,12 @@ def render(settings, output, edit_url=None, *, source_text=None,
             prepare_diagrams(ast, output, theme, colours), output, colours)), output)
     else:
         theme, ast, display_ast = _prepared
-    document_ast = _transform(display_ast, 'document') if _transform else display_ast
+    if __package__:
+        from .source import visible_notes
+    else:
+        from source import visible_notes
+    document_ast = visible_notes(display_ast)
+    document_ast = _transform(document_ast, 'document') if _transform else document_ast
     print(f"Theme: {settings['theme']}; slide layout: {plain(ast['meta'].get('slide-layout')) or 'default'}", flush=True)
     # Quarto requires .qmd for Mermaid cells, even with the inert markdown engine.
     # Keep the published editable source in Markdown; this is a generated input.

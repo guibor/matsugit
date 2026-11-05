@@ -124,7 +124,8 @@ def render(settings, output, text, format='document', base=None):
     colours = core.read_json(core.inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
     display = core.canvas_components(core.evidence_components(core.chart_components(
         core.prepare_diagrams(ast, output, theme, colours, cache), output, colours, cache=cache)), output)
-    target = slides(display) if format == 'slides' else display
+    from .source import visible_notes
+    target = slides(display) if format == 'slides' else visible_notes(display)
     annotated, snapshot = annotate(target)
     snapshot.update(signature=signature, format=format)
     can_patch = (previous.get('signature') == signature and previous.get('format') == format

@@ -3,7 +3,8 @@ import {mergeResult} from './merge-result.mjs';
 
 export function mergeDialog() {
   const $ = id => document.getElementById(id), dialog = $('merge-dialog');
-  let plan, conflicts = [], choices = [], position = 0, apply, busy = false;
+  let plan, conflicts = [], choices = [], position = 0, apply, busy = false, cancel, applied = false;
+  dialog.addEventListener('close', () => { if (!applied) cancel?.(); });
   $('merge-previous').replaceChildren(createElement(ChevronLeft));
   $('merge-next').replaceChildren(createElement(ChevronRight));
   function controls() {
@@ -48,11 +49,12 @@ export function mergeDialog() {
   });
   $('merge-apply').onclick = async () => {
     busy = true; controls(); $('merge-status').textContent = 'Preserving draft and checking file version...';
-    try { await apply(mergeResult(plan, choices)); dialog.close(); }
+    try { await apply(mergeResult(plan, choices)); applied = true; dialog.close(); }
     catch (error) { $('merge-status').textContent = error.message; }
     finally { busy = false; controls(); }
   };
-  return {open(value, onApply) {
+  return {open(value, onApply, onCancel) {
+    cancel = onCancel; applied = false;
     plan = value; conflicts = plan.segments.filter(segment => !('text' in segment));
     choices = []; position = 0; apply = onApply;
     $('merge-status').textContent = ''; $('merge-preview').open = false;
