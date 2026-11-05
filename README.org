@@ -45,6 +45,14 @@ section from its body. =Alt-j= / =Alt-k= visit the next / previous visible headi
 letters are never speed keys, and Tab outside headings retains editor behavior.
 
 Visual keeps headings, links and tables readable while preserving the original source.
+Headings stay compact; slide titles and claims have distinct emphasis. Hover,
+focus or click the S/T/C gutter markers for their meaning. =Slide separators=
+optionally marks H2 and manual-break boundaries without editing the source.
+
+Use =/quote= for a centered quotation slide with a large opening quotation mark
+and a visible author line. Optional =.hide-title= / =.hide-claim= classes keep
+headings in the storyline and document while hiding them on projected slides.
+See [[file:examples/quotes.md][quote examples]] and [[file:docs/syntax.md][syntax]].
 Click a table's pencil to edit cells, format text, add rows or merge cells in the
 workspace; =Apply= updates the draft and =Save= writes the file. The copy icon
 beside the filename copies the actual source path, not a temporary preview URL.

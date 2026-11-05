@@ -94,13 +94,13 @@ flowchart LR
   A[Evidence] --> B[Review] --> C[Decision]
 ```
 ''',
-    'quotation': '''## The evidence in its own words
-### Explain why this passage matters
+    'quotation': '''## The evidence in its own words {.quote .hide-title .hide-claim}
+### Why this passage matters
 
 > Replace this placeholder with an authorized quotation.
 
-::: source
-Author, document, date and page or link.
+::: attribution
+-- Author, role or publication
 :::
 ''',
     'implication': '''## The mechanism connects the two sides
@@ -251,6 +251,8 @@ The implication that follows from this cluster.
 :::
 ''',
 }
+
+TEMPLATES['quote'] = TEMPLATES['quotation']
 
 # Small authoring elements share the renderer's existing syntax, not a new DSL.
 ELEMENTS = {

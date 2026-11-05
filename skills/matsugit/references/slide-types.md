@@ -21,6 +21,7 @@ McKinsey, BCG or Pershing Square deck and contains no copied reference exhibits.
 | 9 | Mechanism or process | Mermaid + optional commentary | Explain causal/operational structure |
 | 10 | Roadmap | `timeline` | Show stages and explicit gates |
 | 11 | Documentary evidence | `quotation` or image + `source` | Preserve important authorized wording/evidence |
+| 12 | Quote | `.quote` + blockquote + `attribution` | Center an authorized quote and its visible author |
 | 12 | Decision request | `decision` + optional `takeaway` | Name the action, conditions and responsibility |
 
 Within a recipe, choose one dominant exhibit. A full-width table plus a paragraph

@@ -5,19 +5,20 @@ import {keymap} from '@codemirror/view';
 import {markdown} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
-import {undo, redo} from '@codemirror/commands';
-import {EditorState, Compartment} from '@codemirror/state';
+import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
+import {EditorState, Compartment, Transaction} from '@codemirror/state';
 import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Copy, Table2, Check, LoaderCircle} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
-import {authoringExtensions, insertMenu, compactMarkup} from './authoring.mjs';
+import {authoringExtensions, insertMenu, compactMarkup, slideSeparators} from './authoring.mjs';
+import {installRoleHelp} from './role-help.mjs';
 import {delivery} from './delivery.js';
 import {visualExtensions, visualMode} from './visual.mjs';
 import {tableDialog} from './table-dialog.js';
 import {setOutlineDepth, outlineKeys} from './outline.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.13.0'});
+const app = new App({name: 'matsugit', version: '0.14.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -35,6 +36,7 @@ let restoredPosition = false;
 let presentation = null;
 let tables;
 let refreshRequested = false, copying = false, feedbackTimer;
+let incomingDocument = null;
 const actionTimers = new Map();
 function actionFeedback(id, phase, message) {
   const button = $(id);
@@ -52,11 +54,17 @@ function actionFeedback(id, phase, message) {
 }
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
-const notice = (message = '') => { $('notice').hidden = !message; $('notice-text').textContent = message; $('reload').hidden = !state.conflict; };
+const notice = (message = '') => {
+  message ||= incomingDocument ? 'An incoming document is waiting. Your draft is retained.'
+    : state.conflict ? 'The file changed outside this editor. Your draft is retained. Review both versions before choosing.' : '';
+  $('notice').hidden = !message; $('notice-text').textContent = message;
+  $('reload').hidden = !state.conflict && !incomingDocument;
+};
 const status = message => { $('status').textContent = message; };
 const editability = new Compartment();
+const setup = new Compartment();
 const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.of(value)];
-const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, markdown({extensions:GFM}), EditorView.lineWrapping,
+const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicSetup), markdown({extensions:GFM}), EditorView.lineWrapping,
   authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice}),
   visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading,
     open:(range,placement)=>tables.open(range,null,placement),preview:source=>tables.preview(source),detach:root=>tables.detach(root)}),
@@ -80,6 +88,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [basicSetup, mar
     $('location').textContent = `Ln ${line.number}, Col ${update.state.selection.main.head - line.from + 1}`;
   }),
 ]});
+installRoleHelp($('editor'), $('role-help'));
 for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': PanelsTopLeft,
   open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
@@ -99,6 +108,10 @@ function changeEditorMode(mode) {
   editor.dispatch({effects:[visualMode.of(visual),compactMarkup.of(visual)]});scheduleRecovery();
 }
 for(const button of document.querySelectorAll('[data-editor]')) button.onclick=()=>changeEditorMode(button.dataset.editor);
+$('slide-separators').onchange = () => {
+  editor.dispatch({effects: slideSeparators.of($('slide-separators').checked)});
+  scheduleRecovery();
+};
 $('copy-path').onclick=async()=>{
   if (copying) return;
   copying = true; actionFeedback('copy-path', 'busy'); refreshControls();
@@ -148,7 +161,7 @@ function refreshControls() {
   $('refresh').setAttribute('aria-label', $('refresh').title);
   $('filename').textContent = state.name;
   $('filename').title = state.name;
-  $('reload').hidden = !state.conflict;
+  $('reload').hidden = !state.conflict && !incomingDocument;
   if (!state.rendering && !state.saving) status(state.conflict ? 'External changes detected'
     : state.rendered && state.renderedRevision !== state.revision ? 'Preview out of date'
     : dirty() ? 'Unsaved changes' : demo ? 'Read-only design preview' : state.etag ? 'Saved' : 'Local draft');
@@ -158,12 +171,17 @@ for (const button of document.querySelectorAll('[data-depth]')) button.onclick =
   setOutlineDepth(editor, Number(button.dataset.depth), state.name.toLowerCase().endsWith('.org'));
   for (const other of document.querySelectorAll('[data-depth]')) other.setAttribute('aria-pressed', String(other === button));
 };
-function replaceText(value) {
+function replaceText(value, {baseline = false} = {}) {
   const selection = editor.state.selection.main;
   const wasLoading = state.loading;
   state.loading = true;
+  // A new file baseline starts a new undo history. Never map old undo entries
+  // through a whole-file disk replacement, or join it with the user's typing.
+  if (baseline) editor.dispatch({effects: setup.reconfigure([])});
   editor.dispatch({changes: {from: 0, to: editor.state.doc.length, insert: value},
+    annotations: [isolateHistory.of('full'), Transaction.addToHistory.of(!baseline)],
     selection: {anchor: Math.min(selection.anchor, value.length), head: Math.min(selection.head, value.length)}});
+  if (baseline) editor.dispatch({effects: setup.reconfigure(basicSetup)});
   state.loading = wasLoading;
   state.revision++;
 }
@@ -395,19 +413,30 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
   const result = await call('matsugit_read', {session});
   return {...result, text: result.source};
 }
-async function reload(force = false, manual = false) {
+async function reload(force = false, manual = false, expectedEtag = null) {
   if ((!state.uri && !state.session) || state.loading || state.saving || (state.refreshing && !manual)) return false;
   const sequence = loadSequence;
   const read = ++readSequence;
+  const revision = state.revision, table = JSON.stringify(tables.snapshot());
   try {
     const data = await resourceRead();
     if (sequence !== loadSequence || read !== readSequence || state.saving) return false;
+    if (force && expectedEtag !== null && data.etag !== expectedEtag) {
+      notice('The incoming file changed again. Nothing was replaced; review the new version first.');
+      return false;
+    }
+    if (force && (state.revision !== revision || JSON.stringify(tables.snapshot()) !== table)) {
+      notice('Your draft changed while reading the file. Nothing was replaced; review the versions again.');
+      return false;
+    }
     if (!force && data.etag === state.etag) return !state.conflict;
-    if ((dirty() || tables.pending()) && data.text !== text() && !force) {
-      state.conflict = true; notice('The file changed outside this editor. Your draft is retained. Download it or reload the file.');
+    if ((state.conflict || dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
+      state.conflict = true; notice('The file changed outside this editor. Your draft is retained. Review both versions before choosing.');
     } else {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
-      state.conflict = false; replaceText(data.text); notice(); scheduleRender();
+      state.conflict = false;
+      if (data.text !== text()) { tables.reset(); replaceText(data.text, {baseline:true}); }
+      notice(); scheduleRender();
       scheduleRecovery();
     }
     refreshControls();
@@ -447,10 +476,18 @@ async function save() {
   } catch (error) { if (sequence === loadSequence) notice(error.message); }
   finally { if (sequence === loadSequence) { readSequence++; state.saving = false; refreshControls(); scheduleRecovery(); await flushRecovery(); } }
 }
-async function load(data) {
+function offerIncoming(data) {
+  incomingDocument = data;
+  notice('An incoming document was not opened because you have a draft. Review the versions or keep editing.');
+}
+async function load(data, {acceptRevision = null} = {}) {
   if (state.saving) { notice('Wait for the current save before opening another document.'); return; }
-  if ((dirty() || tables.pending()) && !confirm('Discard the unsaved draft and open another document?')) return;
+  if ((dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && acceptRevision !== state.revision) { offerIncoming(data); return; }
+  const before = state.revision, table = JSON.stringify(tables.snapshot()), previousLoad = loadSequence;
   await flushRecovery();
+  if (previousLoad !== loadSequence) return;
+  if (before !== state.revision || table !== JSON.stringify(tables.snapshot())) { offerIncoming(data); return; }
+  incomingDocument = null;
   tables.reset();
   const suppliedRecovery = data.recovery;
   const sequence = ++loadSequence;
@@ -485,7 +522,7 @@ async function load(data) {
     const source = data.source ?? data.text ?? '';
     if (new TextEncoder().encode(source).length > 2 * 1024 * 1024 || source.includes('\0')) throw Error('Invalid source or document exceeds the 2 MiB editor limit.');
     state.base = source; state.etag = data.etag;
-    state.writable = !!data.writable; replaceText(state.base);
+    state.writable = !!data.writable; replaceText(state.base, {baseline:true});
     editor.dispatch({selection: {anchor: 0}});
     if (!demo) {
       try {
@@ -538,7 +575,7 @@ function recoveryScope() {
 function viewState() {
   const style = document.documentElement.style;
   return {layout: state.layout, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
-    editorMode:state.editorMode,tableDraft:tables.snapshot(),
+    editorMode:state.editorMode,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
     positions: state.positions};
@@ -549,6 +586,8 @@ function applyView(view) {
   $('theme').value = view.theme || ''; $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
+  $('slide-separators').checked = view.slideSeparators === true;
+  editor.dispatch({effects: slideSeparators.of($('slide-separators').checked)});
   state.positions = view.positions; restoredPosition = true; origin = 'preview';
   document.documentElement.style.setProperty('--source-size', view.width + '%');
   document.documentElement.style.setProperty('--source-height', view.height + '%');
@@ -635,7 +674,11 @@ $('close-recovery').onclick = () => $('recovery-dialog').close();
 async function restoreCopy(record) {
   if (!record || state.loading || state.saving) return;
   if (dirty() && !confirm('Replace the current draft with this recovery copy?')) return;
+  const revision = state.revision, table = JSON.stringify(tables.snapshot()), before = loadSequence;
   await flushRecovery();
+  if (before !== loadSequence || revision !== state.revision || table !== JSON.stringify(tables.snapshot())) {
+    notice('The draft changed during recovery. Nothing was replaced.'); return;
+  }
   const sequence = loadSequence;
   state.loading = true; readSequence++;
   editor.dispatch({effects: editability.reconfigure(editable(false))});
@@ -687,7 +730,44 @@ $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };
 $('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); scheduleRecovery(); };
-$('reload').onclick = () => { if (confirm('Discard this editor draft and reload the latest file?')) reload(true); };
+$('reload').onclick = reviewIncoming;
+let reviewedIncoming;
+async function reviewIncoming() {
+  const sequence = loadSequence, requested = incomingDocument;
+  try {
+    const data = requested?.file?.resourceUri ? await resourceRead({uri:requested.file.resourceUri})
+      : requested ? {text:requested.source ?? requested.text ?? ''} : await resourceRead();
+    if (sequence !== loadSequence || requested !== incomingDocument) return;
+    reviewedIncoming = {requested, data, sequence};
+    $('incoming-status').textContent = '';
+    $('incoming-local').value = text(); $('incoming-file').value = data.text;
+    $('incoming-name').textContent = requested?.name || requested?.file?.name || state.name;
+    $('incoming-dialog').showModal();
+  } catch(error) { notice(error.message); }
+}
+$('incoming-keep').onclick = () => $('incoming-dialog').close();
+$('incoming-download').onclick = download;
+$('incoming-use').onclick = async () => {
+  const choice = reviewedIncoming;
+  if (!choice || choice.sequence !== loadSequence || state.saving || state.loading) return;
+  const revision = state.revision, snapshot = {text:text(), base:state.base, view:viewState()};
+  $('incoming-use').disabled = true;
+  try {
+    // Retain a separate recovery copy: normal checkpointing must not overwrite
+    // the draft the user explicitly replaced while resolving this conflict.
+    const copy = await call('matsugit_recovery_begin', {...recoveryScope(), name:state.name});
+    await call('matsugit_recovery_checkpoint', {...recoveryScope(), id:copy.id, generation:0, ...snapshot});
+    if (choice.sequence !== loadSequence || revision !== state.revision || JSON.stringify(snapshot.view.tableDraft) !== JSON.stringify(tables.snapshot())) {
+      $('incoming-status').textContent = 'The draft changed during backup. Nothing was replaced; review it again.'; return;
+    }
+    if (choice.requested) await load(choice.requested, {acceptRevision:revision});
+    else if (!await reload(true, true, choice.data.etag)) {
+      $('incoming-status').textContent = $('notice-text').textContent; return;
+    }
+    $('incoming-dialog').close();
+  } catch(error) { $('incoming-status').textContent = 'Draft retained: could not save a safety copy. '+error.message; }
+  finally { $('incoming-use').disabled = false; }
+};
 $('open').onclick = () => $('file').click();
 $('file').onchange = async () => {
   const file = $('file').files[0]; if (!file) return;
@@ -727,7 +807,7 @@ document.modelContext?.registerTool({name: 'matsugit_replace_source', descriptio
   async execute(args) {
     if (demo || state.loading || args.revision !== state.revision) throw Error('Draft changed or is loading; read the current revision first.');
     if (new TextEncoder().encode(args.text).length > 2 * 1024 * 1024) throw Error('Document exceeds 2 MiB.');
-    editor.dispatch({changes: {from: 0, to: editor.state.doc.length, insert: args.text}});
+    editor.dispatch({changes: {from: 0, to: editor.state.doc.length, insert: args.text}, annotations:isolateHistory.of('full')});
     return JSON.stringify({revision: state.revision, saved: false});
   }});
 // Expose only the editor model to the isolated local UI test harness.

@@ -5,13 +5,13 @@ export function headingKey(label) {
 }
 
 export function structure(source, org = false) {
-  const headings = [], literals = [], markers = [], blocks = [];
+  const headings = [], literals = [], markers = [], blocks = [], breaks = [];
   const counts = new Map();
-  const add = (from, to, level, label) => {
+  const add = (from, to, level, label, topLevel = true) => {
     const key = headingKey(label), identity = `${level}:${key}`;
     const occurrence = counts.get(identity) || 0;
     counts.set(identity, occurrence + 1);
-    headings.push({from, to, level, label, key, occurrence});
+    headings.push({from, to, level, label, key, occurrence, topLevel});
     markers.push({from, role: ['Section', 'Slide', 'Claim', 'Region'][level - 1] || 'Heading'});
   };
   if (org) {
@@ -33,12 +33,13 @@ export function structure(source, org = false) {
       } else if (!active?.opaque) {
         const match = /^(\*+)\s+(.+)$/.exec(line);
         if (match) add(offset, offset + line.length, match[1].length,
-          match[2].replace(/\[\[[^\]]+\]\[([^\]]+)\]\]/g, '$1'));
+          match[2].replace(/\[\[[^\]]+\]\[([^\]]+)\]\]/g, '$1'), !stack.length);
+        if (!stack.length && /^\s*-{5,}\s*$/.test(line)) breaks.push({from: offset, to: offset + line.length});
       }
       offset += line.length + 1;
     }
     for (const block of stack) if (block.opaque) literals.push({from: block.from, to: source.length});
-    return {headings, markers, blocks, literals: literals.sort((a,b)=>a.from-b.from)};
+    return {headings, markers, blocks, breaks, literals: literals.sort((a,b)=>a.from-b.from)};
   }
   const frontmatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
   if (frontmatter) literals.push({from: 0, to: frontmatter});
@@ -47,6 +48,8 @@ export function structure(source, org = false) {
     if (['FencedCode', 'CodeBlock', 'HTMLBlock'].includes(node.name)) {
       literals.push({from: node.from, to: node.to}); return false;
     }
+    if (node.name === 'HorizontalRule' && node.from >= frontmatter && node.node.parent?.name === 'Document')
+      breaks.push({from: node.from, to: node.to});
     const match = /^(?:ATX|Setext)Heading([1-6])$/.exec(node.name);
     if (!match || node.from < frontmatter) return;
     const omit = [];
@@ -62,7 +65,7 @@ export function structure(source, org = false) {
     if (typeof document !== 'undefined') {
       const decoder = document.createElement('textarea'); decoder.innerHTML = label; label = decoder.value;
     }
-    add(node.from, node.to, Number(match[1]), label);
+    add(node.from, node.to, Number(match[1]), label, node.node.parent?.name === 'Document');
     return false;
   }});
   let offset = 0, literal = 0;
@@ -102,7 +105,14 @@ export function structure(source, org = false) {
     heading.occurrence = counts.get(identity) || 0;
     counts.set(identity, heading.occurrence + 1);
   }
-  return {headings: visible, markers: markers.sort((a, b) => a.from - b.from), blocks, literals};
+  return {headings: visible, markers: markers.sort((a, b) => a.from - b.from), blocks, breaks, literals};
+}
+
+// These are source guides, not a prediction of renderer-generated overflow slides.
+export function slideBoundaries(parsed) {
+  return [...parsed.headings.filter(h => h.level === 2 && h.topLevel), ...parsed.breaks]
+    .filter(item => !parsed.blocks.some(b => item.from > b.from && item.from < b.to))
+    .sort((a, b) => a.from - b.from).map(item => item.from);
 }
 
 export function headingTargets(headings, position) {

@@ -2,11 +2,15 @@ import {Decoration, ViewPlugin, gutter, GutterMarker, WidgetType} from '@codemir
 import {RangeSetBuilder, StateEffect, StateField} from '@codemirror/state';
 import {foldService} from '@codemirror/language';
 import {autocompletion, startCompletion, snippet} from '@codemirror/autocomplete';
-import {structure} from './structure.mjs';
+import {structure, slideBoundaries} from './structure.mjs';
+import {roleDescription} from './role-help.mjs';
 import {chartTypes, wrapElement, snippetTemplate, ratioLine} from './insertions.mjs';
 
 const recipes = __MATSUGIT_TEMPLATES__;
 export const compactMarkup = StateEffect.define();
+export const slideSeparators = StateEffect.define();
+const separatorState = StateField.define({create: () => false,
+  update(value, tr) { for (const effect of tr.effects) if (effect.is(slideSeparators)) value = effect.value; return value; }});
 const compactState = StateField.define({create: () => false,
   update(value, tr) { for (const effect of tr.effects) if (effect.is(compactMarkup)) value = effect.value; return value; }});
 const roleGroup = role => ({Section: 'section', Slide: 'slide', Claim: 'claim', Region: 'region',
@@ -16,11 +20,13 @@ class Marker extends GutterMarker {
   constructor(role, closing) { super(); this.role = role; this.closing = closing; }
   eq(other) { return other.role === this.role && other.closing === this.closing; }
   toDOM() {
-    const el = document.createElement('span');
+    const el = document.createElement('button');
+    el.type = 'button';
     el.className = `ff-gutter-marker ff-role-${roleGroup(this.role)}`;
     el.textContent = this.closing ? '-' : ({Section: 'S', Slide: 'T', Claim: 'C', Region: 'R', takeaway: '!', 'agent-comment': 'A'}[this.role] || '+');
     el.title = `${this.closing ? 'End ' : ''}${this.role}`;
-    el.setAttribute('aria-label', el.title);
+    el.dataset.role = this.role; el.dataset.closing = String(!!this.closing);
+    el.setAttribute('aria-label', roleDescription(this.role, this.closing).label);
     return el;
   }
 }
@@ -68,11 +74,13 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
   };
   const semantic = ViewPlugin.fromClass(class {
     constructor(view) { this.build(view); }
-    update(update) { if (update.docChanged || update.selectionSet || update.transactions.some(t => t.effects.some(e => e.is(compactMarkup)))) this.build(update.view); }
+    update(update) { if (update.docChanged || update.selectionSet || update.transactions.some(t => t.effects.some(e => e.is(compactMarkup) || e.is(slideSeparators)))) this.build(update.view); }
     build(view) {
       this.outline = parsed(view.state);
       const lines = new Map(this.outline.markers.map(item => [view.state.doc.lineAt(item.from).from, item]));
       const marks = new RangeSetBuilder(), decorations = [];
+      if (view.state.field(separatorState)) for (const from of slideBoundaries(this.outline))
+        decorations.push(Decoration.line({class: 'ff-slide-boundary'}).range(view.state.doc.lineAt(from).from));
       for (const [from, item] of [...lines].sort((a, b) => a[0] - b[0])) {
         marks.add(from, from, new Marker(item.role, item.closing));
         decorations.push(Decoration.line({class: `ff-source-role ff-role-${roleGroup(item.role)}`}).range(from));
@@ -91,7 +99,7 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
       this.markers = marks.finish(); this.decorations = Decoration.set(decorations, true);
     }
   }, {decorations: value => value.decorations});
-  return [compactState, semantic,
+  return [compactState, separatorState, semantic,
     gutter({class: 'ff-semantic-gutter', markers: view => view.plugin(semantic).markers}),
     foldService.of((state, from) => {
       const block = parsed(state).blocks.find(block => block.from === from);

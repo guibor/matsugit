@@ -36,7 +36,7 @@
       <button id="refresh" title="Render preview" aria-label="Render preview"></button>
     </div>
   </nav>
-  <div id="notice" role="status" hidden><span id="notice-text"></span><button id="reload" hidden>Reload file</button></div>
+  <div id="notice" role="status" hidden><span id="notice-text"></span><button id="reload" hidden>Review changes</button></div>
   <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
   <div id="workspace" data-layout="split">
     <section id="source-pane" aria-label="Source">
@@ -51,6 +51,7 @@
           <button data-depth="5" aria-pressed="false" title="Show headings through level 5">5</button>
           <button data-depth="6" aria-pressed="false" title="Show headings through level 6">6</button>
         </div>
+        <label class="auto source-separators" title="Show source slide boundaries without changing the document"><input id="slide-separators" type="checkbox">Slide separators</label>
         <button id="edit-table" title="Edit table at cursor" aria-label="Edit table at cursor"></button>
       </div>
       <div id="editor"></div>
@@ -64,6 +65,7 @@
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span></footer>
 </main>
 <div id="action-feedback" role="status" aria-live="polite" hidden></div>
+<div id="role-help" role="tooltip" hidden></div>
 <div id="presentation-controls" hidden aria-label="Presentation controls">
   <button id="present-previous" title="Previous slide" aria-label="Previous slide"></button>
   <span id="present-position" aria-live="polite"></span>
@@ -71,6 +73,12 @@
   <button id="present-exit" title="Exit presentation (Escape)" aria-label="Exit presentation"></button>
 </div>
 <dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
+<dialog id="incoming-dialog" aria-labelledby="incoming-title">
+  <h2 id="incoming-title">Review incoming changes</h2><p id="incoming-name"></p>
+  <div class="incoming-versions"><label>Your current draft<textarea id="incoming-local" readonly></textarea></label><label>Incoming file<textarea id="incoming-file" readonly></textarea></label></div>
+  <p id="incoming-status" role="status"></p>
+  <div class="incoming-actions"><button id="incoming-keep">Keep editing my draft</button><button id="incoming-download">Download my draft</button><button id="incoming-use">Use incoming file</button></div>
+</dialog>
 <dialog id="table-dialog" aria-labelledby="table-title">
   <div class="recovery-heading"><h2 id="table-title">Edit table</h2><span id="table-cell" aria-live="polite"></span><button id="table-expand" title="Expand table editor" aria-label="Expand table editor"></button><button id="table-close" title="Close table editor" aria-label="Close table editor"></button></div>
   <div id="table-toolbar" role="toolbar" aria-label="Table formatting"></div>

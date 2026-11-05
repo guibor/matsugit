@@ -293,6 +293,31 @@ For dense evidence, wrap a table in `::: compact` (tighter rows) or
 `::: quotation`. `.dense` on a slide heading deliberately tightens its body.
 These are explicit choices, not automatic shrinking or permission to overload a slide.
 
+### Quote slides
+
+Use `/quote` (also `/quotation`) for a dedicated quotation slide:
+
+```markdown
+## The decision principle {.quote .hide-title .hide-claim}
+### An optional explanation kept in the storyline
+
+> Your authorized quotation goes here.
+
+::: attribution
+-- Author, role or publication
+:::
+```
+
+The quote is centered with a large opening quotation mark and a smaller author
+line beneath. Attribution is visible content, not a `source` block subject to
+source-publication settings. Ordinary blockquotes and `::: quotation` excerpts
+keep their document/evidence styling. Do not invent quotations or attribution.
+
+Remove `.hide-title` or `.hide-claim` to display that heading on the slide. These
+classes also work on other slide types; the headings remain in the Markdown,
+storyline and reading document. Org retains them as `:CUSTOM_CLASS:` properties.
+Use `slide-layout: structured` for the standard H2 title / H3 claim hierarchy.
+
 ## Emacs and CLI
 
 - `M-x mdf/matsugit-insert-template` / `SPC m e v i`: insert a starter.
