@@ -101,6 +101,49 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             assert frame.locator('.story-row').count() == 6
             assert frame.locator('[data-story-depth]').count() == 0
             page.screenshot(path=str(shots/'story-overview.png'))
+            # Overview and Walkthrough are presentations of the same paired slides.
+            assert frame.locator('#story-pane').get_attribute('data-story-mode') == 'overview'
+            first = frame.locator('.story-slide').first
+            overview_height = first.bounding_box()['height']
+            revision = frame.evaluate('matsugitWorkspace.state.revision')
+            assert overview_height < 75
+            assert first.bounding_box()['x'] > frame.locator('.story-section').first.bounding_box()['x']
+            first.focus()
+            frame.locator('button[data-story-mode="walkthrough"]').click()
+            assert first.bounding_box()['height'] > 300
+            assert frame.locator('#story-position').inner_text() == '1 / 4'
+            assert 'Segment' not in frame.locator('#story-list').inner_text()
+            assert not frame.locator('#preview-pane').is_visible()
+            assert current() == original and frame.evaluate('matsugitWorkspace.state.revision') == revision
+            page.screenshot(path=str(shots/'story-walkthrough.png'))
+            frame.locator('#story-next').click()
+            assert frame.locator('#story-position').inner_text() == '2 / 4'
+            frame.locator('.story-slide').nth(1).press('PageDown')
+            assert frame.locator('#story-position').inner_text() == '3 / 4'
+            frame.locator('#story-previous').click()
+            assert frame.locator('#story-position').inner_text() == '2 / 4'
+            frame.locator('.story-slide').nth(1).locator('.story-heading .story-title').click()
+            frame.get_by_role('textbox',name='Edit slide title').fill('Walk through the argument')
+            frame.get_by_role('textbox',name='Edit slide title').press('Tab')
+            frame.get_by_role('textbox',name='Edit claim title').fill('The paired message remains editable')
+            frame.get_by_role('textbox',name='Edit claim title').press('Enter')
+            frame.locator('.story-slide').nth(1).press('Alt+ArrowUp')
+            assert titles()[0] == 'Walk through the argument'
+            assert 'Make the first ten minutes count.' in current()
+            undo()
+            frame.locator('button[data-story-mode="overview"]').click()
+            assert frame.locator('.story-selected').get_attribute('aria-label') == 'slide: Walk through the argument'
+            assert frame.locator('.story-selected .story-claim').inner_text() == 'The paired message remains editable'
+            undo(); undo(); assert current() == original
+            # Folding only changes Overview; Walkthrough still exposes the full story.
+            frame.locator('.story-section').first.get_by_role('button',name='Fold section').click()
+            assert frame.locator('.story-slide').count() == 2
+            frame.locator('button[data-story-mode="walkthrough"]').click()
+            assert frame.locator('.story-slide').count() == 4
+            frame.locator('.story-slide').first.focus()
+            frame.locator('button[data-story-mode="overview"]').click()
+            assert frame.locator('.story-slide').count() == 4
+            assert current() == original
             # Moving directly from one field to another must not lose the click
             # or use offsets from before the first title changed length.
             frame.locator('.story-slide .story-heading .story-title').first.click()
@@ -228,6 +271,64 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             page.set_viewport_size({'width':1440,'height':1000})
             time.sleep(.2)
             page.screenshot(path=str(shots/'story-desktop.png'))
+            # Large narrative: dense but complete, and scrolling keeps the walkthrough position.
+            dense = '\n---\ntitle: Narrative map\n---\n\n'
+            narrative = [
+                ('Why change', [
+                    ('Demand', 'Interest alone does not establish repeatable adoption'),
+                    ('The bottleneck', 'First value arrives too late in the current journey'),
+                    ('User effort', 'Every extra setup decision creates another exit'),
+                    ('Existing strengths', 'Keep the workflow that returning teams already trust'),
+                    ('Opportunity', 'A smaller first step can reveal value sooner'),
+                    ('The decision', 'Test the entry experience before widening distribution')]),
+                ('What changes', [
+                    ('One starting point', 'Offer a useful first workflow, not a blank canvas'),
+                    ('Fewer decisions', 'Defer setup that does not contribute to first value'),
+                    ('Visible progress', 'Make the next step clear at every point'),
+                    ('An early result', 'Let new teams experience the outcome before configuring it'),
+                    ('Human support', 'Keep a direct path to help when the flow breaks'),
+                    ('Scope boundary', 'Leave the established workflow unchanged for existing teams')]),
+                ('How we learn', [
+                    ('A focused pilot', 'Observe a small group before expanding the rollout'),
+                    ('Primary measure', 'Track time to first value rather than signups alone'),
+                    ('Supporting evidence', 'Pair completion data with observed user friction'),
+                    ('Guardrails', 'Check that simplicity does not compromise successful use'),
+                    ('Decision criteria', 'Agree what would justify expansion before the pilot starts'),
+                    ('Open questions', 'Treat uncertain assumptions as tests, not conclusions')]),
+                ('What happens next', [
+                    ('Ownership', 'Name one accountable owner for the complete first journey'),
+                    ('First delivery', 'Ship the smallest change that tests the central assumption'),
+                    ('Review cadence', 'Discuss the evidence together before adding scope'),
+                    ('If it works', 'Expand gradually while checking that the result repeats'),
+                    ('If it does not', 'Use the observed friction to choose the next experiment'),
+                    ('The ask', 'Approve a bounded pilot and a clear review point')]),
+            ]
+            for section, slides in narrative:
+                dense += f'# {section}\n\n'
+                for title, claim in slides:
+                    dense += f'## {title}\n### {claim}\n\nEvidence stays attached.\n\n'
+            frame.evaluate('(text)=>matsugitWorkspace.load({name:"map.md",text,writable:false},{acceptRevision:matsugitWorkspace.state.revision})',dense)
+            wait(frame,'!matsugitWorkspace.state.loading')
+            frame.locator('button[data-story-mode="overview"]').click()
+            assert frame.locator('.story-slide').count() == 24
+            visible = frame.locator('.story-slide').evaluate_all('(rows)=>{const box=document.getElementById("story-list").getBoundingClientRect();return rows.filter(r=>{const b=r.getBoundingClientRect();return b.top>=box.top && b.bottom<=box.bottom}).length}')
+            assert visible >= 14, visible
+            time.sleep(4.1)
+            page.screenshot(path=str(shots/'story-map.png'))
+            frame.locator('button[data-story-mode="walkthrough"]').click()
+            frame.locator('.story-slide').nth(12).evaluate('(el)=>el.scrollIntoView({block:"start"})')
+            wait(frame,'document.getElementById("story-position").textContent === "13 / 24"')
+            assert current() == dense
+            page.screenshot(path=str(shots/'story-walkthrough-map.png'))
+            for mode in ('overview','walkthrough'):
+                frame.locator(f'button[data-story-mode="{mode}"]').click()
+                for width in (390,800,1440):
+                    page.set_viewport_size({'width':width,'height':1000})
+                    page.screenshot(path=str(shots/f'story-{mode}-{width}.png'))
+                    assert frame.evaluate('document.body.scrollWidth <= window.innerWidth')
+                    assert frame.evaluate('document.getElementById("story-list").scrollWidth <= document.getElementById("story-list").clientWidth'), (mode,width,frame.locator('#story-list').evaluate('(el)=>({client:el.clientWidth,scroll:el.scrollWidth,rows:[...el.children].slice(0,3).map(r=>({width:r.offsetWidth,scroll:r.scrollWidth}))})'))
+                    if width == 390: page.screenshot(path=str(shots/f'story-{mode}-mobile.png'))
+            frame.locator('button[data-story-mode="overview"]').click()
             # Native Org gets the same editor without converting the source.
             org = '#+title: Plan\n\n* Direction\n** First\n:PROPERTIES:\n:CUSTOM_ID: stable\n:END:\n\nEvidence\n\n** Second\n*** Existing claim\n\nBody\n'
             frame.evaluate('(text)=>matsugitWorkspace.load({name:"plan.org",text,writable:false},{acceptRevision:matsugitWorkspace.state.revision})',org)

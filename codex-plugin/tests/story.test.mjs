@@ -100,6 +100,9 @@ test('Story recovery retains preview and ignores obsolete outline depth', () => 
   assert.equal(view.layout,'story'); assert.equal(view.storyDepth,undefined); assert.equal(view.storyPreview,true);
   assert.equal(preferences({storyDepth:10,storyPreview:'true'}).storyDepth,undefined);
   assert.equal(preferences({storyPreview:'true'}).storyPreview,false);
+  assert.equal(preferences({storyMode:'walkthrough'}).storyMode,'walkthrough');
+  assert.equal(preferences({storyMode:'anything-else'}).storyMode,'overview');
+  assert.equal(preferences().storyMode,'overview');
 });
 
 test('new slides and sections are inserted after the whole selected subtree', () => {

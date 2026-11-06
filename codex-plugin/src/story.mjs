@@ -1,4 +1,4 @@
-import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X} from 'lucide';
+import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X} from 'lucide';
 import {undo, redo, isolateHistory} from '@codemirror/commands';
 import {Transaction} from '@codemirror/state';
 import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim} from './story-model.mjs';
@@ -11,13 +11,14 @@ function button(icon, name, run) {
   return el;
 }
 
-export function storyView({editor, state, enabled, notice, sourceView}) {
+export function storyView({editor, state, enabled, notice, sourceView, changed}) {
   const panel = $('story-pane'), list = $('story-list');
-  let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame;
+  let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
   const collapsed = new Set();
   const text = () => editor.state.doc.toString();
   const org = () => state.name.toLowerCase().endsWith('.org');
   const active = () => state.layout === 'story';
+  const walkthrough = () => state.storyMode === 'walkthrough';
   const say = message => { $('story-status').textContent = message; };
   const refresh = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(render); };
   const select = from => editor.dispatch({selection:{anchor:from}});
@@ -25,8 +26,56 @@ export function storyView({editor, state, enabled, notice, sourceView}) {
   const owner = node => node?.kind === 'claim' ? node.parent : node;
   function focus(from) {
     const row = list.querySelector(`[data-from="${from}"]`);
-    row?.focus({preventScroll:true}); row?.scrollIntoView({block:'nearest'});
+    row?.focus({preventScroll:true}); row?.scrollIntoView({block:walkthrough() ? 'start' : 'nearest'});
   }
+  function currentSlide() {
+    const selected = owner(model?.nodes.findLast(n => n.from <= editor.state.selection.main.head));
+    return selected?.kind === 'slide' ? selected : selected?.children.find(n => n.kind === 'slide') || model?.slides[0];
+  }
+  function navigation() {
+    const index = model?.slides.indexOf(currentSlide()) ?? -1;
+    $('story-navigation').hidden = !walkthrough();
+    $('story-position').textContent = `${index + 1} / ${model?.slides.length || 0}`;
+    $('story-previous').disabled = index <= 0;
+    $('story-next').disabled = index < 0 || index >= model.slides.length - 1;
+  }
+  function visit(direction) {
+    finishEdit(); render();
+    const index = model.slides.indexOf(currentSlide()), next = model.slides[index + direction];
+    if (next) focus(next.from);
+  }
+  function visibleSlide() {
+    const bounds = list.getBoundingClientRect(), rows = [...list.querySelectorAll('.story-slide')];
+    const target = bounds.top + Math.min(120, bounds.height / 3);
+    const visible = rows.filter(row => {
+      const box = row.getBoundingClientRect(); return box.bottom > bounds.top && box.top < bounds.bottom;
+    });
+    return visible.find(row => {
+      const box = row.getBoundingClientRect(); return box.top <= target && box.bottom >= target;
+    }) || visible[0];
+  }
+  for (const control of panel.querySelectorAll('[data-story-mode]')) control.onclick = () => {
+    finishEdit();
+    const current = list.querySelector('.story-selected'), bounds = list.getBoundingClientRect();
+    const box = current?.getBoundingClientRect();
+    const anchor = box && box.bottom > bounds.top && box.top < bounds.bottom ? Number(current.dataset.from)
+      : Number(visibleSlide()?.dataset.from ?? currentSlide()?.from ?? 0);
+    state.storyMode = control.dataset.storyMode;
+    // A slide remains in view when returning to an overview with folded sections.
+    const node = model.nodes.find(n => n.from === anchor);
+    if (node?.parent) collapsed.delete(node.parent.from);
+    render(); focus(anchor); changed();
+  };
+  $('story-previous').append(createElement(ChevronLeft)); $('story-previous').onclick = () => visit(-1);
+  $('story-next').append(createElement(ChevronRight)); $('story-next').onclick = () => visit(1);
+  list.addEventListener('scroll', () => {
+    cancelAnimationFrame(scrollFrame);
+    scrollFrame = requestAnimationFrame(() => {
+      if (!active() || !walkthrough() || editing || renderedSource !== text()) return;
+      const row = visibleSlide();
+      if (row && Number(row.dataset.from) !== currentSlide()?.from) select(Number(row.dataset.from));
+    });
+  }, {passive:true});
   function apply(result, message) {
     if (!result) return;
     if (!enabled()) return;
@@ -163,6 +212,10 @@ export function storyView({editor, state, enabled, notice, sourceView}) {
     if (!active() || editing) return;
     const source = text(); renderedSource = source; model = storyModel(source, org());
     const focused = list.contains(document.activeElement) ? document.activeElement.closest('[data-from]')?.dataset.from : null;
+    const scrollTop = list.scrollTop;
+    panel.dataset.storyMode = walkthrough() ? 'walkthrough' : 'overview';
+    for (const control of panel.querySelectorAll('[data-story-mode]'))
+      control.setAttribute('aria-pressed',String(control.dataset.storyMode === panel.dataset.storyMode));
     list.replaceChildren();
     for (const kind of ['slide','section']) $(`story-add-${kind}`).disabled = !enabled();
     const empty = model.slides.filter(n => n.empty).length;
@@ -172,10 +225,11 @@ export function storyView({editor, state, enabled, notice, sourceView}) {
     for (const node of model.nodes) {
       if (node.kind === 'claim') continue;
       let parent = node.parent, hidden = false;
-      while (parent) { if (collapsed.has(parent.from)) hidden = true; parent = parent.parent; }
+      while (parent) { if (!walkthrough() && collapsed.has(parent.from)) hidden = true; parent = parent.parent; }
       if (hidden) continue;
       const row = document.createElement('div');
       row.className = `story-row story-${node.kind}`; row.dataset.from = node.from;
+      row.classList.toggle('story-nested',node.kind === 'slide' && node.parent?.kind === 'section');
       row.tabIndex = 0; row.setAttribute('role','listitem');
       row.addEventListener('click', event => {
         if (text() !== renderedSource) { event.preventDefault(); event.stopPropagation(); refresh(); }
@@ -194,6 +248,8 @@ export function storyView({editor, state, enabled, notice, sourceView}) {
         });
         toggle.setAttribute('aria-expanded',String(!collapsed.has(node.from))); marker.append(toggle);
       } else marker.textContent = String(node.number).padStart(2,'0');
+      const context = document.createElement('div'); context.className = 'story-context';
+      context.textContent = node.kind === 'slide' ? node.parent?.label || '' : '';
       const body = document.createElement('div'); body.className = 'story-body';
       function field(heading) {
         const slot = document.createElement('div'); slot.dataset.heading = heading.from;
@@ -259,22 +315,26 @@ export function storyView({editor, state, enabled, notice, sourceView}) {
         };
       }
       actions.append(button(Code, 'Open in source', () => sourceView(node.from)));
-      row.append(marker,body,actions);
+      row.append(marker,context,body,actions);
       row.onkeydown = event => {
         if (event.target.matches('textarea,select')) return;
-        if (event.altKey && ['ArrowUp','ArrowDown'].includes(event.key)) {
+        if (walkthrough() && ['PageUp','PageDown'].includes(event.key)) {
+          event.preventDefault(); visit(event.key === 'PageUp' ? -1 : 1);
+        } else if (event.altKey && ['ArrowUp','ArrowDown'].includes(event.key)) {
           event.preventDefault(); step(node.from,event.key === 'ArrowUp' ? -1 : 1);
         } else if (event.target === row && ['ArrowUp','ArrowDown'].includes(event.key)) {
           event.preventDefault(); (event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling)?.focus();
         } else if (event.target === row && event.key === 'Enter') {
           event.preventDefault(); edit(node);
-        } else if (event.target === row && ['ArrowLeft','ArrowRight'].includes(event.key) && node.kind === 'section') {
+        } else if (!walkthrough() && event.target === row && ['ArrowLeft','ArrowRight'].includes(event.key) && node.kind === 'section') {
           event.preventDefault(); event.key === 'ArrowLeft' ? collapsed.add(node.from) : collapsed.delete(node.from); render(); focus(node.from);
         }
       };
       list.append(row);
     }
-    if (focused && list.querySelector(`[data-from="${focused}"]`)) focus(Number(focused));
+    list.scrollTop = scrollTop;
+    if (focused) list.querySelector(`[data-from="${focused}"]`)?.focus({preventScroll:true});
+    navigation();
   }
   panel.addEventListener('keydown', event => {
     if (event.target.matches('textarea')) return;
@@ -313,8 +373,9 @@ export function storyView({editor, state, enabled, notice, sourceView}) {
       } else if (update.selectionSet && active() && !editing) {
         const node = owner(model?.nodes.findLast(n => n.from <= update.state.selection.main.head));
         for (const row of list.children) row.classList.toggle('story-selected',Number(row.dataset.from) === node?.from);
+        navigation();
       }
     },
-    reset() { editing = null; collapsed.clear(); refresh(); },
+    reset() { editing = null; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
   };
 }

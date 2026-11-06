@@ -59,7 +59,16 @@
       </div>
       <section id="story-pane" aria-label="Story editor" hidden>
         <div class="story-toolbar">
+          <div class="segmented" aria-label="Story presentation">
+            <button data-story-mode="overview" aria-pressed="true" title="Compact narrative structure">Overview</button>
+            <button data-story-mode="walkthrough" aria-pressed="false" title="Read title and claim slide by slide">Walkthrough</button>
+          </div>
           <span id="story-count"></span>
+          <div id="story-navigation" hidden>
+            <button id="story-previous" aria-label="Previous story slide" title="Previous slide"></button>
+            <span id="story-position" aria-live="polite"></span>
+            <button id="story-next" aria-label="Next story slide" title="Next slide"></button>
+          </div>
           <button id="story-add-slide" title="Add slide" aria-label="Add slide"></button>
           <button id="story-add-section" title="Add section" aria-label="Add section"></button>
           <label class="auto"><input id="story-preview" type="checkbox">Preview</label>

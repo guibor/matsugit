@@ -35,6 +35,7 @@ export function preferences(value = {}) {
     slideId: typeof p?.slideId === 'string' ? p.slideId.slice(0, 512) : ''});
   return {layout: ['source', 'render', 'split', 'story'].includes(value.layout) ? value.layout : 'split',
     storyPreview:value.storyPreview === true,
+    storyMode:value.storyMode === 'walkthrough' ? 'walkthrough' : 'overview',
     editorMode:value.editorMode==='visual'?'visual':'raw', tableDraft:tableDraft(value.tableDraft),
     slideSeparators: value.slideSeparators === true,
     format: value.format === 'slides' ? 'slides' : 'document',

@@ -10,8 +10,12 @@ Document/Slides tabs. It uses the normal matsugit renderer and project/theme
 configuration. Preview is local, uses temporary files and does not save or publish.
 
 Use `layout: "story"` with `matsugit_open` when the user wants to work on narrative
-structure. Plugin 0.17 pairs each H2 title with its H3 claim in a compact editable
-slide row, grouped under H1 sections. There are no separate title/claim tabs.
+structure. Plugin 0.18 offers Overview and Walkthrough within Story. Overview
+is a dense indented narrative map; Walkthrough is a scrollable sequence of
+slide-shaped surfaces showing only the title and claim. Both pair each H2 title
+with its H3 claim, grouped under H1 sections, and edit the same source. Switching
+keeps the current slide and is view-only. Walkthrough has previous/next controls
+and PageUp/PageDown on a focused slide. There are no separate title/claim tabs.
 Click either field to edit; Tab moves between fields. Add slide accepts a title
 and optional claim with an empty body. An empty body is unfinished work, not
 permission to invent evidence. When asked to fill it, retain the user's title,

@@ -102,11 +102,22 @@ file is opened. The file-picker button imports a browser copy: it has no
 write-back permission or access to adjacent assets. Download that copy, or open
 the actual repository file through Codex.
 
-** Story: shape the argument slide by slide (0.17)
+** Story: overview and walkthrough (0.18)
 
-Choose =Story= in the top view switch. Each numbered row pairs a slide title
-with its claim/subtitle; section headers group the sequence. There are no separate
-title/claim tabs. Fold a section to concentrate on another part of the argument.
+Choose =Story= in the top view switch, then choose a presentation of the narrative:
+
+- =Overview= (default): a dense outline, with section bands, indented slides and
+  title/claim pairs. Wider windows place each pair side by side; narrower panes
+  put the claim beneath its title. Fold sections to inspect the larger structure.
+- =Walkthrough=: scroll through slide-shaped surfaces showing only the editable
+  title and claim, with section context and slide numbers. There is no evidence
+  body here, even when the real slide has one. Previous/next buttons and
+  =PageUp= / =PageDown= on a focused slide step through the argument.
+
+Switching keeps your place and never changes source or adds an Undo step.
+Walkthrough shows all slides, including those folded in Overview. Returning
+to Overview reveals the section containing the current slide. The presentation
+choice is retained in workspace recovery. There are no separate title/claim tabs.
 Preview is off initially, avoiding a render after every edit while you work on the story.
 Enable =Preview= for the existing Document/Slides output and heading synchronization.
 
@@ -127,7 +138,7 @@ Enable =Preview= for the existing Document/Slides output and heading synchroniza
   or agent request is invented. =Empty body= identifies slides awaiting detail.
   Save, then ask your agent to develop those slides without changing their order
   or claims. The folder-plus adds a section. A slide without a claim offers =+ Claim=.
-- The chevron folds a section; Left/Right also fold/unfold a focused parent.
+- In Overview, the chevron folds a section; Left/Right also fold/unfold a focused parent.
   The code icon returns to that heading in the regular source editor.
 - =Ctrl/Cmd-Z= and =Ctrl/Cmd-Shift-Z= undo/redo. Each move is one Undo step.
   Edits enter the same draft immediately; only Save writes the file.
