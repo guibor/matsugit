@@ -34,7 +34,7 @@ export function preferences(value = {}) {
     scroll: number(p?.scroll, 0, 1e9), h: Math.floor(number(p?.h, 0, 100000)), v: Math.floor(number(p?.v, 0, 100000)),
     slideId: typeof p?.slideId === 'string' ? p.slideId.slice(0, 512) : ''});
   return {layout: ['source', 'render', 'split', 'story'].includes(value.layout) ? value.layout : 'split',
-    storyDepth:[1,2,3].includes(value.storyDepth) ? value.storyDepth : 3, storyPreview:value.storyPreview === true,
+    storyPreview:value.storyPreview === true,
     editorMode:value.editorMode==='visual'?'visual':'raw', tableDraft:tableDraft(value.tableDraft),
     slideSeparators: value.slideSeparators === true,
     format: value.format === 'slides' ? 'slides' : 'document',

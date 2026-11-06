@@ -4,6 +4,28 @@ import {structure, headingTargets, headingKey, slideBoundaries} from '../src/str
 import {roleDescription} from '../src/role-help.mjs';
 import {preferences} from '../src/recovery.mjs';
 
+test('leading blank / BOM frontmatter and HTML examples never become semantic structure', () => {
+  for (const prefix of ['\n', '\uFEFF\n \t\r\n', '']) {
+    const source = prefix + '---\ntitle: Review\nslide-layout: structured\n---\n\n'
+      + '<!--\n# Section example\n## Slide example\n### Claim example\n'
+      + '  ::: takeaway: optional conclusion\n-->\n\n'
+      + '# Real section\n## Real slide\n### Real claim\n\n'
+      + '::: takeaway\nKeep the evidence.\n:::\n';
+    const p = structure(source);
+    assert.deepEqual(p.headings.map(h => h.label),['Real section','Real slide','Real claim']);
+    assert.equal(p.unfinished.length,0);
+    assert.deepEqual(p.blocks.map(b => b.role),['takeaway']);
+    assert.deepEqual(slideBoundaries(p),[source.indexOf('## Real slide')]);
+    assert.equal(p.markers.filter(m => m.role === 'takeaway').length,2);
+  }
+});
+
+test('real Setext headings after a comment stay editable and inline comments do not hide later slides', () => {
+  const s = '<!--\n::: claim example\n-->\n\nTopic\n=====\n\nSlide\n-----\n\nText <!-- comment -->\n\n## Next\n';
+  assert.deepEqual(structure(s).headings.map(h => h.label),['Topic','Slide','Next']);
+  assert.equal(structure(s).unfinished.length,0);
+});
+
 test('navigation follows visible headings, not YAML, code or hidden requests', () => {
   const source = '---\ntitle: Deck\n---\n# Section\n## **A** [link](https://example.test) `claim` {#stable}\n### Detail\n\n```md\n## Example\n::: takeaway\n```\n\n:::: {.agent-comment #review-one}\n## Hidden\n::::\n\n## A link claim\n';
   const parsed = structure(source);

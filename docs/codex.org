@@ -102,14 +102,16 @@ file is opened. The file-picker button imports a browser copy: it has no
 write-back permission or access to adjacent assets. Download that copy, or open
 the actual repository file through Codex.
 
-** Story: think in sections, titles and claims (0.16)
+** Story: shape the argument slide by slide (0.17)
 
-Choose =Story= in the top view switch. Sections, Titles and Claims choose how
-much of the argument is visible; they never delete or change content. Preview
-is off initially, avoiding a render after every edit while you work on the story.
+Choose =Story= in the top view switch. Each numbered row pairs a slide title
+with its claim/subtitle; section headers group the sequence. There are no separate
+title/claim tabs. Fold a section to concentrate on another part of the argument.
+Preview is off initially, avoiding a render after every edit while you work on the story.
 Enable =Preview= for the existing Document/Slides output and heading synchronization.
 
-- Click a section title, slide title or H3 claim to edit it in place. Enter or
+- Click a section title, slide title or claim to edit it in place. Tab / Shift-Tab
+  move between narrative fields, including the paired title and claim. Enter or
   Escape ends editing, retaining your draft edits. Inline Markdown is visible
   while editing; stable heading IDs/classes and Org tags/properties stay intact.
 - Drag by the grip, or use up/down arrows to move among siblings. =Alt-Up= /
@@ -120,8 +122,11 @@ Enable =Preview= for the existing Document/Slides output and heading synchroniza
 - A section carries all of its slides. A slide carries all text through the
   next H1/H2 boundary, including evidence, H3/H4 headings, notes and comments.
   Claims can be edited independently but are not detached from their slide.
-- The plus and folder-plus controls add a slide or section after the selected
-  subtree. A slide without a heading claim offers =Add claim=.
+- =Add slide= asks for a title and optional claim, then inserts the new slide
+  after the selected slide, with an *empty body*. No evidence, placeholder bullets
+  or agent request is invented. =Empty body= identifies slides awaiting detail.
+  Save, then ask your agent to develop those slides without changing their order
+  or claims. The folder-plus adds a section. A slide without a claim offers =+ Claim=.
 - The chevron folds a section; Left/Right also fold/unfold a focused parent.
   The code icon returns to that heading in the regular source editor.
 - =Ctrl/Cmd-Z= and =Ctrl/Cmd-Shift-Z= undo/redo. Each move is one Undo step.
@@ -130,9 +135,11 @@ Enable =Preview= for the existing Document/Slides output and heading synchroniza
 This follows the H1 section / H2 slide / H3 claim source convention in Markdown
 and native Org. It is not a thumbnail sorter for renderer-generated overflow
 slides. Manual =---= continuations move with their H2 title, with a continuation
-count in Story. Preamble/YAML stays in place; no source serialization or HTML
-round trip is involved. Bodies and explicit layout/claim blocks remain editable
-through the source icon. Multiline Setext titles must also be edited in source.
+count in Story. Preamble/YAML stays in place, including a leading blank line or
+BOM. HTML authoring comments and their examples do not become slides or blocks.
+No source serialization or HTML round trip is involved. Single-line explicit
+=claim= blocks are paired and editable too. Bodies, multiline claim blocks and
+multiline Setext titles remain editable through the source icon.
 Changing a heading's implicit anchor has the same effect as editing it in Raw;
 use explicit heading IDs for links that must survive renaming.
 

@@ -95,10 +95,10 @@ test('unfinished blocks fail closed for reordering, never swallow later source',
   assert.throws(()=>adjacentMove(code,storyModel(code).slides[1].from,-1),/parsed/);
 });
 
-test('Story view settings survive recovery with conservative validation', () => {
+test('Story recovery retains preview and ignores obsolete outline depth', () => {
   const view = preferences({layout:'story',storyDepth:2,storyPreview:true});
-  assert.equal(view.layout,'story'); assert.equal(view.storyDepth,2); assert.equal(view.storyPreview,true);
-  assert.equal(preferences({storyDepth:10,storyPreview:'true'}).storyDepth,3);
+  assert.equal(view.layout,'story'); assert.equal(view.storyDepth,undefined); assert.equal(view.storyPreview,true);
+  assert.equal(preferences({storyDepth:10,storyPreview:'true'}).storyDepth,undefined);
   assert.equal(preferences({storyPreview:'true'}).storyPreview,false);
 });
 
@@ -121,5 +121,45 @@ test('inserting a claim preserves Org properties on the original slide', () => {
 
 test('explicit claim blocks are retained and prevent inserting a competing heading claim', () => {
   const source = '## Title\n\n::: claim\nThe main point\n:::\n\nEvidence\n';
-  assert.equal(storyModel(source).slides[0].hasBlockClaim,true);
+  const slide = storyModel(source).slides[0];
+  assert.equal(slide.hasBlockClaim,true);
+  assert.equal(slide.claims[0].label,'The main point');
+  const range = titleRange(source,slide.claims[0]);
+  assert.equal(source.slice(0,range.from)+'Updated point'+source.slice(range.to),source.replace('The main point','Updated point'));
+});
+
+test('paired slides carry heading claims and identify genuinely empty bodies', () => {
+  const source = '## Plan\n### A claim\n\n## Evidence\n### Another claim\n\nBody\n\n';
+  const model = storyModel(source);
+  assert.deepEqual(model.slides.map(n => n.claims.map(c => c.label)),[['A claim'],['Another claim']]);
+  assert.deepEqual(model.slides.map(n => n.empty),[true,false]);
+  assert.equal(storyModel('## A\n::: claim\nPoint\n:::\n').slides[0].empty,true);
+  assert.equal(storyModel('## A\n::: notes\n::: claim\nNot a slide claim\n:::\n:::\n').slides[0].claims.length,0);
+});
+
+test('add title plus optional claim creates empty-body Markdown and Org slides', () => {
+  for (const org of [false,true]) {
+    const mark = org ? '*' : '#';
+    const source = `${mark} Section\r\n${mark.repeat(2)} Existing\r\n\r\nEvidence\r\n`;
+    const result = insertStory(source,source.indexOf('Evidence'),'slide',org,{title:'New argument',claim:'The important point'});
+    const next = apply(source,result), slide = storyModel(next,org).slides.at(-1);
+    assert.equal(next,source+'\r\n'+`${mark.repeat(2)} New argument\r\n\r\n${mark.repeat(3)} The important point\r\n\r\n`);
+    assert.equal(slide.empty,true); assert.equal(slide.claims[0].label,'The important point');
+    assert.equal(slide.from,result.anchor);
+    const noClaim = apply('',insertStory('',0,'slide',org,{title:'Optional'}));
+    assert.equal(storyModel(noClaim,org).slides[0].claims.length,0);
+    assert.throws(()=>insertStory('',0,'slide',org,{title:'',claim:'No title'}),/nonempty/);
+    assert.throws(()=>insertStory('',0,'slide',org,{title:'Valid',claim:'\n## Injection'}),/single-line/);
+  }
+});
+
+test('full story survives a leading blank and commented authoring guide; moves preserve the guide byte-for-byte', () => {
+  const guide = '\n'+preamble+'<!--\n# Example\n## Example slide\n### Example claim\n  ::: takeaway: optional conclusion\n-->\n\n';
+  const source = guide+a+b+c, model = storyModel(source);
+  assert.equal(model.sections.length,2); assert.equal(model.slides.length,3);
+  assert.equal(model.unfinished.length,0);
+  assert.equal(model.slides[0].claims[0].label,'Grow carefully');
+  const moved = apply(source,adjacentMove(source,model.slides[1].from,-1));
+  assert(moved.startsWith(guide));
+  assert.equal(storyModel(moved).slides.length,3);
 });

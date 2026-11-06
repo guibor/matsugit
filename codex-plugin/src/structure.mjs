@@ -31,7 +31,7 @@ export function structure(source, org = false) {
         stack.push({from: offset, startEnd: offset + line.length, role, opaque: opaqueNames.has(role)});
         markers.push({from: offset, role});
       } else if (!active?.opaque) {
-        const match = /^(\*+)\s+(.+)$/.exec(line);
+        const match = /^(\*+)[ \t]+(.+?)\r?$/.exec(line);
         if (match) add(offset, offset + line.length, match[1].length,
           match[2].replace(/\[\[[^\]]+\]\[([^\]]+)\]\]/g, '$1'), !stack.length);
         if (!stack.length && /^\s*-{5,}\s*$/.test(line)) breaks.push({from: offset, to: offset + line.length});
@@ -41,11 +41,14 @@ export function structure(source, org = false) {
     for (const block of stack) if (block.opaque) literals.push({from: block.from, to: source.length});
     return {headings, markers, blocks, breaks, unfinished: stack.map(b => ({...b, to:source.length})), literals: literals.sort((a,b)=>a.from-b.from)};
   }
-  const frontmatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
+  const frontmatter = /^\uFEFF?(?:[ \t]*\r?\n)*---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
   if (frontmatter) literals.push({from: 0, to: frontmatter});
   const tree = parser.parse(source);
   tree.iterate({enter(node) {
-    if (['FencedCode', 'CodeBlock', 'HTMLBlock'].includes(node.name)) {
+    if (node.name !== 'Document' && node.from < frontmatter) return false;
+    // Lezer distinguishes HTML comments from HTML blocks. Fence examples in a
+    // comment must not open a semantic block extending through the whole deck.
+    if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'CommentBlock'].includes(node.name)) {
       literals.push({from: node.from, to: node.to}); return false;
     }
     if (node.name === 'HorizontalRule' && node.from >= frontmatter && node.node.parent?.name === 'Document')

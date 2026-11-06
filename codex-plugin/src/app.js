@@ -25,11 +25,11 @@ import {publicationStatus} from './publication-status.mjs';
 import {storyView} from './story.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.16.0'});
+const app = new App({name: 'matsugit', version: '0.17.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
-  path:null, editorMode:'raw', storyDepth:3, storyPreview:false,
+  path:null, editorMode:'raw', storyPreview:false,
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
   bases: {}, revisions: {}, forceFull: false,
@@ -127,7 +127,7 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows})) $(id).append(createElement(icon));
 tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,enabled:()=>!demo&&!state.loading});
-story=storyView({editor,state,notice,changed:scheduleRecovery,
+story=storyView({editor,state,notice,
   enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!tables.pending(),
   sourceView:from=>{
     changeLayout('source');
@@ -691,7 +691,7 @@ function recoveryScope() {
 }
 function viewState() {
   const style = document.documentElement.style;
-  return {layout: state.layout, storyDepth:state.storyDepth, storyPreview:state.storyPreview, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
+  return {layout: state.layout, storyPreview:state.storyPreview, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
     editorMode:state.editorMode,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
@@ -701,7 +701,7 @@ function applyView(view) {
   if (!view) return;
   const loading = state.loading; state.loading = true;
   updateThemePicker($('theme'), themeCatalog, view.theme || ''); $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
-  state.storyDepth = view.storyDepth || 3; state.storyPreview = view.storyPreview === true;
+  state.storyPreview = view.storyPreview === true;
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
   $('slide-separators').checked = view.slideSeparators === true;

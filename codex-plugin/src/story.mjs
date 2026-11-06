@@ -11,7 +11,7 @@ function button(icon, name, run) {
   return el;
 }
 
-export function storyView({editor, state, enabled, notice, sourceView, changed}) {
+export function storyView({editor, state, enabled, notice, sourceView}) {
   const panel = $('story-pane'), list = $('story-list');
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame;
   const collapsed = new Set();
@@ -21,6 +21,8 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
   const say = message => { $('story-status').textContent = message; };
   const refresh = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(render); };
   const select = from => editor.dispatch({selection:{anchor:from}});
+  const fields = () => [...model.nodes, ...model.slides.flatMap(n => n.claims.filter(c => c.block))];
+  const owner = node => node?.kind === 'claim' ? node.parent : node;
   function focus(from) {
     const row = list.querySelector(`[data-from="${from}"]`);
     row?.focus({preventScroll:true}); row?.scrollIntoView({block:'nearest'});
@@ -48,12 +50,12 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     editor.dispatch({annotations:isolateHistory.of('after')});
     refresh();
   }
-  function edit(node, body) {
+  function edit(node) {
     if (!enabled()) return;
     finishEdit();
     render();
-    node = model.nodes.find(n => n.from === node.from);
-    body = node && list.querySelector(`[data-from="${node.from}"] .story-body`);
+    node = fields().find(n => n.from === node.from);
+    const body = node && list.querySelector(`[data-heading="${node.from}"]`);
     if (!body) return;
     let range;
     try { range = titleRange(text(), node, org()); }
@@ -87,7 +89,15 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     input.onkeydown = event => {
       if (event.isComposing) return;
       if (event.key === 'Enter' || event.key === 'Escape') {
-        event.preventDefault(); finishEdit(); render(); focus(node.from);
+        event.preventDefault(); finishEdit(); render(); focus(owner(node)?.from);
+      } else if (event.key === 'Tab') {
+        const items = [...list.querySelectorAll('[data-heading]')];
+        const index = items.indexOf(body), next = items[index + (event.shiftKey ? -1 : 1)];
+        if (next) {
+          event.preventDefault();
+          const heading = fields().find(n => n.from === Number(next.dataset.heading));
+          edit(heading);
+        }
       } else if ((event.metaKey || event.ctrlKey) && ['z','y'].includes(event.key.toLowerCase())) {
         event.preventDefault(); finishEdit();
         (event.shiftKey || event.key.toLowerCase() === 'y' ? redo : undo)(editor); render();
@@ -96,12 +106,10 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     input.focus(); size(); input.select();
   }
   function addClaim(node) {
-    state.storyDepth = 3;
     const result = insertClaim(text(),node,org());
     apply(result, 'Claim added. Unsaved.');
     const claim = model.nodes.find(n => n.from === result.anchor);
-    const body = list.querySelector(`[data-from="${claim?.from}"] .story-body`);
-    if (body) edit(claim, body);
+    if (claim) edit(claim);
   }
   function destination(node) {
     const dialog = $('story-move-dialog'), select = $('story-destination');
@@ -119,17 +127,35 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
   }
   $('story-move-close').append(createElement(X));
   $('story-move-close').onclick = () => $('story-move-dialog').close();
+  $('story-new-close').append(createElement(X));
+  $('story-new-close').onclick = () => $('story-new-dialog').close();
+  function newSlide() {
+    if (!enabled()) return;
+    const snapshot = text(), position = editor.state.selection.main.head;
+    const dialog = $('story-new-dialog'), title = $('story-new-slide-title'), claim = $('story-new-claim');
+    title.value = ''; claim.value = '';
+    $('story-new-form').onsubmit = event => {
+      event.preventDefault();
+      if (!enabled()) return;
+      if (snapshot !== text()) { notice('The draft changed. Close this form and choose the insertion point again.'); return; }
+      try {
+        const result = insertStory(text(),position,'slide',org(),{title:title.value,claim:claim.value.replace(/[\r\n]+/g,' ')});
+        dialog.close(); apply(result,'Slide added with an empty body. Unsaved.');
+      } catch (error) { notice(error.message); }
+    };
+    dialog.showModal(); title.focus();
+  }
   for (const [kind, icon] of [['slide',Plus],['section',FolderPlus]]) {
     const el = $(`story-add-${kind}`); el.append(createElement(icon));
+    if (kind === 'slide') el.append('Add slide');
     el.onclick = () => {
       try {
         finishEdit();
-        state.storyDepth = Math.max(state.storyDepth || 3,kind === 'section' ? 1 : 2);
+        if (kind === 'slide') { newSlide(); return; }
         const result = insertStory(text(),editor.state.selection.main.head,kind,org());
         apply(result,`${kind === 'slide' ? 'Slide' : 'Section'} added. Unsaved.`);
         const node = model.nodes.find(n => n.from === result.anchor);
-        const body = list.querySelector(`[data-from="${result.anchor}"] .story-body`);
-        if (body) edit(node,body);
+        if (node) edit(node);
       } catch (error) { notice(error.message); }
     };
   }
@@ -139,11 +165,12 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     const focused = list.contains(document.activeElement) ? document.activeElement.closest('[data-from]')?.dataset.from : null;
     list.replaceChildren();
     for (const kind of ['slide','section']) $(`story-add-${kind}`).disabled = !enabled();
-    $('story-count').textContent = `${model.sections.length} sections / ${model.slides.length} slide groups`;
-    $('story-empty').hidden = !!model.nodes.length;
-    const selected = model.nodes.findLast(n => n.from <= editor.state.selection.main.head);
+    const empty = model.slides.filter(n => n.empty).length;
+    $('story-count').textContent = `${model.slides.length} slides${empty ? ` / ${empty} empty` : ''}`;
+    $('story-empty').hidden = !!model.sections.length || !!model.slides.length;
+    const selected = owner(model.nodes.findLast(n => n.from <= editor.state.selection.main.head));
     for (const node of model.nodes) {
-      if (node.level > (state.storyDepth || 3)) continue;
+      if (node.kind === 'claim') continue;
       let parent = node.parent, hidden = false;
       while (parent) { if (collapsed.has(parent.from)) hidden = true; parent = parent.parent; }
       if (hidden) continue;
@@ -160,24 +187,38 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       row.classList.toggle('story-selected', selected?.from === node.from);
       row.onfocus = () => select(node.from);
       const marker = document.createElement('div'); marker.className = 'story-marker';
-      marker.title = node.kind === 'claim' ? 'Claim (H3)' : node.kind === 'slide' ? 'Slide title (H2)' : 'Section (H1)';
+      marker.title = node.kind === 'slide' ? 'Slide title (H2)' : 'Section (H1)';
       if (node.kind === 'section') {
         const toggle = button(collapsed.has(node.from) ? ChevronRight : ChevronDown, 'Fold section', () => {
           collapsed.has(node.from) ? collapsed.delete(node.from) : collapsed.add(node.from); render(); focus(node.from);
         });
         toggle.setAttribute('aria-expanded',String(!collapsed.has(node.from))); marker.append(toggle);
-      } else marker.textContent = node.kind === 'slide' ? String(node.number).padStart(2,'0') : 'C';
+      } else marker.textContent = String(node.number).padStart(2,'0');
       const body = document.createElement('div'); body.className = 'story-body';
-      const title = document.createElement('button'); title.type = 'button'; title.className = 'story-title';
-      title.textContent = node.label || 'Untitled'; title.title = `Edit ${node.kind} title`;
-      title.disabled = !enabled(); title.onclick = () => { select(node.from); edit(node, body); }; body.append(title);
+      function field(heading) {
+        const slot = document.createElement('div'); slot.dataset.heading = heading.from;
+        slot.className = heading.kind === 'claim' ? 'story-claim' : 'story-heading';
+        const title = document.createElement('button'); title.type = 'button'; title.className = 'story-title';
+        title.textContent = heading.label || 'Untitled'; title.title = `Edit ${heading.kind} title`;
+        title.disabled = !enabled(); title.onclick = () => { select(heading.from); edit(heading); };
+        slot.append(title); body.append(slot);
+      }
+      field(node);
       if (node.kind === 'section') {
         const count = document.createElement('small'), slides = node.children.filter(c => c.kind === 'slide').length;
         count.textContent = `${slides} slide${slides === 1 ? '' : 's'}`;
         body.append(count);
-      } else if (node.kind === 'slide' && node.continuations) {
-        const count = document.createElement('small'); count.textContent = `+ ${node.continuations} manual continuation${node.continuations > 1 ? 's' : ''}`;
-        count.title = 'Manual slide breaks and their content move with this title'; body.append(count);
+      } else {
+        for (const claim of node.claims) field(claim);
+        if (!node.claims.length) {
+          const add = button(Plus,'Add claim',() => addClaim(node));
+          add.className = 'story-add-claim'; add.append('Claim'); add.disabled = !enabled(); body.append(add);
+        }
+        if (node.empty || node.continuations) {
+          const count = document.createElement('small');
+          count.textContent = node.empty ? 'Empty body' : `+ ${node.continuations} continuation${node.continuations > 1 ? 's' : ''}`;
+          count.className = 'story-detail'; body.append(count);
+        }
       }
       const actions = document.createElement('div'); actions.className = 'story-actions';
       if (node.kind !== 'claim') {
@@ -192,9 +233,6 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
         if (node.kind === 'slide') {
           const control = button(ArrowRightLeft, 'Move to section', () => destination(node));
           control.disabled = !enabled() || !model.sections.length; actions.append(control);
-          if (!node.hasBlockClaim && !node.children.some(c => c.kind === 'claim')) {
-            const add = button(Plus, 'Add claim', () => addClaim(node)); add.disabled = !enabled(); actions.append(add);
-          }
         }
         handle.disabled = !enabled();
         handle.ondragstart = event => {
@@ -229,14 +267,13 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
         } else if (event.target === row && ['ArrowUp','ArrowDown'].includes(event.key)) {
           event.preventDefault(); (event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling)?.focus();
         } else if (event.target === row && event.key === 'Enter') {
-          event.preventDefault(); edit(node,body);
-        } else if (event.target === row && ['ArrowLeft','ArrowRight'].includes(event.key) && node.children.length) {
+          event.preventDefault(); edit(node);
+        } else if (event.target === row && ['ArrowLeft','ArrowRight'].includes(event.key) && node.kind === 'section') {
           event.preventDefault(); event.key === 'ArrowLeft' ? collapsed.add(node.from) : collapsed.delete(node.from); render(); focus(node.from);
         }
       };
       list.append(row);
     }
-    for (const el of panel.querySelectorAll('[data-story-depth]')) el.setAttribute('aria-pressed',String(Number(el.dataset.storyDepth) === (state.storyDepth || 3)));
     if (focused && list.querySelector(`[data-from="${focused}"]`)) focus(Number(focused));
   }
   panel.addEventListener('keydown', event => {
@@ -245,9 +282,6 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       event.preventDefault(); if (enabled()) (event.shiftKey || event.key.toLowerCase() === 'y' ? redo : undo)(editor);
     }
   });
-  for (const el of panel.querySelectorAll('[data-story-depth]')) el.onclick = () => {
-    finishEdit(); state.storyDepth = Number(el.dataset.storyDepth); render(); changed();
-  };
   return {
     refresh,
     finish:finishEdit,
@@ -255,12 +289,17 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       if (ownInput) {
         // Inline edits change offsets for later rows. Keep their handlers current
         // without replacing the active textarea (or interrupting composition).
-        for (const node of model.nodes) {
+        for (const node of fields()) {
           node.from = update.changes.mapPos(node.from,-1);
           node.to = update.changes.mapPos(node.to,1);
           node.end = update.changes.mapPos(node.end,1);
+          if (node.block) {
+            node.startEnd = update.changes.mapPos(node.startEnd,-1);
+            node.endFrom = update.changes.mapPos(node.endFrom,1);
+          }
         }
         for (const row of list.children) row.dataset.from = update.changes.mapPos(Number(row.dataset.from),-1);
+        for (const slot of list.querySelectorAll('[data-heading]')) slot.dataset.heading = update.changes.mapPos(Number(slot.dataset.heading),-1);
         const mapped = [...collapsed].map(pos => update.changes.mapPos(pos,-1));
         collapsed.clear(); mapped.forEach(pos => collapsed.add(pos));
         renderedSource = text();
@@ -272,7 +311,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
         collapsed.clear(); mapped.forEach(pos => collapsed.add(pos));
         refresh();
       } else if (update.selectionSet && active() && !editing) {
-        const node = model?.nodes.findLast(n => n.from <= update.state.selection.main.head);
+        const node = owner(model?.nodes.findLast(n => n.from <= update.state.selection.main.head));
         for (const row of list.children) row.classList.toggle('story-selected',Number(row.dataset.from) === node?.from);
       }
     },

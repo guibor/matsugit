@@ -10,11 +10,15 @@ Document/Slides tabs. It uses the normal matsugit renderer and project/theme
 configuration. Preview is local, uses temporary files and does not save or publish.
 
 Use `layout: "story"` with `matsugit_open` when the user wants to work on narrative
-structure. Plugin 0.16 adds a focused outline of H1 sections, H2 slide titles and
-H3 claims, with inline editing, add controls, drag/drop, keyboard moves and
-optional preview. Moving a heading carries its entire source subtree; manual
-slide continuations travel with their H2. Section and title depth filters are
-view-only. Story is the same source draft, not a second representation to sync.
+structure. Plugin 0.17 pairs each H2 title with its H3 claim in a compact editable
+slide row, grouped under H1 sections. There are no separate title/claim tabs.
+Click either field to edit; Tab moves between fields. Add slide accepts a title
+and optional claim with an empty body. An empty body is unfinished work, not
+permission to invent evidence. When asked to fill it, retain the user's title,
+claim and sequence unless they request changes; check existing agent-comments.
+Drag/drop and keyboard moves carry the whole source subtree, including manual
+continuations, evidence and notes. Section folding is view-only; preview is optional.
+Story is the same source draft, not a second representation to sync.
 Undo and explicit Save apply normally. Do not replace the file from disk while
 the user is organizing a draft: use revision-checked workspace tools as below.
 

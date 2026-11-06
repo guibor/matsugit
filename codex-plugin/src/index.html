@@ -59,11 +59,6 @@
       </div>
       <section id="story-pane" aria-label="Story editor" hidden>
         <div class="story-toolbar">
-          <div class="segmented" aria-label="Story detail">
-            <button data-story-depth="1" aria-pressed="false">Sections</button>
-            <button data-story-depth="2" aria-pressed="false">Titles</button>
-            <button data-story-depth="3" aria-pressed="true">Claims</button>
-          </div>
           <span id="story-count"></span>
           <button id="story-add-slide" title="Add slide" aria-label="Add slide"></button>
           <button id="story-add-section" title="Add section" aria-label="Add section"></button>
@@ -87,6 +82,14 @@
   <div class="recovery-heading"><h2 id="story-move-title">Move slide</h2><button id="story-move-close" title="Close" aria-label="Close"></button></div>
   <label>Section<select id="story-destination"></select></label>
   <button id="story-move-apply" class="delivery-primary">Move to end of section</button>
+</dialog>
+<dialog id="story-new-dialog" class="delivery-dialog" aria-labelledby="story-new-title">
+  <form id="story-new-form">
+    <div class="recovery-heading"><h2 id="story-new-title">New slide</h2><button type="button" id="story-new-close" title="Close" aria-label="Close"></button></div>
+    <label>Title<input id="story-new-slide-title" required autocomplete="off"></label>
+    <label>Claim <span class="story-optional">(optional)</span><textarea id="story-new-claim" rows="2"></textarea></label>
+    <button type="submit" class="delivery-primary">Add slide</button>
+  </form>
 </dialog>
 <div id="action-feedback" role="status" aria-live="polite" hidden></div>
 <div id="role-help" role="tooltip" hidden></div>

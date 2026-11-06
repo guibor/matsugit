@@ -18,10 +18,18 @@ def wait(frame, expression, timeout=30):
     raise AssertionError((expression, frame.locator('body').inner_text()[-3000:]))
 
 
-original = '''---
+original = '''
+---
 title: From pilot to repeatable growth
 slide-layout: structured
 ---
+
+<!--
+# Section example
+## Slide example
+### Claim example
+  ::: takeaway: optional conclusion, not a live fence
+-->
 
 # Why now
 
@@ -82,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             frame.locator('button[data-layout="story"]').click()
             frame.locator('.story-slide').first.wait_for()
             def current(): return frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
-            def titles(): return frame.locator('.story-slide .story-title').all_text_contents()
+            def titles(): return frame.locator('.story-slide .story-heading .story-title').all_text_contents()
             def row(label): return frame.get_by_role('listitem',name=label,exact=True)
             def undo():
                 frame.locator('#undo').click(); time.sleep(.15)
@@ -90,11 +98,14 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             assert not frame.locator('#editor').is_visible()
             assert not frame.locator('#preview-pane').is_visible()
             assert frame.locator('.story-claim').count() == 3
+            assert frame.locator('.story-row').count() == 6
+            assert frame.locator('[data-story-depth]').count() == 0
+            page.screenshot(path=str(shots/'story-overview.png'))
             # Moving directly from one field to another must not lose the click
             # or use offsets from before the first title changed length.
-            frame.locator('.story-slide .story-title').first.click()
+            frame.locator('.story-slide .story-heading .story-title').first.click()
             frame.get_by_role('textbox',name='Edit slide title').fill('A short title')
-            frame.locator('.story-slide').nth(1).locator('.story-title').click()
+            frame.locator('.story-slide').nth(1).locator('.story-heading .story-title').click()
             frame.get_by_role('textbox',name='Edit slide title').fill('A different title')
             frame.get_by_role('textbox',name='Edit slide title').press('Enter')
             assert titles()[:2] == ['A short title','A different title']
@@ -102,10 +113,25 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             # New items are inserted after the entire selected subtree.
             frame.locator('.story-slide').first.focus()
             frame.locator('#story-add-slide').click()
-            frame.get_by_role('textbox',name='Edit slide title').fill('A new part of the argument')
-            frame.get_by_role('textbox',name='Edit slide title').press('Enter')
+            frame.locator('#story-new-slide-title').fill('A new part of the argument')
+            frame.locator('#story-new-claim').fill('A focused new claim')
+            frame.locator('#story-new-form button[type=submit]').click()
             assert titles()[1] == 'A new part of the argument'
             assert current().index('Keep this evidence') < current().index('## A new part')
+            added = frame.locator('.story-slide').nth(1)
+            assert added.locator('.story-claim').inner_text() == 'A focused new claim'
+            assert added.locator('.story-detail').inner_text() == 'Empty body'
+            assert '## A new part of the argument\n\n### A focused new claim\n\n## A smaller' in current()
+            page.screenshot(path=str(shots/'story-empty-body.png'))
+            undo(); assert current() == original
+            # Title and claim are one editable unit; Tab edits the paired field.
+            frame.locator('.story-slide .story-heading .story-title').first.click()
+            frame.get_by_role('textbox',name='Edit slide title').fill('Compact title')
+            frame.get_by_role('textbox',name='Edit slide title').press('Tab')
+            frame.get_by_role('textbox',name='Edit claim title').fill('A connected claim')
+            frame.get_by_role('textbox',name='Edit claim title').press('Enter')
+            assert frame.locator('.story-slide').first.locator('.story-claim').inner_text() == 'A connected claim'
+            assert frame.locator('.story-slide').first.evaluate('(el)=>el.classList.contains("story-selected")')
             undo(); undo(); assert current() == original
             frame.locator('.story-section').first.focus()
             frame.locator('#story-add-section').click()
@@ -115,7 +141,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             # Reorder a whole section; a single Undo restores the exact source.
             frame.locator('.story-section').nth(1).get_by_role('button',name='Move up',exact=True).click()
             assert current().index('# What we do next') < current().index('# Why now')
-            assert current().startswith('---\ntitle: From pilot')
+            assert current().startswith('\n---\ntitle: From pilot')
             undo(); assert current() == original
             # Keyboard reorder a slide with its evidence, then Undo.
             first = frame.locator('.story-slide').first
@@ -153,11 +179,8 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             assert titles()[0].startswith('Demand has moved')
             assert current() != before_drag and source.read_text() == saved
             undo(); assert current() == before_drag
-            # Titles / claims levels and section folding are view-only.
+            # Section folding is view-only; paired slides never split into separate levels.
             before = current()
-            frame.locator('[data-story-depth="2"]').click(); assert frame.locator('.story-claim').count() == 0
-            frame.locator('[data-story-depth="1"]').click(); assert frame.locator('.story-slide').count() == 0
-            frame.locator('[data-story-depth="3"]').click()
             frame.locator('.story-section').first.get_by_role('button',name='Fold section').click()
             assert len(titles()) == 3
             frame.locator('.story-section').first.get_by_role('button',name='Fold section').click()
@@ -192,7 +215,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
                 page.screenshot(path=str(shots/'story-with-preview.png'))
             frame.locator('#story-preview').uncheck()
             # Extremely long titles wrap; user text is never interpreted as HTML.
-            frame.locator('.story-slide .story-title').first.click()
+            frame.locator('.story-slide .story-heading .story-title').first.click()
             frame.get_by_role('textbox',name='Edit slide title').fill('Long word '+('x'*160)+' <script>window.bad=true</script>')
             frame.get_by_role('textbox',name='Edit slide title').press('Enter')
             assert not frame.evaluate('!!window.bad')
@@ -203,7 +226,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
                 page.screenshot(path=str(shots/f'story-{width}.png'))
             undo()
             page.set_viewport_size({'width':1440,'height':1000})
-            frame.locator('[data-story-depth="3"]').click()
+            time.sleep(.2)
             page.screenshot(path=str(shots/'story-desktop.png'))
             # Native Org gets the same editor without converting the source.
             org = '#+title: Plan\n\n* Direction\n** First\n:PROPERTIES:\n:CUSTOM_ID: stable\n:END:\n\nEvidence\n\n** Second\n*** Existing claim\n\nBody\n'

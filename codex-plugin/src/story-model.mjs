@@ -19,13 +19,31 @@ export function storyModel(source, org = false) {
   for (const node of nodes) {
     if (node.kind === 'slide') node.number = ++slide;
     node.continuations = parsed.breaks.filter(b => b.from > node.from && b.from < node.end && outside(b)).length;
-    node.hasBlockClaim = parsed.blocks.some(b => b.role === 'claim' && b.from > node.from && b.to <= node.end);
+    const claims = parsed.blocks.filter(b => b.role === 'claim' && b.from > node.from && b.to <= node.end
+      && !blocks.some(outer => outer !== b && b.from > outer.from && b.to <= outer.to));
+    node.hasBlockClaim = claims.length > 0;
+    if (node.kind === 'slide') {
+      node.claims = [...node.children.filter(c => c.kind === 'claim'), ...claims.map(b => ({
+        ...b, kind:'claim', block:true, parent:node, end:b.to, children:[],
+        label:source.slice(b.startEnd, b.endFrom).trim(),
+      }))].sort((a,b) => a.from-b.from);
+      let body = source.slice(node.to, node.end);
+      for (const claim of [...node.claims].reverse())
+        body = body.slice(0,claim.from-node.to) + body.slice(claim.to-node.to);
+      node.empty = !body.trim();
+    }
   }
   return {nodes, roots, sections:nodes.filter(n => n.kind === 'section'),
     slides:nodes.filter(n => n.kind === 'slide'), unfinished:parsed.unfinished};
 }
 
 export function titleRange(source, node, org = false) {
+  if (node.block) {
+    const raw = source.slice(node.startEnd,node.endFrom), value = raw.trim();
+    if (!value || /[\r\n]/.test(value)) throw Error('Edit this multiline claim block in source view.');
+    const from = node.startEnd + raw.indexOf(value);
+    return {from,to:from+value.length,text:value};
+  }
   const raw = source.slice(node.from, node.to);
   const prefix = (org ? /^(\*+[ \t]+)(?:(?:TODO|DONE|NEXT|WAITING|CANCELLED)[ \t]+)?(?:\[#[A-Z0-9]\][ \t]+)?/
     : /^ {0,3}#{1,6}[ \t]+/).exec(raw)?.[0] || '';
@@ -95,7 +113,7 @@ export function adjacentMove(source, from, direction, org = false) {
   return next ? moveStory(source, from, next.from, direction < 0 ? 'before' : 'after', org) : null;
 }
 
-export function insertStory(source, position, kind, org = false) {
+export function insertStory(source, position, kind, org = false, fields = {}) {
   if (!['section','slide'].includes(kind)) throw Error('Unknown story item.');
   const model = storyModel(source,org);
   if (model.unfinished.length) throw Error('Close the unfinished block before inserting a story item.');
@@ -103,7 +121,11 @@ export function insertStory(source, position, kind, org = false) {
   while (node && node.level > (kind === 'section' ? 1 : 2)) node = node.parent;
   const at = node?.end ?? source.length, eol = source.includes('\r\n') ? '\r\n' : '\n';
   const heading = (org ? '*' : '#').repeat(kind === 'section' ? 1 : 2);
-  const content = heading + (kind === 'section' ? ' New section' : ' New slide') + eol + eol;
+  const title = fields.title ?? (kind === 'section' ? 'New section' : 'New slide');
+  const claim = fields.claim ?? '';
+  if (!title.trim() || /[\r\n\u0000]/.test(title+claim)) throw Error('Use a nonempty title and single-line title / claim.');
+  const content = heading + ' ' + title.trim() + eol + eol
+    + (kind === 'slide' && claim.trim() ? (org ? '*** ' : '### ') + claim.trim() + eol + eol : '');
   const prefix = join(source.slice(0,at),content,eol).slice(at);
   return {changes:{from:at,insert:prefix},anchor:at+prefix.length-content.length};
 }
