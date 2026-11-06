@@ -28,7 +28,7 @@ import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.24.0'});
+const app = new App({name: 'matsugit', version: '0.25.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const downloadFile = fileDownloads(demo ? null : app);

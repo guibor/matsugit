@@ -40,6 +40,14 @@ The Markdown/Org file remains the single draft, with Undo, recovery,
 concurrent-edit review and explicit Save.
 See [[file:docs/codex.org][Story controls and source boundaries]].
 
+*The same narrative operations in Emacs and Cursor.*
+[[file:docs/emacs-story.org][Native Emacs Story]] projects the source buffer into Overview or Walkthrough,
+with title/claim/takeaway edits, empty slides, section folding, searchable moves,
+and ordinary source Undo/Save. Parsing runs asynchronously using the same Story
+engine. [[file:docs/cursor.md][Cursor]] uses the identical interactive workspace bundle through MCP Apps;
+=/matsugit-story= opens it directly. Host-dependent downloads and agent messaging
+are feature-detected, not silently replaced with claims of success.
+
 *One canonical file, including web edits.* With Source to CI publishing, choose
 =Move source and assets into target; leave local symlinks= to avoid a second
 editable copy. This is explicit opt-in, with a reviewed file list. Existing

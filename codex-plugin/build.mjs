@@ -8,6 +8,8 @@ import {gzipSync} from 'node:zlib';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(root, 'bundle');
 await mkdir(out, {recursive: true});
+await build({entryPoints:[path.join(root,'src/story-cli.mjs')], bundle:true,
+  outfile:path.join(out,'story-cli.mjs'), platform:'node',format:'esm',target:'node22',legalComments:'inline'});
 const templates = execFileSync(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3', ['-c',
   'import json; from matsugit.authoring import editor_templates; print(json.dumps(editor_templates()))'],
   {cwd: path.dirname(root), encoding: 'utf8'});

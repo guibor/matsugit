@@ -1,0 +1,64 @@
+#+title: Native Story editing in Emacs
+
+* Setup
+
+Requires Emacs 29+, Node 22+ and a matsugit checkout with its prebuilt
+=codex-plugin/bundle/story-cli.mjs=. No npm installation, browser, daemon or
+new Emacs package dependencies are required. Load the library once:
+
+#+begin_src emacs-lisp
+(load "/path/to/matsugit/editors/emacs/matsugit-story.el")
+#+end_src
+
+Open a Markdown or Org buffer and run =M-x matsugit-story=. Unsaved buffers work.
+The parser, heading boundaries and structural move operations are the same as
+the Codex/Cursor Story workspace, not a second regular-expression outline.
+
+* Narrative workspace
+
+=Overview= is a compact, section-indented sequence of title/claim pairs with
+takeaways. =Walkthrough= presents the same story with section transitions and
+larger slide headings; =Compact= reduces its spacing. This is a native Emacs
+buffer, not an HTML webview or a pixel-identical browser grid. Titles, claims
+and single-paragraph takeaways can be edited without opening the evidence body.
+Multiline blocks can be visited and edited in the original source.
+
+| Key | Action |
+|-----+--------|
+| j/k, arrows | Browse next/previous; move selection only when selected |
+| h/l | Previous/next section |
+| RET / Escape | Select / clear selection |
+| v / z | Overview-Walkthrough / compact spacing |
+| TAB | Fold/unfold a section in Overview |
+| e / c / t | Edit title / claim / takeaway |
+| a / C-u a | Add empty title/claim slide / section |
+| m | Search a destination, then move before/after or into its section |
+| M-up / M-down | Move before/after a sibling |
+| u / C-r | Undo / Redo in the original source |
+| o | Visit this slide's original source |
+| s, C-x C-s | Explicit source Save |
+| g | Refresh without saving or reverting |
+| A / p | Configured agent / preview integration |
+
+Slides move with their complete body, notes, comments and assets references.
+Sections move with all their slides. Empty slides are ready for later authoring.
+Mouse actions edit a title, choose a move destination or request an agent edit.
+Ordinary Markdown/Org buffers receive no single-letter bindings.
+
+* Safety and integration
+
+Story is a projection of the original buffer: edits enter its ordinary Undo
+history and remain unsaved. Save invokes normal Emacs file-change checks.
+Async parser results are discarded if the buffer changed in the meantime;
+mutations are refused if the visited file changed on disk. External content is
+never silently reverted or overwritten. Closing Story leaves the source open.
+Parsing is bounded to 2 MiB, cancellable, and has a 30-second timeout.
+
+Set =matsugit-story-preview-function= to an existing preview command.
+=matsugit-story-agent-function= receives the source buffer, character START/END
+bounds and the user's request. No model or provider is hardcoded; absent an
+integration, the command gives an actionable error rather than sending anywhere.
+
+Tests use isolated Emacs 30.2 and synthetic Markdown/Org documents. Terminal
+display works; graphical fonts follow your Emacs theme. No live session restart
+is required.

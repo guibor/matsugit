@@ -31,6 +31,7 @@ class CursorTests(unittest.TestCase):
         self.assertIn('other', data['mcpServers'])
         self.assertEqual((self.base / 'skills/matsugit').resolve(), ROOT / 'skills/matsugit')
         self.assertTrue((self.base / 'commands/matsugit-slides.md').is_file())
+        self.assertTrue((self.base / 'commands/matsugit-story.md').is_file())
 
     def test_check_does_not_write(self):
         before = self.config.read_bytes()

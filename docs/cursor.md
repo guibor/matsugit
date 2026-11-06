@@ -15,6 +15,7 @@ matsugit setup-cursor
 For a pip installation, add `--checkout /absolute/path/to/matsugit`. This installs
 the shared MCP workspace into `~/.cursor/mcp.json`, links the existing authoring
 skill, and adds `/matsugit-open`, `/matsugit-slides`, `/matsugit-publish` commands.
+`/matsugit-story` opens the same Overview/Walkthrough narrative editor as Codex.
 Other servers/settings are preserved; conflicting custom commands or skills are
 refused, not replaced. Enable/reload the matsugit MCP server in Cursor and start
 a new chat. Ask `/matsugit-slides Open /absolute/path/deck.md`. Present, split
@@ -22,6 +23,18 @@ editing, downloads and reviewed source-to-CI publication use the same runtime as
 Codex. `/matsugit-publish` prepares a plan; it does not grant push approval.
 
 Update the checkout and rerun `setup-cursor` to refresh its managed configuration.
+Story editing, title/claim pairs, takeaways, section transitions, compact grid,
+long-distance moves, visual Markdown/table editing, source/preview following,
+Present, exports, explicit Save, external-change review, recovery and reviewed
+Git sync all come from the **same bundle**; there is no older Cursor-only UI.
+Save and Git conflict tests run against the standard MCP host path too.
+
+Host capabilities are still distinct: active-chat messaging needs `ui/message`,
+and host-controlled downloads need `ui/download-file`. If unavailable, the AI
+action retains a copyable request and downloads offer the supported fallback;
+neither silently reports success. Actual desktop support depends on the Cursor
+version, so protocol tests alone do not establish every installed host's support.
+
 Do not install both this global MCP entry and a duplicate marketplace MCP server.
 The `.cursor-plugin/` manifest also packages the shared skill, MCP and commands
 for Cursor's plugin distribution mechanism. No marketplace submission or team

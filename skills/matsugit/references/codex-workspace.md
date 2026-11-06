@@ -1,5 +1,17 @@
 # Codex workspace
 
+Cursor uses this same workspace bundle through standard MCP Apps; use
+`/matsugit-story` to open narrative editing there. The native Emacs companion is
+`editors/emacs/matsugit-story.el` in the checkout (`M-x matsugit-story`). It uses
+the same parser/structural moves, but a native Overview/Walkthrough buffer rather
+than an HTML grid. Consult `docs/emacs-story.org` for installation and controls.
+Never imply that installing a skill alone installs the UI or reloads a host.
+
+Save/recovery and Git are distinct. Plugin 0.23 makes overlap review available
+directly from Save; 0.24 adds `Git sync > Review and push...`. Resolve passages,
+then separately confirm the destination, selected files and commit message.
+Do not infer push approval from opening or reviewing a document.
+
 When available, `matsugit_open` opens the user-selected absolute path in the
 local editor. `matsugit_workspace` opens an unsaved draft. Desktop file handlers
 can open Markdown/QMD/Org through opaque host resource URIs; never invent a path

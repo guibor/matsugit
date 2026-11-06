@@ -1,0 +1,92 @@
+;;; matsugit-story-tests.el --- Isolated Story tests -*- lexical-binding: t; -*-
+(require 'ert)
+(load (expand-file-name "matsugit-story.el" (file-name-directory (or load-file-name buffer-file-name))) nil t)
+
+(defconst matsugit-story-test--source "---\ntitle: Test\n---\n\n# Section\n\n## First\n### A claim\n\nEvidence \U0001f680\n\n::: takeaway\nRemember this\n:::\n\n## Second\n\nOther evidence\n")
+(defun matsugit-story-test--wait ()
+  (let ((end (+ (float-time) 15)))
+    (while (and (< (float-time) end) (or (process-live-p matsugit-story--process) (timerp matsugit-story--timer)))
+      (accept-process-output nil .05)))
+  (should-not (process-live-p matsugit-story--process))
+  (should (equal matsugit-story--snapshot (matsugit-story--text))))
+(defmacro matsugit-story-test--with (&rest body)
+  `(let ((source (generate-new-buffer "deck.md")) view)
+     (unwind-protect
+         (progn
+           (with-current-buffer source
+             (buffer-enable-undo) (insert matsugit-story-test--source) (set-buffer-modified-p nil)
+             (matsugit-story) (setq view (buffer-local-value 'matsugit-story--projection source)))
+           (with-current-buffer view (matsugit-story-test--wait) ,@body))
+       (when (buffer-live-p view) (kill-buffer view))
+       (when (buffer-live-p source) (kill-buffer source)))))
+
+(ert-deftest matsugit-story-projects-source-without-saving ()
+  (matsugit-story-test--with
+   (should (= 2 (alist-get 'slides matsugit-story--model)))
+   (should (string-match-p "Remember this" (buffer-string)))
+   (should-not (buffer-modified-p source))
+   (matsugit-story-toggle-view)
+   (should (string-match-p "Walkthrough" header-line-format))
+   (should (string-match-p "Section" (buffer-string)))
+   (matsugit-story-toggle-size)
+   (should (string-match-p "Compact walkthrough" header-line-format))))
+
+(ert-deftest matsugit-story-edits-moves-and-undo-preserve-body ()
+  (matsugit-story-test--with
+   (let* ((node (nth 1 (alist-get 'nodes matsugit-story--model))) (from (alist-get 'from node)))
+     (matsugit-story--goto from)
+     (cl-letf (((symbol-function 'read-string) (lambda (&rest _) "Updated title"))) (matsugit-story-edit-title))
+     (matsugit-story-test--wait)
+     (should (string-match-p "## Updated title" (matsugit-story--text)))
+     (should (string-match-p "Evidence \U0001f680" (matsugit-story--text)))
+     (should (buffer-modified-p source))
+     (matsugit-story--goto from) (matsugit-story-move-down) (matsugit-story-test--wait)
+     (should (< (string-match "## Second" (matsugit-story--text)) (string-match "## Updated title" (matsugit-story--text))))
+     (matsugit-story-undo) (matsugit-story-test--wait)
+     (should (< (string-match "## Updated title" (matsugit-story--text)) (string-match "## Second" (matsugit-story--text))))
+     (let ((last-command 'undo)) (matsugit-story-undo)) (matsugit-story-test--wait)
+     (should (equal matsugit-story-test--source (matsugit-story--text))))))
+
+(ert-deftest matsugit-story-inserts-empty-slide-and-folds-only-projection ()
+  (matsugit-story-test--with
+   (matsugit-story--goto (alist-get 'from (nth 1 (alist-get 'nodes matsugit-story--model))))
+   (let ((answers '("New slide" "New claim")))
+     (cl-letf (((symbol-function 'read-string) (lambda (&rest _) (pop answers)))) (matsugit-story-insert nil)))
+   (matsugit-story-test--wait)
+   (should (= 3 (alist-get 'slides matsugit-story--model)))
+   (should (string-match-p "New claim" (buffer-string)))
+   (let ((before (matsugit-story--text)))
+     (matsugit-story-toggle-section)
+     (should-not (string-match-p "New claim" (buffer-string)))
+     (should (equal before (matsugit-story--text))))))
+
+(ert-deftest matsugit-story-rejects-stale-edits-and-disk-changes ()
+  (matsugit-story-test--with
+   (let ((snapshot matsugit-story--snapshot) (tick matsugit-story--tick)
+         (data '((change . ((from . 0) (to . 0) (insert . "No"))) (anchor . 0))))
+     (with-current-buffer source (goto-char (point-max)) (insert "Later edit"))
+     (should-error (matsugit-story--apply data snapshot tick) :type 'user-error)
+     (should-not (string-prefix-p "No" (matsugit-story--text)))
+     (matsugit-story-refresh) (matsugit-story-test--wait)
+     (with-current-buffer source (setq buffer-file-name "/tmp/matsugit-missing-source.md"))
+     (cl-letf (((symbol-function 'verify-visited-file-modtime) (lambda (&rest _) nil)))
+       (should-error (matsugit-story--apply data matsugit-story--snapshot matsugit-story--tick) :type 'user-error))
+     (with-current-buffer source (setq buffer-file-name nil)))))
+
+(ert-deftest matsugit-story-navigation-selection-and-hooks-are-local ()
+  (matsugit-story-test--with
+   (matsugit-story-next) (should-not matsugit-story--selected)
+   (matsugit-story-select) (should matsugit-story--selected)
+   (matsugit-story-next) (should (= matsugit-story--selected (alist-get 'from (matsugit-story--node))))
+   (matsugit-story-clear-selection) (should-not matsugit-story--selected)
+   (matsugit-story--cleanup)
+   (with-current-buffer source (should-not (memq #'matsugit-story--source-changed after-change-functions)))))
+
+(ert-deftest matsugit-story-org-and-unsaved-buffer-supported ()
+  (let ((matsugit-story-test--source "#+title: Native\n* Section\n** Slide\n*** Claim\n#+begin_takeaway\nConclusion\n#+end_takeaway\n"))
+    (matsugit-story-test--with
+     (with-current-buffer source (setq buffer-file-name "/tmp/synthetic-story.org"))
+     (matsugit-story-refresh) (matsugit-story-test--wait)
+     (should (= 1 (alist-get 'slides matsugit-story--model)))
+     (should (string-match-p "Conclusion" (buffer-string)))
+     (with-current-buffer source (setq buffer-file-name nil)))))
