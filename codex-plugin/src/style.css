@@ -46,6 +46,8 @@ body.presenting #source-pane,body.presenting #divider{display:none}
 .delivery-dialog small,.delivery-dialog p{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
 .delivery-primary{border-color:var(--border);margin-top:12px;padding:6px 12px}
 .delivery-dialog .auto{white-space:normal;align-items:flex-start}.delivery-dialog [hidden]{display:none}
+#git-exchange-files{border:0;border-top:1px solid var(--border);padding:12px 0;margin:12px 0;font-size:13px;overflow-wrap:anywhere}#git-exchange-files legend{font-weight:600}#git-exchange-files label{display:flex;gap:8px;margin:8px 0}#git-exchange-warning{color:var(--muted)}#git-exchange-confirmation{border-top:1px solid var(--border);padding-top:8px;margin-bottom:12px}
+#git-exchange-preview{box-sizing:border-box;width:100%;height:220px;font:12px/1.5 ui-monospace,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--border);padding:8px;resize:vertical}
 .target-picker{display:flex;gap:8px;align-items:flex-end}.target-picker label{flex:1;min-width:0}
 .target-picker>button{width:36px;height:36px;margin-bottom:12px;display:grid;place-items:center;flex:none}
 .delivery-dialog input:not([type=checkbox]){font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;width:100%;box-sizing:border-box;min-width:0}

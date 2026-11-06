@@ -1,6 +1,6 @@
 {
   "name": "matsugit",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Edit Markdown and Org with matsugit document and slide previews in Codex.",
   "skills": "./skills/", "mcpServers": "./.mcp.json",
   "interface": {

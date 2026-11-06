@@ -50,7 +50,7 @@ export function mergeDialog() {
     }
   });
   $('merge-apply').onclick = async () => {
-    busy = true; controls(); $('merge-status').textContent = 'Backing up your draft and checking the file version...';
+    busy = true; controls(); $('merge-status').textContent = options.progress || 'Backing up your draft and checking the file version...';
     try { await apply(mergeResult(plan, choices)); applied = true; dialog.close(); }
     catch (error) { $('merge-status').textContent = error.message; $('merge-recheck').hidden = !options.recheck; }
     finally { busy = false; controls(); }
@@ -60,13 +60,16 @@ export function mergeDialog() {
     cancel = onCancel; applied = false;
     plan = value; conflicts = plan.segments.filter(segment => !('text' in segment));
     choices = []; position = 0; apply = onApply;
-    $('merge-title').textContent = options.save ? 'Review before saving' : 'Review changes';
-    $('merge-apply').textContent = options.save ? 'Save reviewed file' : 'Use reviewed draft';
+    $('merge-title').textContent = options.title || (options.save ? 'Review before saving' : 'Review changes');
+    $('merge-apply').textContent = options.applyLabel || (options.save ? 'Save reviewed file' : 'Use reviewed draft');
+    $('merge-local-label').textContent = options.localLabel || 'Your draft';
+    $('merge-incoming-label').textContent = options.incomingLabel || 'Saved file (changed elsewhere)';
+    $('merge-file').textContent = options.incomingChoice || 'Keep file edit';
     $('merge-context').hidden = !options.context;
     $('merge-context').textContent = options.context || '';
     $('merge-recheck').hidden = true;
     $('merge-options').hidden = !options.versions; $('merge-options').open = false;
-    $('merge-status').textContent = options.save ? 'No file has been written. Your draft stays available if you close this review.' : 'Changes apply to the draft only. The file is not saved.';
+    $('merge-status').textContent = options.status || (options.save ? 'No file has been written. Your draft stays available if you close this review.' : 'Changes apply to the draft only. The file is not saved.');
     $('merge-preview').open = !conflicts.length;
     show(); dialog.showModal();
   }, isOpen: () => dialog.open};

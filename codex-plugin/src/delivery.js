@@ -1,7 +1,8 @@
 import {createElement, X, Upload, Plus, GitPullRequestArrow, Download} from 'lucide';
 import {exportMime} from './download.mjs';
+import {gitExchange} from './git-exchange.js';
 
-export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, hasUnsaved, refreshControls, publication}) {
+export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, hasUnsaved, refreshControls, publication, mergeReview}) {
   const $ = id => document.getElementById(id);
   let busy = false, plan = null, options = {}, syncPlan = null;
   let prepared = null;
@@ -38,19 +39,23 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     $('git-sync-check').disabled = value;
     $('git-sync-publish').disabled = value;
     $('git-sync-apply').disabled = value || !syncPlan?.canApply;
+    for (const id of ['git-exchange-start','git-exchange-confirm','git-exchange-message','close-git-sync']) $(id).disabled = value;
+    for (const input of $('git-exchange-assets').querySelectorAll('input')) input.disabled = value;
     $('git-sync-progress').setAttribute('aria-busy', String(value));
   }
   async function preferences(progress) {
     options = (await run('options', {}, progress)).result;
   }
   const syncStatus = {
-    'local-changes':'Local and incoming edits touch the same files. Compare/merge them in Git, then check again. Nothing was changed.',
+    'local-changes':'Local and incoming edits overlap. Review and push compares the document versions here. Nothing was changed.',
     'staged-changes':'A staged commit is in progress. Finish it in Git, then check again. Nothing was changed.',
     diverged:'Both histories changed. Compare and merge in Git, then check again. Nothing was changed.',
     ahead:'Local commits have not been pushed. No incoming updates.',
     'up-to-date':'No incoming updates.', 'updates-available':'Updates available.', updated:'Updated from Git.',
     'source-removed':'Checkout updated; the source was removed or renamed upstream. Draft retained; reopen the correct file.'
   };
+  const exchange = gitExchange({call, state, text, hasUnsaved, run, lock, isBusy:()=>busy, reload, mergeReview, publication});
+  $('git-sync-dialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
   const fileList = (label, paths) => paths?.length
     ? `\n\n${label} (${paths.length}):\n` + paths.slice(0, 12).map(name => `  ${JSON.stringify(name)}`).join('\n') + (paths.length > 12 ? '\n  ...' : '') : '';
   $('close-git-sync').onclick = () => $('git-sync-dialog').close();
@@ -61,6 +66,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   };
   $('git-sync-check').onclick = async () => {
     if (busy) return;
+    exchange.reset();
     syncPlan = null;
     const source = text();
     $('git-sync-check').textContent = 'Checking...';

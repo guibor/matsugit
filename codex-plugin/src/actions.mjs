@@ -11,12 +11,12 @@ export class WorkspaceActions {
   constructor(runtime, store) { this.runtime = runtime; this.store = store; }
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
-    if (['export','plan','publish','sync'].includes(args.action)) checkedText(args.text);
-    if (['plan', 'publish', 'sync-plan', 'sync', 'publication-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
+    if (['export','plan','publish','sync','exchange'].includes(args.action)) checkedText(args.text);
+    if (['plan', 'publish', 'sync-plan', 'sync', 'exchange-plan', 'exchange', 'publication-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
     if (args.action !== 'publication-status' && [...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner && j.action !== 'publication-status')) throw Error('An export or publication is already running for this document');
     // A new review replaces this document's previous review, not its downloads
     // or another document's confirmation. Otherwise repeated checks exhaust jobs.
-    if (['plan', 'sync-plan'].includes(args.action)) {
+    if (['plan', 'sync-plan', 'exchange-plan'].includes(args.action)) {
       for (const [id, plan] of this.plans) {
         if (plan.owner === owner && plan.action === args.action) {
           this.plans.delete(id);
@@ -36,9 +36,10 @@ export class WorkspaceActions {
     }
     if (this.jobs.size >= 24) throw Error('Reopen this workspace to start more exports; existing downloads are retained until then');
     let fingerprint, relocation;
-    if (['publish','sync'].includes(args.action)) {
+    if (['publish','sync','exchange'].includes(args.action)) {
       const plan = this.plans.get(args.plan);
-      if (!plan || plan.action !== (args.action === 'sync' ? 'sync-plan' : 'plan') || plan.owner !== owner || plan.target !== args.target || plan.theme !== args.theme || plan.build !== args.build || plan.move_source !== args.move_source) throw Error('Review this operation first');
+      const kind = args.action === 'exchange' ? 'exchange-plan' : args.action === 'sync' ? 'sync-plan' : 'plan';
+      if (!plan || plan.action !== kind || plan.owner !== owner || plan.target !== args.target || plan.theme !== args.theme || plan.build !== args.build || plan.move_source !== args.move_source || JSON.stringify(plan.assets || []) !== JSON.stringify(args.assets || [])) throw Error('Review this operation first');
       fingerprint = plan.fingerprint;
       relocation = plan.relocation;
       this.plans.delete(args.plan);
@@ -56,7 +57,11 @@ export class WorkspaceActions {
     let stdout = '';
     child.stdin.on('error', () => {});
     child.stdin.end(JSON.stringify({...args, path: owner || path.join(directory,'Untitled'+extension), output, fingerprint}));
-    child.stdout.on('data', data => { stdout = (stdout + data).slice(-200000); });
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', data => {
+      stdout += data;
+      if (stdout.length > 48 * 1024 * 1024) { job.state='error'; job.error='Git review is too large; use Git for this repository'; child.kill(); }
+    });
     child.stderr.on('data', data => { job.log = (job.log + data).slice(-8000); });
     child.on('error', error => { job.state='error'; job.error=error.message; });
     child.on('close', code => {
@@ -71,7 +76,7 @@ export class WorkspaceActions {
       if (code !== 0) { job.state='error'; job.error=job.log || 'Operation failed'; return; }
       try {
         job.result = JSON.parse(stdout); job.state = 'ready';
-        if (['plan','sync-plan'].includes(args.action)) this.plans.set(id, {action:args.action, owner, target:args.target, theme:args.theme, build:args.build, move_source:args.move_source, relocation:job.result.relocation, fingerprint:job.result.fingerprint});
+        if (['plan','sync-plan','exchange-plan'].includes(args.action)) this.plans.set(id, {action:args.action, owner, target:args.target, theme:args.theme, build:args.build, move_source:args.move_source, assets:args.assets, relocation:job.result.relocation, fingerprint:job.result.fingerprint});
         if (output) {
           const size = fs.statSync(output).size;
           if (size > 100 * 1024 * 1024) throw Error('Export exceeds the 100 MiB download limit; use the command line');

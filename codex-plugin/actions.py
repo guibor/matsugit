@@ -51,6 +51,20 @@ def main(request):
             raise Error('Unsaved or external edits exist. Reconcile the draft before syncing; text retained')
         return sync(source, check=action == 'sync-plan', confirmed=action == 'sync',
                     expected=request.get('fingerprint'))
+    if action in ('exchange-plan', 'exchange'):
+        from matsugit.git_exchange import plan as exchange_plan, exchange
+        source = Path(request['path'])
+        if action == 'exchange-plan':
+            return exchange_plan(source, request.get('assets', []))
+        result = exchange(source, request['text'], assets=request.get('assets', []),
+                          expected=request.get('fingerprint'), message=request.get('message'), confirmed=True)
+        from matsugit.publication import record
+        try:
+            result['publication'] = record(source, {'branch':result['branch'], 'target':result['repo'],
+                'source_sha256':result['etag'], 'build':'git'}, result['revision'])
+        except (Error, OSError) as error:
+            result['message'] += ' Could not save local push receipt: ' + str(error)
+        return result
     if action == 'options':
         data = preferences()
         selected = config(Path(request['path']), {'command':'publish'})

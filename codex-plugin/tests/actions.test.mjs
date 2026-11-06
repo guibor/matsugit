@@ -77,3 +77,31 @@ test('repeated Git checks replace old reviews without exhausting jobs or losing 
     assert.equal(fs.readFileSync(path.join(download, 'deck.txt'), 'utf8'), 'Retain export');
   } finally { actions.close(); fs.rmSync(directory, {recursive:true, force:true}); }
 });
+
+test('two-way Git review is owner/scope-bound and retains complete large Unicode versions', async () => {
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-exchange-actions-'));
+  const repo = path.join(directory,'repo'), remote = path.join(directory,'remote.git'); fs.mkdirSync(repo);
+  const git = (at,...args) => execFileSync('git',['-C',at,...args],{stdio:'pipe'});
+  const source=path.join(repo,'deck.md'), text='# Plan\n\n'+'Evidence caf\u00e9 \u05e9\u05dc\u05d5\u05dd\n'.repeat(18000);
+  fs.writeFileSync(source,text);
+  git(directory,'init','--bare','--initial-branch=main',remote); git(repo,'init','-b','main');
+  git(repo,'config','user.name','Test'); git(repo,'config','user.email','test@example.invalid');
+  git(repo,'add','.'); git(repo,'commit','-m','Base'); git(repo,'remote','add','origin',remote); git(repo,'push','-u','origin','main');
+  const actions=new WorkspaceActions({root:()=>root},{owner:session=>session});
+  try {
+    const job=actions.start({action:'exchange-plan',session:source,assets:[]});
+    let result;
+    for (let i=0;i<500;i++) {
+      result=actions.status(job.job,source); if(result.state!=='running') break;
+      await new Promise(resolve=>setTimeout(resolve,20));
+    }
+    assert.equal(result.state,'ready',JSON.stringify(result));
+    assert.equal(result.result.local,text); assert.equal(result.result.incoming,text); assert.equal(result.result.base,text);
+    assert.throws(()=>actions.start({action:'exchange',session:source,plan:job.job,text,assets:['other.svg']}),/Review/);
+    assert.throws(()=>actions.start({action:'exchange',session:'/other.md',plan:job.job,text,assets:[]}),/Review/);
+    assert.throws(()=>actions.start({action:'sync',session:source,plan:job.job,text}),/Review/);
+    assert.equal(actions.plans.has(job.job),true);
+    assert.equal(fs.readFileSync(source,'utf8'),text);
+  } finally { actions.close(); fs.rmSync(directory,{recursive:true,force:true}); }
+});

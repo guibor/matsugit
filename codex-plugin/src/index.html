@@ -148,7 +148,7 @@
   <p id="merge-context" hidden></p>
   <section id="merge-conflict">
     <details><summary id="merge-line">Common base</summary><textarea id="merge-base" aria-label="Common base" readonly></textarea></details>
-    <div class="merge-versions"><label>Your draft<textarea id="merge-local" readonly></textarea></label><label>Saved file (changed elsewhere)<textarea id="merge-incoming" readonly></textarea></label></div>
+    <div class="merge-versions"><label><span id="merge-local-label">Your draft</span><textarea id="merge-local" readonly></textarea></label><label><span id="merge-incoming-label">Saved file (changed elsewhere)</span><textarea id="merge-incoming" readonly></textarea></label></div>
     <div class="merge-choices"><button id="merge-mine">Keep my edit</button><button id="merge-file">Keep file edit</button><button id="merge-both">Keep both</button></div>
     <label>Result for this passage<textarea id="merge-result"></textarea></label>
   </section>
@@ -164,10 +164,21 @@
   <div class="table-footer"><span id="table-status" role="status"></span><button id="table-download" title="Download table draft" aria-label="Download table draft"></button><button id="table-apply" disabled></button></div>
 </dialog>
 <dialog id="git-sync-dialog" class="delivery-dialog" aria-labelledby="git-sync-title">
-  <div class="recovery-heading"><h2 id="git-sync-title">Git updates</h2><button id="close-git-sync" title="Close" aria-label="Close"></button></div>
+  <div class="recovery-heading"><h2 id="git-sync-title">Git sync</h2><button id="close-git-sync" title="Close" aria-label="Close"></button></div>
   <pre id="git-sync-progress" role="status" aria-live="polite"></pre>
+  <section id="git-exchange-review" hidden>
+    <fieldset id="git-exchange-files"><legend>Files to commit</legend><div id="git-exchange-source"></div><div id="git-exchange-assets"></div></fieldset>
+    <pre id="git-exchange-warning"></pre>
+    <div id="git-exchange-confirmation" hidden>
+      <p id="git-exchange-summary"></p>
+      <details><summary>Reviewed document</summary><textarea id="git-exchange-preview" readonly aria-label="Reviewed document"></textarea></details>
+      <label>Commit message<input id="git-exchange-message" maxlength="500"></label>
+      <button id="git-exchange-confirm" class="delivery-primary">Commit and push</button>
+    </div>
+  </section>
   <button id="git-sync-check">Check for updates</button>
   <button id="git-sync-apply" disabled>Pull updates</button>
+  <button id="git-exchange-start">Review and push...</button>
   <button id="git-sync-publish">Review publish...</button>
 </dialog>
 <dialog id="publication-dialog" class="delivery-dialog" aria-labelledby="publication-title">

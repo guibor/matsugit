@@ -21,7 +21,8 @@ export function publicationStatus({call, state, hasUnsaved, demo}) {
       button.replaceChildren(createElement(busy ? LoaderCircle : label === 'Published' ? Check : CloudUpload), document.createTextNode(label));
       button.dataset.label = label; button.dataset.busy = String(busy);
     }
-    $('publication-check').disabled = busy || !receipt?.revision;
+    $('publication-check').disabled = busy || !receipt?.revision || !receipt?.provider;
+    $('publication-check').title = receipt?.provider ? 'Check deployment status' : 'Git push recorded; no publishing provider is associated with this sync';
     $('publication-details').textContent = receipt ? [
       receipt.detail, receipt.target && `Target: ${receipt.target}`, receipt.project_url,
       receipt.revision && `Pushed revision: ${receipt.revision}`,

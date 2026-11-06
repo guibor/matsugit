@@ -83,5 +83,31 @@ reconciliation failure. =Review publish...= opens the existing publication flow:
 review its target and file list before confirming. Pull updates does not send your
 edits to GitHub/GitLab, and opening the publish review does not commit or push.
 
-Use ordinary Git/Magit to compare and resolve divergent versions or overlapping
-saved Git edits. The editor's draft/disk merge review remains a separate operation.
+* Two-way document review in the workspace (plugin 0.24+)
+
+Save/reconcile the editor draft first, then select =Git sync > Review and push...=.
+The source checkout's own upstream is used, not a different publishing target.
+The common Git ancestor, saved local document and fetched version form a three-way
+comparison. Separate edits combine; overlapping passages require a choice or
+manual result. =Continue to commit review= does not write anything yet.
+
+Review the destination and branch, the document, optional referenced attachments,
+the complete resulting text and commit message. Attachments are opt-in. Only
+=Commit and push= saves the reviewed file, commits those selected paths and sends
+them to the displayed push remote. Incoming commits can update other tracked
+files in this checkout, and are shown as such. Existing CI can run on push;
+=Pushed= is not deployment confirmation. The CLI =matsugit sync= stays pull-only.
+
+Unrelated unstaged/untracked files are retained and never included in a commit.
+All document/file hashes and Git identities are rechecked before applying a
+review. The original and reviewed document plus original commit IDs are kept in
+the repository's private =.git/matsugit-recovery/= directory. A failed push keeps
+the local commit; check again and review to retry. No force push, reset, stash,
+account login, hosting changes or CI configuration is performed.
+
+This is intentionally not a replacement for every Git operation. Staged work,
+committed divergent histories, unrelated unpublished commits, overlapping
+unselected files, binary attachment conflicts, source renames/deletions, sparse
+checkouts, custom file conversion, commit signing and commit hooks require normal
+Git/Magit. These policies are reported, not disabled or bypassed. A late upstream
+commit rejects the normal push rather than overwriting remote history.

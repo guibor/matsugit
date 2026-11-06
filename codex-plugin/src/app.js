@@ -28,7 +28,7 @@ import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.23.0'});
+const app = new App({name: 'matsugit', version: '0.24.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const downloadFile = fileDownloads(demo ? null : app);
@@ -878,7 +878,7 @@ $('notice-save').onclick = () => save();
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
 publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
 delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load,
-  hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication});
+  hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };

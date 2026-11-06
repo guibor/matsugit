@@ -24,7 +24,8 @@ client = new Client({name: 'matsugit-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
   args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
   env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: path.join(temporary, 'absent.json'),
-    MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery')}, stderr: 'inherit'}));
+    MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery'),
+    MATSUGIT_PUBLICATION_STATE: path.join(temporary, 'publication')}, stderr: 'inherit'}));
 opened = await client.callTool({name: 'matsugit_open', arguments: {path: source}});
 session = opened.structuredContent.session;
 app = (await client.readResource({uri: 'ui://matsugit/workspace-v1'})).contents[0].text;
