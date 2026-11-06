@@ -18,11 +18,23 @@ def git(repo, *args):
         raise Error('Git timed out. Remote status is unknown; retry when connected') from error
     if result.returncode:
         raise Error((result.stderr or result.stdout).strip() or 'Git operation failed')
-    return result.stdout.strip()
+    return result.stdout if '-z' in args else result.stdout.strip()
 
 
 def fingerprint(data):
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+
+def changed_paths(repo):
+    """Keep Git's NUL-delimited filenames intact, including spaces and newlines."""
+    tracked = git(repo, 'diff', '--name-only', '--no-renames', '--no-ext-diff', '-z', 'HEAD', '--')
+    untracked = git(repo, 'ls-files', '--others', '--exclude-standard', '-z')
+    staged = git(repo, 'diff', '--cached', '--name-only', '--no-renames', '--no-ext-diff', '-z', '--')
+    return sorted(set(filter(None, (tracked + untracked).split('\0')))), sorted(filter(None, staged.split('\0')))
+
+
+def overlaps(local, incoming):
+    return local == incoming or local.startswith(incoming + '/') or incoming.startswith(local + '/')
 
 
 def inspect(source, fetch=True):
@@ -49,12 +61,17 @@ def inspect(source, fetch=True):
         upstream = git(repo, 'rev-parse', '@{upstream}')
     head = git(repo, 'rev-parse', 'HEAD')
     ahead, behind = map(int, git(repo, 'rev-list', '--left-right', '--count', f'{head}...{upstream}').split())
-    dirty = bool(git(repo, 'status', '--porcelain', '--untracked-files=all'))
-    status = ('local-changes' if dirty else 'diverged' if ahead and behind else
-              'ahead' if ahead else 'updates-available' if behind else 'up-to-date')
+    local, staged = changed_paths(repo)
+    incoming = sorted(filter(None, git(repo, 'diff', '--name-only', '--no-renames', '--no-ext-diff', '-z', head, upstream, '--').split('\0'))) if behind else []
+    blocked = [name for name in local if any(overlaps(name, other) for other in incoming)]
+    dirty = bool(local or staged)
+    status = ('diverged' if ahead and behind else 'ahead' if ahead else 'up-to-date' if not behind else
+              'staged-changes' if staged else 'local-changes' if blocked else 'updates-available')
     data = dict(repo=str(repo), source=str(source), branch=branch, remote=remote,
                 remote_sha256=hashlib.sha256(url.encode()).hexdigest(), merge=merge, head=head, upstream=upstream,
                 ahead=ahead, behind=behind, dirty=dirty, status=status,
+                local_changes=local, staged_changes=staged, overlapping_changes=blocked,
+                incoming_changes=incoming,
                 source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
                 changes=git(repo, 'diff', '--stat', head, upstream) if behind else '')
     data['fingerprint'] = fingerprint(data)
@@ -62,28 +79,33 @@ def inspect(source, fetch=True):
 
 
 def sync(source, *, expected=None, confirmed=False, check=False):
-    """Fetch for review; mutate only a clean checkout after explicit confirmation."""
+    """Fast-forward reviewed commits, preserving non-overlapping local work."""
     data = inspect(source)
     if check:
         return data
     if expected and data['fingerprint'] != expected:
         raise Error('Source or Git state changed since review. Check for updates again')
-    if data['dirty']:
-        raise Error('Local changes exist. Commit/reconcile them in Git first; nothing was stashed or overwritten')
     if data['ahead'] and data['behind']:
         raise Error('Local and upstream histories diverged. Compare and merge in Git; no automatic merge was attempted')
     if not data['behind']:
         return data
+    if data['staged_changes']:
+        raise Error('Staged changes exist. Finish the staged commit in Git, then check again; nothing was stashed or overwritten')
+    if data['overlapping_changes']:
+        raise Error('Local changes overlap incoming updates: ' + ', '.join(data['overlapping_changes']) +
+                    '. Compare/merge these files in Git, then check again; nothing was stashed or overwritten')
     if not confirmed:
         raise Error('Review updates first, then confirm Sync (CLI: --yes)')
     repo = data['repo']
     # Recheck after the network operation. Merge the reviewed SHA, not a moving ref.
     if (git(repo, 'rev-parse', 'HEAD') != data['head'] or
             git(repo, 'branch', '--show-current') != data['branch'] or
-            git(repo, 'status', '--porcelain', '--untracked-files=all') or
+            changed_paths(repo) != (data['local_changes'], data['staged_changes']) or
+            hashlib.sha256(Path(data['source']).read_bytes()).hexdigest() != data['source_sha256'] or
             hashlib.sha256(git(repo, 'remote', 'get-url', data['remote']).encode()).hexdigest() != data['remote_sha256']):
         raise Error('Checkout changed while checking updates; retry')
-    git(repo, '-c', 'merge.autoStash=false', 'merge', '--ff-only', data['upstream'])
+    # Git is the final overlap guard, including ignored files and late edits.
+    git(repo, '-c', 'merge.autoStash=false', 'merge', '--ff-only', '--no-overwrite-ignore', data['upstream'])
     exists = Path(data['source']).is_file()
     return dict(data, status='updated' if exists else 'source-removed',
                 head=git(repo, 'rev-parse', 'HEAD'), behind=0, source_exists=exists)

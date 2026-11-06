@@ -154,8 +154,12 @@ credentials without authorization. Start a new session after plugin installation
 The plugin includes its renderer; optional chart dependencies remain separate.
 # Canonical source and Git sync (plugin 0.11+)
 
-The Git sync toolbar icon checks upstream and explicitly pulls a clean checkout;
-no background pull is enabled. Unsaved drafts remain protected, and clean views
+The Git sync toolbar icon checks upstream and explicitly fast-forwards the checkout;
+no background pull is enabled. Non-overlapping unstaged/untracked changes are
+retained; overlapping paths, staged changes and divergence require Git review.
+Check again remains available after resolving a block. Review publish opens a
+separate target/confirmation flow; checking or pulling never sends local edits.
+Unsaved drafts remain protected, and clean views
 reload after a pull. In Publish, Source to CI offers an opt-in move-and-link
 checkbox. Review every source/asset move; original paths become local symlinks.
 Source bytes are preserved in Git, including comments. Existing copy publication

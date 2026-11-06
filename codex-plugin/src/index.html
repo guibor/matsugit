@@ -15,7 +15,7 @@
       <button id="open" title="Open Markdown file" aria-label="Open Markdown file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
-      <button id="git-sync" title="Sync from Git" aria-label="Sync from Git"></button>
+      <button id="git-sync" title="Git updates" aria-label="Git updates"></button>
       <button id="download" title="Download or export" aria-label="Download or export"></button>
       <button id="publish" title="Publish document and slides" aria-label="Publish document and slides"></button>
       <button id="present" title="Present document" aria-label="Present document"></button>
@@ -162,10 +162,11 @@
   <div class="table-footer"><span id="table-status" role="status"></span><button id="table-download" title="Download table draft" aria-label="Download table draft"></button><button id="table-apply" disabled></button></div>
 </dialog>
 <dialog id="git-sync-dialog" class="delivery-dialog" aria-labelledby="git-sync-title">
-  <div class="recovery-heading"><h2 id="git-sync-title">Sync from Git</h2><button id="close-git-sync" title="Close" aria-label="Close"></button></div>
+  <div class="recovery-heading"><h2 id="git-sync-title">Git updates</h2><button id="close-git-sync" title="Close" aria-label="Close"></button></div>
   <pre id="git-sync-progress" role="status" aria-live="polite"></pre>
   <button id="git-sync-check">Check for updates</button>
   <button id="git-sync-apply" disabled>Pull updates</button>
+  <button id="git-sync-publish">Review publish...</button>
 </dialog>
 <dialog id="publication-dialog" class="delivery-dialog" aria-labelledby="publication-title">
   <div class="recovery-heading"><h2 id="publication-title">Publication status</h2><button id="publication-close" title="Close" aria-label="Close"></button></div>

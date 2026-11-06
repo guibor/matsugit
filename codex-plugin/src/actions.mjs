@@ -14,6 +14,19 @@ export class WorkspaceActions {
     if (['export','plan','publish','sync'].includes(args.action)) checkedText(args.text);
     if (['plan', 'publish', 'sync-plan', 'sync', 'publication-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
     if (args.action !== 'publication-status' && [...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner && j.action !== 'publication-status')) throw Error('An export or publication is already running for this document');
+    // A new review replaces this document's previous review, not its downloads
+    // or another document's confirmation. Otherwise repeated checks exhaust jobs.
+    if (['plan', 'sync-plan'].includes(args.action)) {
+      for (const [id, plan] of this.plans) {
+        if (plan.owner === owner && plan.action === args.action) {
+          this.plans.delete(id);
+          const job = this.jobs.get(id);
+          if (job && job.state !== 'running' && !job.file) {
+            fs.rmSync(job.directory, {recursive:true, force:true}); this.jobs.delete(id);
+          }
+        }
+      }
+    }
     if (this.jobs.size >= 24) {
       for (const [id, job] of this.jobs) {
         if (job.state !== 'running' && !job.file && !this.plans.has(id)) {

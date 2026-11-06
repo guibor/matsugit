@@ -56,6 +56,59 @@ try:
         wait(frame, 'window.matsugitWorkspace.state.renderedRevision === window.matsugitWorkspace.state.revision')
         assert 'Web update' in source.read_text()
         frame.locator('#close-git-sync').click()
+
+        # Saved local edits with no upstream updates are not a conflict.
+        synced = source.read_text()
+        source.write_text(synced + '\nMy saved edit.\n')
+        frame.evaluate('window.matsugitWorkspace.reload()')
+        frame.locator('#git-sync').click()
+        wait(frame, '!document.getElementById("git-sync-check").disabled')
+        assert 'No incoming updates' in frame.locator('#git-sync-progress').inner_text()
+        assert 'not published' in frame.locator('#git-sync-progress').inner_text()
+        assert frame.locator('#git-sync-apply').is_disabled()
+        for _ in range(3):
+            frame.locator('#git-sync-check').click()
+            wait(frame, '!document.getElementById("git-sync-check").disabled')
+            assert 'No incoming updates' in frame.locator('#git-sync-progress').inner_text()
+        frame.locator('#git-sync-publish').click()
+        wait(frame, 'document.getElementById("publish-dialog").open && !window.matsugitWorkspace.state.delivering')
+        assert not frame.locator('#git-sync-dialog').evaluate('(el) => el.open')
+        frame.locator('#close-publish').click()
+        assert 'My saved edit.' in source.read_text()
+
+        # A true overlap is named; rechecking after manual reconciliation works.
+        (web / source.name).write_text('## Overlapping upstream edit\n')
+        git(web, 'add', source.name); git(web, 'commit', '-m', 'Overlap'); git(web, 'push')
+        frame.locator('#git-sync').click()
+        wait(frame, '!document.getElementById("git-sync-check").disabled')
+        assert 'Overlapping files' in frame.locator('#git-sync-progress').inner_text()
+        assert source.name in frame.locator('#git-sync-progress').inner_text()
+        assert frame.locator('#git-sync-apply').is_disabled()
+        assert 'My saved edit.' in source.read_text()
+        source.write_text(synced)  # Simulate an explicit reconciliation in this disposable checkout.
+        frame.evaluate('window.matsugitWorkspace.reload()')
+        unrelated = repo / 'local notes.txt'; unrelated.write_text('Keep my unrelated work\n')
+        frame.locator('#git-sync-check').click()
+        wait(frame, '!document.getElementById("git-sync-check").disabled')
+        assert 'do not overlap' in frame.locator('#git-sync-progress').inner_text()
+        assert frame.locator('#git-sync-apply').is_enabled()
+        frame.locator('#git-sync-apply').click()
+        wait(frame, '!window.matsugitWorkspace.state.delivering')
+        assert 'Overlapping upstream edit' in source.read_text()
+        assert unrelated.read_text() == 'Keep my unrelated work\n'
+        assert git(repo, 'stash', 'list') == ''
+
+        # A network failure must release controls and allow the same panel to retry.
+        git(repo, 'remote', 'set-url', 'origin', str(Path(temp) / 'absent.git'))
+        frame.locator('#git-sync-check').click()
+        wait(frame, '!document.getElementById("git-sync-check").disabled')
+        assert 'absent.git' in frame.locator('#git-sync-progress').inner_text()
+        git(repo, 'remote', 'set-url', 'origin', str(remote))
+        frame.locator('#git-sync-check').click()
+        wait(frame, '!document.getElementById("git-sync-check").disabled')
+        assert 'No incoming updates' in frame.locator('#git-sync-progress').inner_text()
+        frame.locator('#close-git-sync').click()
+
         (web / source.name).write_text('## Another upstream edit\n')
         git(web, 'add', source.name); git(web, 'commit', '-m', 'Another'); git(web, 'push')
         frame.evaluate('window.matsugitWorkspace.editor.dispatch({changes:{from:0,insert:"UNSAVED DRAFT\\n"}})')
@@ -73,6 +126,6 @@ try:
             page.screenshot(path=f'/tmp/matsugit-git-sync-{width}.png')
         assert not errors, errors
         browser.close()
-        print('Git sync: real upstream edit, check-only, pull/preview refresh, unsaved draft and responsive dialog passed.')
+        print('Git sync: upstream edits, saved local edits, repeated checks, overlap/reconciliation retry, unrelated changes preserved, fetch failure/retry, publish review, unsaved draft and responsive dialog passed.')
 finally:
     server.terminate(); server.wait(timeout=30)

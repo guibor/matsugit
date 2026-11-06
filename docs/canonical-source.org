@@ -64,13 +64,24 @@ matsugit sync /path/original-link.md --check
 matsugit sync /path/original-link.md --yes
 #+end_src
 
-Checking fetches but leaves working files untouched. Applying requires a clean
-checkout and fast-forwards only; staged/untracked changes or divergence require
-Git reconciliation. No auto-stash, reset, automatic merge, commit or push occurs.
+Checking fetches but leaves working files untouched. Applying fast-forwards only.
+Unstaged edits and untracked files that do not overlap incoming paths are retained;
+they no longer block an unrelated update. Overlapping files are listed for manual
+Git reconciliation, and staged changes or divergent histories still block the pull.
+Ignored files are protected from overwrite too. No auto-stash, reset, automatic
+content merge, commit or push occurs.
 Unsaved editor drafts block the UI action. If you type while a pull is running,
 normal version checking retains that draft and flags the conflict. A clean editor
 reloads and refreshes its preview after the update. Network failures leave remote
 status unknown; local editing remains available. No remote account is added.
 
-Use ordinary Git/Magit to compare and resolve divergent versions. This first
-version deliberately does not embed a conflict-resolution editor.
+The dialog always permits another check when an operation finishes or fails.
+=Check again= replaces the previous review instead of accumulating stale plans.
+After resolving a block outside the plugin, check again in the same dialog.
+Local edits with no incoming commits are reported as unpublished edits, not a
+reconciliation failure. =Review publish...= opens the existing publication flow:
+review its target and file list before confirming. Pull updates does not send your
+edits to GitHub/GitLab, and opening the publish review does not commit or push.
+
+Use ordinary Git/Magit to compare and resolve divergent versions or overlapping
+saved Git edits. The editor's draft/disk merge review remains a separate operation.

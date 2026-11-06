@@ -3,7 +3,7 @@ import {exportMime} from './download.mjs';
 
 export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, hasUnsaved, refreshControls, publication}) {
   const $ = id => document.getElementById(id);
-  let busy = false, plan = null, options = {};
+  let busy = false, plan = null, options = {}, syncPlan = null;
   let prepared = null;
   $('export-download-retry').append(createElement(Download), 'Download again');
   for (const id of ['close-export', 'close-publish']) $(id).append(createElement(X));
@@ -34,31 +34,49 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     state.delivering = value;
     refreshControls();
     for (const id of ['export-run', 'export-download-retry', 'publish-review', 'publish-confirm', 'publish-move', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
+    $('git-sync').disabled = demo || value;
+    $('git-sync-check').disabled = value;
+    $('git-sync-publish').disabled = value;
+    $('git-sync-apply').disabled = value || !syncPlan?.canApply;
+    $('git-sync-progress').setAttribute('aria-busy', String(value));
   }
   async function preferences(progress) {
     options = (await run('options', {}, progress)).result;
   }
-  let syncPlan = null;
   const syncStatus = {
-    'local-changes':'Local changes exist. Commit/reconcile them in Git first; nothing was stashed.',
-    diverged:'Both histories changed. Compare and merge in Git first.',
-    ahead:'Local commits have not been pushed. Nothing to pull.',
-    'up-to-date':'Up to date.', 'updates-available':'Updates available.', updated:'Updated from Git.',
+    'local-changes':'Local and incoming edits touch the same files. Compare/merge them in Git, then check again. Nothing was changed.',
+    'staged-changes':'A staged commit is in progress. Finish it in Git, then check again. Nothing was changed.',
+    diverged:'Both histories changed. Compare and merge in Git, then check again. Nothing was changed.',
+    ahead:'Local commits have not been pushed. No incoming updates.',
+    'up-to-date':'No incoming updates.', 'updates-available':'Updates available.', updated:'Updated from Git.',
     'source-removed':'Checkout updated; the source was removed or renamed upstream. Draft retained; reopen the correct file.'
   };
+  const fileList = (label, paths) => paths?.length
+    ? `\n\n${label} (${paths.length}):\n` + paths.slice(0, 12).map(name => `  ${JSON.stringify(name)}`).join('\n') + (paths.length > 12 ? '\n  ...' : '') : '';
   $('close-git-sync').onclick = () => $('git-sync-dialog').close();
+  $('git-sync-publish').onclick = () => {
+    if (busy) return;
+    $('git-sync-dialog').close();
+    $('publish').onclick();
+  };
   $('git-sync-check').onclick = async () => {
     if (busy) return;
-    syncPlan = null; $('git-sync-apply').disabled = true;
+    syncPlan = null;
+    const source = text();
+    $('git-sync-check').textContent = 'Checking...';
     lock(true); $('git-sync-progress').textContent = 'Checking upstream...';
     try {
       const job = await run('sync-plan', {}, $('git-sync-progress'));
-      syncPlan = {id:job.job, session:state.session, source:text()};
+      if (job.view !== (state.session || state.uri)) throw Error('The open document changed. Check again for this document.');
       const data = job.result;
-      $('git-sync-progress').textContent = `${data.repo}\n${data.branch}\n\n${syncStatus[data.status]}\n${data.ahead} ahead, ${data.behind} behind\n\n${data.changes}`;
-      $('git-sync-apply').disabled = data.status !== 'updates-available';
+      syncPlan = {id:job.job, view:job.view, source, canApply:data.status === 'updates-available'};
+      const local = data.dirty ? (syncPlan.canApply ? '\nLocal edits do not overlap these updates and will be retained.' : '\nYour local edits are retained, not published.') : '';
+      $('git-sync-progress').textContent = `${data.repo}\n${data.branch}\n\n${syncStatus[data.status]}${local}\n${data.ahead} ahead, ${data.behind} behind` +
+        fileList('Overlapping files', data.overlapping_changes) + fileList('Staged files', data.staged_changes) +
+        fileList('Local changes', data.local_changes) + (data.changes ? `\n\nIncoming changes:\n${data.changes}` : '');
+      $('git-sync-apply').title = syncPlan.canApply ? 'Pull reviewed updates; retain unrelated local edits' : syncStatus[data.status];
     } catch (error) { $('git-sync-progress').textContent = error.message; }
-    finally { lock(false); }
+    finally { $('git-sync-check').textContent = 'Check again'; lock(false); }
   };
   $('git-sync').onclick = () => {
     if (demo || busy) return;
@@ -66,11 +84,11 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   };
   $('git-sync-apply').onclick = async () => {
     if (busy || !syncPlan) return;
-    if (state.conflict || hasUnsaved() || text() !== state.base || text() !== syncPlan.source || state.session !== syncPlan.session) {
-      $('git-sync-progress').textContent = 'Unsaved or external edits exist. Reconcile the draft, then check again.';
-      $('git-sync-apply').disabled = true; return;
+    if (state.conflict || hasUnsaved() || text() !== state.base || text() !== syncPlan.source || (state.session || state.uri) !== syncPlan.view) {
+      $('git-sync-progress').textContent = 'Unsaved or external edits exist. Close this dialog, save/review the draft, then check again. Your draft is retained.';
+      syncPlan = null; lock(false); return;
     }
-    lock(true); $('git-sync-apply').disabled = true;
+    lock(true); $('git-sync-progress').textContent = 'Pulling reviewed updates...';
     try {
       const job = await run('sync', {text:text(), plan:syncPlan.id}, $('git-sync-progress'));
       $('git-sync-progress').textContent = syncStatus[job.result.status];

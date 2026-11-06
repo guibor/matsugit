@@ -45,6 +45,9 @@ See [[file:docs/codex.org][Story controls and source boundaries]].
 editable copy. This is explicit opt-in, with a reviewed file list. Existing
 copy publication remains available. The Git sync icon checks for upstream edits
 and offers a safe fast-forward; it never pushes, stashes or discards drafts.
+Unrelated local edits no longer block a pull. Overlapping files are listed,
+=Check again= remains available, and =Review publish...= opens the separate
+reviewed flow for sending changes to a chosen target.
 See [[file:docs/canonical-source.org][canonical source and Git synchronization]] for limits and CLI use.
 
 The local Codex plugin puts the source and both outputs in one workspace:

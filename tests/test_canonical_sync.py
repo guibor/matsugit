@@ -175,6 +175,91 @@ class CanonicalTests(unittest.TestCase):
         with self.assertRaises(Error): git_sync.sync(source, confirmed=True)
         self.assertEqual(source.read_text(), '# New\n')
 
+    def sync_fixture(self, upstream_path='incoming.md'):
+        source = self.repo / 'note.md'; source.write_text('# Base\n')
+        (self.repo / 'unrelated.txt').write_text('Original\n')
+        git(self.repo, 'add', '.'); git(self.repo, 'commit', '-m', 'Base'); git(self.repo, 'push')
+        other = self.other_checkout()
+        (other / upstream_path).write_text('# Upstream\n')
+        git(other, 'add', '.'); git(other, 'commit', '-m', 'Upstream'); git(other, 'push')
+        return source
+
+    def test_nonoverlapping_local_edits_and_untracked_files_survive_pull(self):
+        source = self.sync_fixture()
+        source.write_text('# My saved draft\n')
+        unusual = self.repo / ' leading space\nand newline.txt'
+        unusual.write_bytes(b'Untracked exact bytes\r\n')
+        (self.repo / 'unrelated.txt').write_text('Uncommitted unrelated edit\n')
+        checked = git_sync.sync(source, check=True)
+        self.assertEqual(checked['status'], 'updates-available')
+        self.assertEqual(checked['overlapping_changes'], [])
+        self.assertIn(unusual.name, checked['local_changes'])
+        self.assertEqual(git_sync.sync(source, expected=checked['fingerprint'], confirmed=True)['status'], 'updated')
+        self.assertEqual(source.read_text(), '# My saved draft\n')
+        self.assertEqual(unusual.read_bytes(), b'Untracked exact bytes\r\n')
+        self.assertEqual((self.repo / 'unrelated.txt').read_text(), 'Uncommitted unrelated edit\n')
+        self.assertEqual(git(self.repo, 'stash', 'list'), '')
+        self.assertEqual(git(self.repo, 'diff', '--cached'), '')
+
+    def test_same_file_overlap_is_reported_without_modification(self):
+        source = self.sync_fixture('note.md')
+        source.write_text('# My saved draft\n')
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        checked = git_sync.sync(source, check=True)
+        self.assertEqual(checked['status'], 'local-changes')
+        self.assertEqual(checked['overlapping_changes'], ['note.md'])
+        with self.assertRaisesRegex(Error, 'overlap incoming updates: note.md'):
+            git_sync.sync(source, expected=checked['fingerprint'], confirmed=True)
+        self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), head)
+        self.assertEqual(source.read_text(), '# My saved draft\n')
+
+    def test_untracked_directory_and_incoming_file_overlap(self):
+        source = self.sync_fixture('new-path')
+        (self.repo / 'new-path').mkdir()
+        (self.repo / 'new-path/local.txt').write_text('Keep\n')
+        checked = git_sync.sync(source, check=True)
+        self.assertEqual(checked['overlapping_changes'], ['new-path/local.txt'])
+        with self.assertRaisesRegex(Error, 'Local changes'):
+            git_sync.sync(source, confirmed=True)
+        self.assertEqual((self.repo / 'new-path/local.txt').read_text(), 'Keep\n')
+
+    def test_staged_changes_are_retained_and_reported_separately(self):
+        source = self.sync_fixture()
+        (self.repo / 'unrelated.txt').write_text('Staged work\n')
+        git(self.repo, 'add', 'unrelated.txt')
+        index = git(self.repo, 'write-tree')
+        self.assertEqual(git_sync.sync(source, check=True)['status'], 'staged-changes')
+        with self.assertRaisesRegex(Error, 'Staged changes'):
+            git_sync.sync(source, confirmed=True)
+        self.assertEqual(git(self.repo, 'write-tree'), index)
+
+    def test_dirty_but_up_to_date_is_not_a_reconciliation_failure(self):
+        source = self.sync_fixture()
+        git_sync.sync(source, confirmed=True)
+        source.write_text('# Saved not published\n')
+        checked = git_sync.sync(source, check=True)
+        self.assertEqual(checked['status'], 'up-to-date')
+        self.assertTrue(checked['dirty'])
+        self.assertEqual(git_sync.sync(source, confirmed=True)['status'], 'up-to-date')
+        self.assertEqual(source.read_text(), '# Saved not published\n')
+
+    def test_late_overlapping_edit_invalidates_review(self):
+        source = self.sync_fixture()
+        checked = git_sync.sync(source, check=True)
+        (self.repo / 'incoming.md').write_text('Local file appeared\n')
+        with self.assertRaisesRegex(Error, 'changed since review'):
+            git_sync.sync(source, expected=checked['fingerprint'], confirmed=True)
+        self.assertEqual((self.repo / 'incoming.md').read_text(), 'Local file appeared\n')
+
+    def test_ignored_local_file_is_never_overwritten(self):
+        source = self.sync_fixture()
+        (self.repo / '.git/info/exclude').write_text('incoming.md\n')
+        (self.repo / 'incoming.md').write_text('Ignored local content\n')
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        with self.assertRaises(Error): git_sync.sync(source, confirmed=True)
+        self.assertEqual((self.repo / 'incoming.md').read_text(), 'Ignored local content\n')
+        self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), head)
+
     def test_publish_refuses_upstream_changed_source_and_keeps_local_commit_on_failed_push(self):
         publish(self.settings, confirmed=True)
         dest = self.source.resolve(); settings = dict(self.settings, source=dest, move_source=False)
