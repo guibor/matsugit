@@ -39,7 +39,7 @@ export function structure(source, org = false) {
       offset += line.length + 1;
     }
     for (const block of stack) if (block.opaque) literals.push({from: block.from, to: source.length});
-    return {headings, markers, blocks, breaks, literals: literals.sort((a,b)=>a.from-b.from)};
+    return {headings, markers, blocks, breaks, unfinished: stack.map(b => ({...b, to:source.length})), literals: literals.sort((a,b)=>a.from-b.from)};
   }
   const frontmatter = /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
   if (frontmatter) literals.push({from: 0, to: frontmatter});
@@ -105,7 +105,8 @@ export function structure(source, org = false) {
     heading.occurrence = counts.get(identity) || 0;
     counts.set(identity, heading.occurrence + 1);
   }
-  return {headings: visible, markers: markers.sort((a, b) => a.from - b.from), blocks, breaks, literals};
+  return {headings: visible, markers: markers.sort((a, b) => a.from - b.from), blocks, breaks, literals,
+    unfinished: stack.map(b => ({...b, to:source.length}))};
 }
 
 // These are source guides, not a prediction of renderer-generated overflow slides.

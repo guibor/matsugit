@@ -5,9 +5,18 @@ local editor. `matsugit_workspace` opens an unsaved draft. Desktop file handlers
 can open Markdown/QMD/Org through opaque host resource URIs; never invent a path
 from one of those URIs. A terminal-only host cannot display this UI.
 
-The workspace has Source/Markdown, Render and Split layouts, plus independent
+The workspace has Story, Source/Markdown, Render and Split layouts, plus independent
 Document/Slides tabs. It uses the normal matsugit renderer and project/theme
 configuration. Preview is local, uses temporary files and does not save or publish.
+
+Use `layout: "story"` with `matsugit_open` when the user wants to work on narrative
+structure. Plugin 0.16 adds a focused outline of H1 sections, H2 slide titles and
+H3 claims, with inline editing, add controls, drag/drop, keyboard moves and
+optional preview. Moving a heading carries its entire source subtree; manual
+slide continuations travel with their H2. Section and title depth filters are
+view-only. Story is the same source draft, not a second representation to sync.
+Undo and explicit Save apply normally. Do not replace the file from disk while
+the user is organizing a draft: use revision-checked workspace tools as below.
 
 Plugin 0.10.0 adds independent Raw/Visual editing in the Markdown pane. Visual
 is a source-preserving view, not an HTML round trip. Use the pencil on a table

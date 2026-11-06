@@ -23,6 +23,7 @@
   </header>
   <nav aria-label="Workspace views">
     <div class="segmented" aria-label="Layout">
+      <button data-layout="story" aria-pressed="false">Story</button>
       <button data-layout="source" aria-pressed="false">Markdown</button>
       <button data-layout="render" aria-pressed="false">Render</button>
       <button data-layout="split" aria-pressed="true">Split</button>
@@ -56,6 +57,22 @@
         <label class="auto source-separators" title="Show source slide boundaries without changing the document"><input id="slide-separators" type="checkbox">Slide separators</label>
         <button id="edit-table" title="Edit table at cursor" aria-label="Edit table at cursor"></button>
       </div>
+      <section id="story-pane" aria-label="Story editor" hidden>
+        <div class="story-toolbar">
+          <div class="segmented" aria-label="Story detail">
+            <button data-story-depth="1" aria-pressed="false">Sections</button>
+            <button data-story-depth="2" aria-pressed="false">Titles</button>
+            <button data-story-depth="3" aria-pressed="true">Claims</button>
+          </div>
+          <span id="story-count"></span>
+          <button id="story-add-slide" title="Add slide" aria-label="Add slide"></button>
+          <button id="story-add-section" title="Add section" aria-label="Add section"></button>
+          <label class="auto"><input id="story-preview" type="checkbox">Preview</label>
+        </div>
+        <div id="story-list" role="list" aria-label="Narrative"></div>
+        <p id="story-empty" hidden>No headings.</p>
+        <div id="story-status" role="status" aria-live="polite"></div>
+      </section>
       <div id="editor"></div>
     </section>
     <div id="divider" role="separator" aria-label="Resize source and preview" aria-orientation="vertical" tabindex="0" aria-valuenow="50" aria-valuemin="20" aria-valuemax="80"></div>
@@ -66,6 +83,11 @@
   </div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span></footer>
 </main>
+<dialog id="story-move-dialog" class="delivery-dialog" aria-labelledby="story-move-title">
+  <div class="recovery-heading"><h2 id="story-move-title">Move slide</h2><button id="story-move-close" title="Close" aria-label="Close"></button></div>
+  <label>Section<select id="story-destination"></select></label>
+  <button id="story-move-apply" class="delivery-primary">Move to end of section</button>
+</dialog>
 <div id="action-feedback" role="status" aria-live="polite" hidden></div>
 <div id="role-help" role="tooltip" hidden></div>
 <div id="presentation-controls" hidden aria-label="Presentation controls">

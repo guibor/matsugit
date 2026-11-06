@@ -15,6 +15,14 @@ AI service. No separate slide copy drifting away from the source.
 
 * Edit and preview inside Codex
 
+*Shape the argument before polishing the slides.* The =Story= view is a focused
+outline of sections, slide titles and claims. Edit a title in place, drag a whole
+slide or section, or use the move arrows. Evidence, notes, tables and hidden
+comments travel with their heading. Switch between Sections, Titles and Claims;
+bring the preview alongside only when needed. The Markdown/Org file remains the
+single draft, with Undo, recovery, concurrent-edit review and explicit Save.
+See [[file:docs/codex.org][Story controls and source boundaries]].
+
 *One canonical file, including web edits.* With Source to CI publishing, choose
 =Move source and assets into target; leave local symlinks= to avoid a second
 editable copy. This is explicit opt-in, with a reviewed file list. Existing

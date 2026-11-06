@@ -22,13 +22,14 @@ import {mergeDialog} from './merge-dialog.mjs';
 import {saveStatus, paintSaveStatus} from './save-status.mjs';
 import {changeReview} from './change-review.mjs';
 import {publicationStatus} from './publication-status.mjs';
+import {storyView} from './story.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.15.0'});
+const app = new App({name: 'matsugit', version: '0.16.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
-  path:null, editorMode:'raw',
+  path:null, editorMode:'raw', storyDepth:3, storyPreview:false,
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
   bases: {}, revisions: {}, forceFull: false,
@@ -41,6 +42,7 @@ let recoveryId, recoveryGeneration = 0, recoveryTimer, recoveryPending = false, 
 let restoredPosition = false;
 let presentation = null;
 let tables;
+let story;
 let publication;
 let refreshRequested = false, copying = false, feedbackTimer;
 let incomingDocument = null;
@@ -115,6 +117,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
     }
     const line = update.state.doc.lineAt(update.state.selection.main.head);
     $('location').textContent = `Ln ${line.number}, Col ${update.state.selection.main.head - line.from + 1}`;
+    story?.update(update);
   }),
 ]});
 installRoleHelp($('editor'), $('role-help'));
@@ -124,6 +127,20 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows})) $(id).append(createElement(icon));
 tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,enabled:()=>!demo&&!state.loading});
+story=storyView({editor,state,notice,changed:scheduleRecovery,
+  enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!tables.pending(),
+  sourceView:from=>{
+    changeLayout('source');
+    const effects=[EditorView.scrollIntoView(from,{y:'center'})];
+    foldedRanges(editor.state).between(0,editor.state.doc.length,(start,end)=>{
+      if (from > start && from <= end) effects.push(unfoldEffect.of({from:start,to:end}));
+    });
+    editor.dispatch({selection:{anchor:from},effects});editor.focus();
+  }});
+$('story-preview').onchange=()=>{
+  state.storyPreview=$('story-preview').checked;
+  changeLayout('story');
+};
 $('edit-table').onclick=()=>tables.atSelection();
 function changeEditorMode(mode) {
   state.editorMode=state.name.toLowerCase().endsWith('.org')?'raw':mode;
@@ -170,6 +187,7 @@ async function call(name, args) {
   return {...response.structuredContent, ...response._meta};
 }
 function refreshControls() {
+  story?.refresh();
   publication?.update();
   $('external-review').disabled = !externalChange || state.loading || state.saving || state.merging || tables.pending();
   const headings = sourceOutline();
@@ -230,13 +248,20 @@ function followSource() {
     targets: headingTargets(sourceOutline(), editor.state.selection.main.head)}, '*');
 }
 function changeLayout(layout) {
+  if (layout !== 'story') story?.finish();
   state.layout = layout;
   $('workspace').dataset.layout = layout;
+  $('workspace').dataset.storyPreview = String(state.storyPreview);
+  $('app').dataset.storyFocused = String(layout === 'story' && !state.storyPreview);
+  $('story-pane').hidden = layout !== 'story';
+  $('story-preview').checked = !!state.storyPreview;
+  story?.refresh();
   for (const button of document.querySelectorAll('[data-layout]')) if (button.tagName === 'BUTTON') button.setAttribute('aria-pressed', String(button.dataset.layout === layout));
   editor.requestMeasure(); updateModelContext();
   scheduleRecovery();
-  if (!demo && !state.loading && layout !== 'source' && state.renderedRevision !== state.revision) render();
+  if (!demo && !state.loading && previewVisible() && state.renderedRevision !== state.revision) render();
 }
+function previewVisible() { return state.layout !== 'source' && (state.layout !== 'story' || state.storyPreview); }
 function showPreview() {
   if (!state.rendered?.[state.format]) return;
   const frame = $('preview');
@@ -340,7 +365,7 @@ window.addEventListener('message', event => {
 });
 function scheduleRender() {
   clearTimeout(debounce);
-  if (!demo && state.layout !== 'source' && $('auto').checked) debounce = setTimeout(() => render(false), 450);
+  if (!demo && previewVisible() && $('auto').checked) debounce = setTimeout(() => render(false), 450);
 }
 async function render(manual = true) {
   if (demo || state.loading) return;
@@ -578,6 +603,7 @@ async function load(data, {acceptRevision = null} = {}) {
   incomingDocument = null;
   mergeAttempt = null;
   externalChange = null;
+  story.reset();
   tables.reset();
   const suppliedRecovery = data.recovery;
   const sequence = ++loadSequence;
@@ -599,7 +625,7 @@ async function load(data, {acceptRevision = null} = {}) {
   themeCatalog = {}; themeSequence++;
   updateThemePicker($('theme'), themeCatalog, ''); $('theme').title = 'Theme';
   changeEditorMode('raw');
-  if (['source', 'render', 'split'].includes(data.layout)) changeLayout(data.layout);
+  if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
   document.querySelector('button[data-layout="source"]').textContent = state.name.toLowerCase().endsWith('.org') ? 'Org' : 'Markdown';
   $('empty').hidden = false; $('empty-label').textContent = 'Preparing preview'; $('preview').src = 'about:blank';
@@ -646,7 +672,7 @@ async function load(data, {acceptRevision = null} = {}) {
     // Do not replace the latest recovery with the file before a pending choice.
     if (!recoveryCandidate) scheduleRecovery();
     if (demo) { state.rendered = demo.rendered; showPreview(); }
-    else { void refreshThemes(); await render(); }
+    else { void refreshThemes(); if (state.layout !== 'story' || state.storyPreview) await render(); }
   } catch (error) {
     if (sequence === loadSequence) {
       state.loading = false;
@@ -665,7 +691,7 @@ function recoveryScope() {
 }
 function viewState() {
   const style = document.documentElement.style;
-  return {layout: state.layout, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
+  return {layout: state.layout, storyDepth:state.storyDepth, storyPreview:state.storyPreview, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
     editorMode:state.editorMode,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
@@ -675,6 +701,7 @@ function applyView(view) {
   if (!view) return;
   const loading = state.loading; state.loading = true;
   updateThemePicker($('theme'), themeCatalog, view.theme || ''); $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
+  state.storyDepth = view.storyDepth || 3; state.storyPreview = view.storyPreview === true;
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
   $('slide-separators').checked = view.slideSeparators === true;

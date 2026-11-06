@@ -43,6 +43,9 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.equal(opened.structuredContent.text, undefined);
     assert.equal(opened.structuredContent.format, 'slides');
     assert.equal(opened.structuredContent.layout, 'split');
+    const story = await client.callTool({name:'matsugit_workspace',arguments:{layout:'story'}});
+    assert.equal(story.isError,undefined,JSON.stringify(story));
+    assert.equal(story.structuredContent.layout,'story');
     const {session, etag} = opened.structuredContent;
     const merge = await client.callTool({name:'matsugit_merge', arguments:{base:'A\n\nB\n', local:'Mine\n\nB\n', incoming:'A\n\nFile\n'}});
     assert.equal(merge.isError, undefined, JSON.stringify(merge));

@@ -39,12 +39,15 @@ python3 -m pip install playwright
 python3 -m playwright install chromium
 python3 codex-plugin/tests/merge-browser.py
 python3 codex-plugin/tests/review-status-browser.py
+python3 codex-plugin/tests/story-browser.py
 #+end_src
 
 The browser tests exercise the real built MCP workspace with temporary synthetic
 files: concurrent drafts, recovery-copy failures, stale versions, selective
 review, conflict choices, explicit saving, publication receipts and narrow/wide
-viewports. Provider status tests mock GitHub/GitLab responses; real deployment
+viewports. Story tests cover subtree moves, drag/drop, keyboard reordering, title
+edits, section/detail folding, explicit saves, undo and concurrent agent edits.
+Provider status tests mock GitHub/GitLab responses; real deployment
 access is not required. =ci/checks.yml= is the complete GitHub Actions recipe to
 run these automatically. It is not activated by plugin installation: installing
 it at =.github/workflows/checks.yml= requires a maintainer with permission to

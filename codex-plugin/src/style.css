@@ -96,3 +96,40 @@ button[data-feedback=busy] svg{animation:action-spin 1s linear infinite}
 #merge-dialog{width:min(1080px,calc(100vw - 24px));max-height:92dvh;overflow:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--fg);padding:16px}#merge-dialog::backdrop{background:#0006}.merge-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.merge-heading h2{font-size:18px;margin:0 auto 8px 0}.merge-heading button{width:32px;display:grid;place-items:center}#merge-count,#merge-line{font-size:12px;color:var(--muted)}#merge-dialog label{display:block;font-size:13px;font-weight:600}#merge-dialog textarea{display:block;box-sizing:border-box;width:100%;height:130px;margin:6px 0 10px;padding:10px;resize:vertical;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:3px;font:12px/1.5 ui-monospace,monospace}#merge-local{border-left:3px solid #2a7a62!important}#merge-incoming{border-left:3px solid #9b6823!important}#merge-result{border-left:3px solid var(--accent)!important}.merge-versions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:12px}.merge-choices{display:flex;gap:8px;margin-bottom:12px}.merge-choices button,#merge-apply{border-color:var(--border)}#merge-apply{background:var(--accent);color:#fff}#merge-status{font-size:12px;overflow-wrap:anywhere}#merge-dialog summary{cursor:pointer}#merge-complete{height:240px!important}@media(max-width:600px){.merge-versions{grid-template-columns:1fr;gap:0}#merge-dialog{padding:12px}#merge-dialog textarea{height:100px}}
 #role-help{position:fixed;z-index:50;width:260px;max-width:calc(100vw - 16px);padding:10px 12px;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;box-shadow:0 3px 12px #0002;font:12px/1.5 var(--font-sans,system-ui,sans-serif);overflow-wrap:anywhere}
 #role-help[hidden]{display:none}#role-help strong,#role-help span{display:block}#role-help span{color:var(--muted);margin-top:3px}
+#workspace[data-layout=story]:not([data-story-preview=true]){grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+#app[data-story-focused=true] nav [aria-label="Preview format"],#app[data-story-focused=true] nav .render-actions,
+#app[data-story-focused=true] #compact-markup,#app[data-story-focused=true] #insert{display:none}
+#workspace[data-layout=story] #editor,#workspace[data-layout=story] .source-tools,
+#workspace[data-layout=story]:not([data-story-preview=true]) #preview-pane,
+#workspace[data-layout=story]:not([data-story-preview=true]) #divider{display:none}
+#story-pane{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;overflow:hidden}
+#story-pane[hidden]{display:none}
+.story-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);flex:none}
+.story-toolbar .segmented button{font-size:12px;padding:4px 10px}.story-toolbar .auto{margin-left:auto;font-size:12px}
+.story-toolbar>button{width:30px;height:30px;display:grid;place-items:center}
+#story-count{font-size:11px;color:var(--muted)}
+#story-list{overflow:auto;flex:1;min-height:0;padding:16px max(16px,calc((100% - 1080px)/2));scroll-padding:24px}
+.story-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:start;gap:8px;padding:12px 8px;border-left:3px solid transparent;outline:none}
+.story-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.story-selected{border-left-color:var(--accent);background:color-mix(in srgb,var(--accent) 4%,transparent)}
+.story-section{margin-top:24px;border-top:1px solid var(--border);padding-top:16px;padding-bottom:12px}
+.story-section:first-child{margin-top:0}.story-slide{margin-top:8px}.story-claim{padding-top:0;padding-bottom:8px}
+.story-marker{min-width:0;font:11px/32px ui-monospace,monospace;color:var(--muted);text-align:center;user-select:none}
+.story-marker button{width:28px;height:32px;display:grid;place-items:center}
+.story-claim .story-marker{font-family:inherit;font-size:10px;line-height:26px;color:#26706f}
+.story-title{display:block;text-align:left;width:100%;white-space:normal;overflow-wrap:anywhere;font-size:16px;font-weight:600;line-height:1.5;padding:3px 4px;border:1px solid transparent;min-height:32px}
+.story-section .story-title{font-size:18px;font-weight:700;color:var(--fg)}
+.story-claim .story-title{font-size:14px;line-height:1.6;font-weight:400;min-height:26px;color:var(--muted)}
+.story-title:hover{border-bottom-color:var(--border)}
+.story-body{min-width:0}.story-body small{display:block;margin:2px 4px;color:var(--muted);font-size:11px}
+.story-actions{display:flex;align-items:center;flex-wrap:wrap;gap:2px;opacity:.4}.story-row:hover .story-actions,.story-row:focus-within .story-actions{opacity:1}
+.story-actions button{width:28px;height:30px;min-height:30px;display:grid;place-items:center;padding:3px}.story-actions svg{width:15px;height:15px}
+.story-actions [data-drag=true]{cursor:grab}
+.story-edit{resize:none;overflow:hidden;display:block;box-sizing:border-box;width:100%;min-height:34px;max-height:320px;padding:3px 4px;border:1px solid var(--accent);border-radius:3px;background:var(--bg);color:var(--fg);font:600 16px/1.5 var(--font-sans,system-ui,sans-serif)}
+.story-claim .story-edit{font-size:14px;font-weight:400}.story-section .story-edit{font-size:18px;font-weight:700}
+.story-edit:focus{outline:1px solid var(--accent)}.story-edit:invalid{border-color:#ad5126}
+#story-status{font-size:11px;color:var(--muted);padding:6px 16px;min-height:26px;border-top:1px solid var(--border)}
+#story-empty{margin:24px;color:var(--muted);font-size:14px}
+.story-row[data-drop=before]{box-shadow:0 -2px 0 var(--accent)}.story-row[data-drop=after]{box-shadow:0 2px 0 var(--accent)}.story-row[data-drop=inside]{outline:2px solid var(--accent)}
+@media(max-width:900px){.story-row{grid-template-columns:26px minmax(0,1fr)}.story-actions{grid-column:2;opacity:.7}.story-claim .story-actions{display:none}.story-claim:focus-within .story-actions,.story-claim:hover .story-actions{display:flex}#story-list{padding:8px 12px}.story-toolbar{padding:8px 12px}}
+@media(max-width:700px){#workspace[data-layout=story][data-story-preview=true]{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,var(--source-height,50%)) 5px minmax(0,1fr)}#story-list{padding:8px}.story-row{padding-left:0;padding-right:0}.story-toolbar{gap:6px}#story-count{flex-basis:100%;order:3}}

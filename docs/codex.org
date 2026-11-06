@@ -76,6 +76,7 @@ Alternatively choose the matsugit action for a supported file in Codex, or
 open the global matsugit workspace to start an unsaved draft.
 
 - =Markdown=: source only, with highlighting, undo, search and line wrapping.
+- =Story=: a full-width narrative editor; optional Preview sits alongside it.
 - =Render=: preview only.
 - =Split=: source and preview, with a draggable/keyboard-resizable divider.
 - =Document= / =Slides=: choose the rendered output independently of layout.
@@ -100,6 +101,45 @@ native conversion path. Existing source-relative images work when a repository
 file is opened. The file-picker button imports a browser copy: it has no
 write-back permission or access to adjacent assets. Download that copy, or open
 the actual repository file through Codex.
+
+** Story: think in sections, titles and claims (0.16)
+
+Choose =Story= in the top view switch. Sections, Titles and Claims choose how
+much of the argument is visible; they never delete or change content. Preview
+is off initially, avoiding a render after every edit while you work on the story.
+Enable =Preview= for the existing Document/Slides output and heading synchronization.
+
+- Click a section title, slide title or H3 claim to edit it in place. Enter or
+  Escape ends editing, retaining your draft edits. Inline Markdown is visible
+  while editing; stable heading IDs/classes and Org tags/properties stay intact.
+- Drag by the grip, or use up/down arrows to move among siblings. =Alt-Up= /
+  =Alt-Down= work on a focused row. Ordinary arrow keys visit rows; Enter edits.
+- Move a slide between sections with the two-way arrow, or drop its grip on a
+  section title. The destination selector appends it to that section. Dropping
+  on another slide inserts before/after the highlighted boundary.
+- A section carries all of its slides. A slide carries all text through the
+  next H1/H2 boundary, including evidence, H3/H4 headings, notes and comments.
+  Claims can be edited independently but are not detached from their slide.
+- The plus and folder-plus controls add a slide or section after the selected
+  subtree. A slide without a heading claim offers =Add claim=.
+- The chevron folds a section; Left/Right also fold/unfold a focused parent.
+  The code icon returns to that heading in the regular source editor.
+- =Ctrl/Cmd-Z= and =Ctrl/Cmd-Shift-Z= undo/redo. Each move is one Undo step.
+  Edits enter the same draft immediately; only Save writes the file.
+
+This follows the H1 section / H2 slide / H3 claim source convention in Markdown
+and native Org. It is not a thumbnail sorter for renderer-generated overflow
+slides. Manual =---= continuations move with their H2 title, with a continuation
+count in Story. Preamble/YAML stays in place; no source serialization or HTML
+round trip is involved. Bodies and explicit layout/claim blocks remain editable
+through the source icon. Multiline Setext titles must also be edited in source.
+Changing a heading's implicit anchor has the same effect as editing it in Raw;
+use explicit heading IDs for links that must survive renaming.
+
+Moves are refused when unfinished blocks would change the parse. Incoming agent
+edits use the same merge/review protections as Raw/Visual. A title is never a
+separate unsaved form: recovery and Save see its current text. No file is saved,
+published or sent to an agent simply by rearranging the story.
 
 ** External change review and publication status (0.15)
 
@@ -218,7 +258,8 @@ rather than overwriting an unsaved draft.
 * Draft recovery and workspace restoration (0.4.0+)
 
 Editing automatically checkpoints the current text, its original file baseline,
-theme override, Document/Slides selection, source/render/split layout, split size,
+theme override, Document/Slides selection, source/render/split/story layout, story
+detail and preview selection, split size,
 caret/selection, editor scroll and preview position. Checkpoints run after 600 ms
 of inactivity, with a two-second flush while editing continuously. The footer
 reports =Recovery pending=, =Recovery saved= or =Recovery unavailable=; hover it

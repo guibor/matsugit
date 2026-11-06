@@ -44,3 +44,4 @@ jobs:
         run: |
           python3 codex-plugin/tests/merge-browser.py
           python3 codex-plugin/tests/review-status-browser.py
+          python3 codex-plugin/tests/story-browser.py
