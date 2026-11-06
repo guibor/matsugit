@@ -29,6 +29,11 @@ claim and sequence unless they request changes; check existing agent-comments.
 Drag/drop and keyboard moves carry the whole source subtree, including manual
 continuations, evidence and notes. Section folding is view-only; preview is optional.
 Story is the same source draft, not a second representation to sync.
+Plugin 0.21 shows sections as contrasting transitions in Walkthrough. Large
+slides keeps the one-column view; the compact grid uses horizontal space with
+full-width section dividers. Both retain editable titles, claims and takeaways.
+Navigation includes section transitions; empty sections remain visible. These
+are view preferences, not source edits or a change to exported divider settings.
 Plugin 0.20's per-slide sparkles action sends a user-initiated edit request to
 the current chat, using the host's messaging capability. It includes only the
 selected H2 subtree, location and saved file version. Unsaved work requires the

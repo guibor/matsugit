@@ -1,4 +1,4 @@
-import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X, Sparkles} from 'lucide';
+import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X, Sparkles, RectangleHorizontal, LayoutGrid} from 'lucide';
 import {undo, redo, isolateHistory} from '@codemirror/commands';
 import {Transaction} from '@codemirror/state';
 import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim} from './story-model.mjs';
@@ -15,52 +15,62 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
   const panel = $('story-pane'), list = $('story-list');
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
   let hasSelection = false;
+  let browseAnchor = null;
   const collapsed = new Set();
   const text = () => editor.state.doc.toString();
   const org = () => state.name.toLowerCase().endsWith('.org');
   const active = () => state.layout === 'story' && !document.body.classList.contains('presenting');
   const walkthrough = () => state.storyMode === 'walkthrough';
+  const compact = () => walkthrough() && state.storySize === 'compact';
+  const items = () => model?.nodes.filter(n => n.kind !== 'claim') || [];
   const say = message => { $('story-status').textContent = message; };
   const refresh = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(render); };
-  const select = from => { hasSelection = true; editor.dispatch({selection:{anchor:from}}); };
+  const select = from => { hasSelection = true; browseAnchor = null; editor.dispatch({selection:{anchor:from}}); };
   const fields = () => [...model.nodes, ...model.slides.flatMap(n => [...n.claims.filter(c => c.block), ...n.takeaways])];
   const owner = node => ['claim','takeaway'].includes(node?.kind) ? node.parent : node;
   const selectedNode = () => hasSelection ? owner(model?.nodes.findLast(n => n.from <= editor.state.selection.main.head)) : null;
-  const position = () => hasSelection ? editor.state.selection.main.head : Number(visibleSlide()?.dataset.from ?? 0);
+  const position = () => hasSelection ? editor.state.selection.main.head : currentItem()?.from ?? 0;
   function selectionStyle() {
     const node = selectedNode();
     for (const row of list.children) row.classList.toggle('story-selected', Number(row.dataset.from) === node?.from);
   }
   function clearSelection() {
-    hasSelection = false; selectionStyle(); navigation();
+    hasSelection = false; browseAnchor = null; selectionStyle(); navigation();
     list.focus({preventScroll:true});
   }
   function scrollTo(from) {
-    list.querySelector(`[data-from="${from}"]`)?.scrollIntoView({block:walkthrough() ? 'start' : 'nearest'});
+    const row = list.querySelector(`[data-from="${from}"]`);
+    row?.scrollIntoView({block:walkthrough() ? 'start' : 'nearest'});
+    // Adjacent grid cards can share a scroll position. Keep the navigation
+    // target without turning browsing into an editing selection.
+    if (!hasSelection && row) browseAnchor = {from,scrollTop:list.scrollTop};
     navigation();
   }
   function focus(from) {
     const row = list.querySelector(`[data-from="${from}"]`);
     row?.focus({preventScroll:true}); row?.scrollIntoView({block:walkthrough() ? 'start' : 'nearest'});
   }
-  function currentSlide() {
-    const selected = selectedNode() || model?.slides.find(n => n.from === Number(visibleSlide()?.dataset.from));
-    return selected?.kind === 'slide' ? selected : selected?.children.find(n => n.kind === 'slide') || model?.slides[0];
+  function currentItem() {
+    if (browseAnchor && Math.abs(browseAnchor.scrollTop-list.scrollTop)>1) browseAnchor = null;
+    return selectedNode() || items().find(n => n.from === browseAnchor?.from)
+      || items().find(n => n.from === Number(visibleItem()?.dataset.from)) || items()[0];
   }
   function navigation() {
-    const index = model?.slides.indexOf(currentSlide()) ?? -1;
+    const sequence = items(), current = currentItem(), index = sequence.indexOf(current);
     $('story-navigation').hidden = !walkthrough();
-    $('story-position').textContent = `${index + 1} / ${model?.slides.length || 0}`;
+    $('story-position').textContent = current?.kind === 'section'
+      ? `Section ${model.sections.indexOf(current) + 1} / ${model.sections.length}`
+      : `${current?.number || 0} / ${model?.slides.length || 0}`;
     $('story-previous').disabled = index <= 0;
-    $('story-next').disabled = index < 0 || index >= model.slides.length - 1;
+    $('story-next').disabled = index < 0 || index >= sequence.length - 1;
   }
   function visit(direction) {
     finishEdit(); render();
-    const index = model.slides.indexOf(currentSlide()), next = model.slides[index + direction];
+    const sequence = items(), index = sequence.indexOf(currentItem()), next = sequence[index + direction];
     if (next) hasSelection ? focus(next.from) : scrollTo(next.from);
   }
-  function visibleSlide() {
-    const bounds = list.getBoundingClientRect(), rows = [...list.querySelectorAll('.story-slide')];
+  function visibleItem() {
+    const bounds = list.getBoundingClientRect(), rows = [...list.querySelectorAll('.story-row')];
     const target = bounds.top + 8;
     const visible = rows.filter(row => {
       const box = row.getBoundingClientRect(); return box.bottom > bounds.top && box.top < bounds.bottom;
@@ -69,18 +79,25 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
       const box = row.getBoundingClientRect(); return box.top <= target && box.bottom >= target;
     }) || visible[0];
   }
-  for (const control of panel.querySelectorAll('[data-story-mode]')) control.onclick = () => {
+  function changePresentation(update) {
     finishEdit();
     const current = list.querySelector('.story-selected'), bounds = list.getBoundingClientRect();
     const box = current?.getBoundingClientRect();
     const anchor = box && box.bottom > bounds.top && box.top < bounds.bottom ? Number(current.dataset.from)
-      : Number(visibleSlide()?.dataset.from ?? currentSlide()?.from ?? 0);
-    state.storyMode = control.dataset.storyMode;
+      : browseAnchor?.from ?? Number(visibleItem()?.dataset.from ?? currentItem()?.from ?? 0);
+    update();
     // A slide remains in view when returning to an overview with folded sections.
     const node = model.nodes.find(n => n.from === anchor);
     if (node?.parent) collapsed.delete(node.parent.from);
     render(); scrollTo(anchor); changed();
+  }
+  for (const control of panel.querySelectorAll('[data-story-mode]')) control.onclick = () => {
+    changePresentation(() => { state.storyMode = control.dataset.storyMode; });
   };
+  for (const control of panel.querySelectorAll('[data-story-size]')) {
+    control.append(createElement(control.dataset.storySize === 'compact' ? LayoutGrid : RectangleHorizontal));
+    control.onclick = () => changePresentation(() => { state.storySize = control.dataset.storySize; });
+  }
   $('story-previous').append(createElement(ChevronLeft)); $('story-previous').onclick = () => visit(-1);
   $('story-next').append(createElement(ChevronRight)); $('story-next').onclick = () => visit(1);
   list.addEventListener('scroll', () => {
@@ -230,8 +247,12 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
     const focused = list.contains(document.activeElement) ? document.activeElement.closest('[data-from]')?.dataset.from : null;
     const scrollTop = list.scrollTop;
     panel.dataset.storyMode = walkthrough() ? 'walkthrough' : 'overview';
+    panel.dataset.storySize = state.storySize === 'compact' ? 'compact' : 'large';
+    $('story-size').hidden = !walkthrough();
     for (const control of panel.querySelectorAll('[data-story-mode]'))
       control.setAttribute('aria-pressed',String(control.dataset.storyMode === panel.dataset.storyMode));
+    for (const control of panel.querySelectorAll('[data-story-size]'))
+      control.setAttribute('aria-pressed',String(control.dataset.storySize === panel.dataset.storySize));
     list.replaceChildren();
     for (const kind of ['slide','section']) $(`story-add-${kind}`).disabled = !enabled();
     const empty = model.slides.filter(n => n.empty).length;
@@ -259,14 +280,14 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
       row.onclick = event => { if (!event.target.closest('button,textarea,select')) focus(node.from); };
       const marker = document.createElement('div'); marker.className = 'story-marker';
       marker.title = node.kind === 'slide' ? 'Slide title (H2)' : 'Section (H1)';
-      if (node.kind === 'section') {
+      if (node.kind === 'section' && !walkthrough()) {
         const toggle = button(collapsed.has(node.from) ? ChevronRight : ChevronDown, 'Fold section', () => {
           collapsed.has(node.from) ? collapsed.delete(node.from) : collapsed.add(node.from); render(); focus(node.from);
         });
         toggle.setAttribute('aria-expanded',String(!collapsed.has(node.from))); marker.append(toggle);
-      } else marker.textContent = String(node.number).padStart(2,'0');
+      } else marker.textContent = String(node.kind === 'section' ? model.sections.indexOf(node) + 1 : node.number).padStart(2,'0');
       const context = document.createElement('div'); context.className = 'story-context';
-      context.textContent = node.kind === 'slide' ? node.parent?.label || '' : '';
+      context.textContent = node.kind === 'slide' ? node.parent?.label || '' : 'Section';
       const body = document.createElement('div'); body.className = 'story-body';
       function field(heading) {
         const slot = document.createElement('div'); slot.dataset.heading = heading.from;
@@ -388,15 +409,28 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
       const next = sections[sections.indexOf(current) + direction];
       if (next) hasSelection ? focus(next.from) : list.querySelector(`[data-from="${next.from}"]`)?.scrollIntoView({block:'start'});
     } else if (hasSelection) {
-      const rows = [...list.querySelectorAll(walkthrough() ? '.story-slide' : '.story-row')];
+      const rows = [...list.querySelectorAll('.story-row')];
       const from = selectedNode()?.from;
-      const next = key === 'Home' ? rows[0] : key === 'End' ? rows.at(-1)
+      let next = key === 'Home' ? rows[0] : key === 'End' ? rows.at(-1)
         : direction < 0 ? rows.findLast(row => Number(row.dataset.from) < from)
         : rows.find(row => Number(row.dataset.from) > from);
+      if (compact() && ['ArrowUp','ArrowDown','j','k'].includes(key)) {
+        const box = rows.find(row => Number(row.dataset.from) === from)?.getBoundingClientRect();
+        if (box) {
+          const center = box.left + box.width/2;
+          const candidates = rows.map(row => ({row,box:row.getBoundingClientRect()}))
+            .filter(candidate => direction * (candidate.box.top - box.top) > 2);
+          candidates.sort((a,b) => Math.abs(a.box.top-box.top)-Math.abs(b.box.top-box.top)
+            || Math.abs(a.box.left+a.box.width/2-center)-Math.abs(b.box.left+b.box.width/2-center));
+          next = candidates[0]?.row;
+        }
+      }
       if (next) focus(Number(next.dataset.from));
     } else if (key === 'Home' || key === 'End') {
+      browseAnchor = null;
       list.scrollTo({top:key === 'Home' ? 0 : list.scrollHeight,behavior:'instant'});
     } else {
+      browseAnchor = null;
       list.scrollBy({top:direction * (key.startsWith('Page') ? list.clientHeight * .85 : 72),behavior:'instant'});
     }
     navigation();
@@ -425,7 +459,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
         return;
       }
       if (update.docChanged) {
-        editing = null;
+        editing = null; browseAnchor = null;
         const mapped = [...collapsed].map(pos => update.changes.mapPos(Math.min(pos, update.startState.doc.length)));
         collapsed.clear(); mapped.forEach(pos => collapsed.add(pos));
         refresh();
@@ -434,6 +468,6 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
         navigation();
       }
     },
-    reset() { editing = null; hasSelection = false; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
+    reset() { editing = null; hasSelection = false; browseAnchor = null; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
   };
 }

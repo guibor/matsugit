@@ -27,11 +27,11 @@ import {slideAgent} from './slide-agent.mjs';
 import {slideAgentSender} from './slide-agent-request.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.20.0'});
+const app = new App({name: 'matsugit', version: '0.21.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
-  path:null, editorMode:'raw', storyPreview:false, storyMode:'overview',
+  path:null, editorMode:'raw', storyPreview:false, storyMode:'overview', storySize:'large',
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
   bases: {}, revisions: {}, forceFull: false,
@@ -701,7 +701,7 @@ function recoveryScope() {
 }
 function viewState() {
   const style = document.documentElement.style;
-  return {layout: state.layout, storyPreview:state.storyPreview, storyMode:state.storyMode, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
+  return {layout: state.layout, storyPreview:state.storyPreview, storyMode:state.storyMode, storySize:state.storySize, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
     editorMode:state.editorMode,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
@@ -713,6 +713,7 @@ function applyView(view) {
   updateThemePicker($('theme'), themeCatalog, view.theme || ''); $('auto').checked = view.auto !== false; $('sync').checked = view.sync !== false;
   state.storyPreview = view.storyPreview === true;
   state.storyMode = view.storyMode === 'walkthrough' ? 'walkthrough' : 'overview';
+  state.storySize = view.storySize === 'compact' ? 'compact' : 'large';
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
   $('slide-separators').checked = view.slideSeparators === true;

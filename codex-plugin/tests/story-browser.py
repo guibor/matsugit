@@ -119,7 +119,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             frame.locator('#story-next').click()
             assert frame.locator('#story-position').inner_text() == '2 / 4'
             frame.locator('.story-slide').nth(1).press('PageDown')
-            assert frame.locator('#story-position').inner_text() == '3 / 4'
+            assert frame.locator('#story-position').inner_text() == 'Section 2 / 2'
             frame.locator('#story-previous').click()
             assert frame.locator('#story-position').inner_text() == '2 / 4'
             frame.locator('.story-slide').nth(1).locator('.story-heading .story-title').click()

@@ -18,6 +18,9 @@ AI service. No separate slide copy drifting away from the source.
 *Shape the argument before polishing the slides.* In =Story=, use =Overview=
 for a dense, indented map of sections and their title/claim pairs, or =Walkthrough=
 to scroll through slide-shaped surfaces containing those editable messages and takeaways.
+Walkthrough includes contrasting section-transition slides. Keep the original
+large view, or choose the grid icon for smaller editable slides side by side,
+grouped beneath full-width section dividers. The choice does not change exports.
 Switch without losing your place. Read the argument in sequence, rewrite either
 field, or drag a whole slide or section. Evidence, notes, tables and hidden
 comments travel with the slide, but stay out of these narrative views.

@@ -36,6 +36,7 @@ export function preferences(value = {}) {
   return {layout: ['source', 'render', 'split', 'story'].includes(value.layout) ? value.layout : 'split',
     storyPreview:value.storyPreview === true,
     storyMode:value.storyMode === 'walkthrough' ? 'walkthrough' : 'overview',
+    storySize:value.storySize === 'compact' ? 'compact' : 'large',
     editorMode:value.editorMode==='visual'?'visual':'raw', tableDraft:tableDraft(value.tableDraft),
     slideSeparators: value.slideSeparators === true,
     format: value.format === 'slides' ? 'slides' : 'document',

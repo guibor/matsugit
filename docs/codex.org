@@ -121,6 +121,22 @@ choice is retained in workspace recovery. There are no separate title/claim tabs
 Preview is off initially, avoiding a render after every edit while you work on the story.
 Enable =Preview= for the existing Document/Slides output and heading synchronization.
 
+Plugin 0.21 makes H1 sections visible as contrasting *transition slides* in
+Walkthrough. Previous/next and selected-item navigation include those transitions,
+including empty sections; the position label distinguishes a section from a
+content slide. Edit a transition title in place or move it with all its slides.
+This is a narrative view: it does not change =slide-section-dividers= or insert
+anything into the source or exports. Overview keeps its compact section bands.
+
+Walkthrough has two size icons: *Large slides* retains the single-column view;
+*Compact slides* uses available width for multiple smaller editable slides.
+Sections span the grid to keep the grouping clear. Narrow panes use one column,
+and text grows the cards rather than being clipped. The size choice is retained
+in workspace recovery. Switching size preserves the current item and selection.
+In the compact grid, Up/Down and j/k move an existing selection between visual
+rows; Left/Right and previous/next follow source order. With nothing selected,
+all those keys still scroll without selecting. h/l still jump between sections.
+
 Plugin 0.20 adds the *sparkles* icon on every slide in both Story views.
 Click =Edit slide with AI=, enter instructions, inspect =Slide source= if needed,
 then =Send=. The request goes to the current host conversation, not a new agent
