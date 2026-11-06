@@ -41,6 +41,7 @@ python3 codex-plugin/tests/merge-browser.py
 python3 codex-plugin/tests/review-status-browser.py
 python3 codex-plugin/tests/story-browser.py
 python3 codex-plugin/tests/story-navigation-browser.py
+python3 codex-plugin/tests/slide-agent-browser.py
 #+end_src
 
 The browser tests exercise the real built MCP workspace with temporary synthetic
@@ -48,6 +49,9 @@ files: concurrent drafts, recovery-copy failures, stale versions, selective
 review, conflict choices, explicit saving, publication receipts and narrow/wide
 viewports. Story tests cover subtree moves, drag/drop, keyboard reordering, title
 edits, section/detail folding, explicit saves, undo and concurrent agent edits.
+Slide AI tests use a local mock chat host, never a real agent. They check both
+messaging capabilities, selected-slide scope, Save and send, stale-draft refusal,
+uncertain delivery without retry, prompt retention and unsupported-host copying.
 Provider status tests mock GitHub/GitLab responses; real deployment
 access is not required. =ci/checks.yml= is the complete GitHub Actions recipe to
 run these automatically. It is not activated by plugin installation: installing

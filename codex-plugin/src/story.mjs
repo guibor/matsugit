@@ -1,4 +1,4 @@
-import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X} from 'lucide';
+import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X, Sparkles} from 'lucide';
 import {undo, redo, isolateHistory} from '@codemirror/commands';
 import {Transaction} from '@codemirror/state';
 import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim} from './story-model.mjs';
@@ -11,7 +11,7 @@ function button(icon, name, run) {
   return el;
 }
 
-export function storyView({editor, state, enabled, notice, sourceView, changed}) {
+export function storyView({editor, state, enabled, notice, sourceView, changed, askAgent}) {
   const panel = $('story-pane'), list = $('story-list');
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
   let hasSelection = false;
@@ -301,6 +301,12 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
         for (const takeaway of node.takeaways) field(takeaway);
       }
       const actions = document.createElement('div'); actions.className = 'story-actions';
+      if (node.kind === 'slide' && askAgent) {
+        const ai = button(Sparkles, 'Edit slide with AI', () => {
+          finishEdit(); render(); askAgent(node);
+        });
+        ai.className = 'story-ai'; ai.disabled = !enabled(); actions.append(ai);
+      }
       if (node.kind !== 'claim') {
         const handle = button(GripVertical, `Drag ${node.kind}`, () => { select(node.from); focus(node.from); });
         handle.draggable = enabled(); handle.dataset.drag = 'true'; actions.append(handle);

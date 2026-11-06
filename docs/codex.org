@@ -121,6 +121,24 @@ choice is retained in workspace recovery. There are no separate title/claim tabs
 Preview is off initially, avoiding a render after every edit while you work on the story.
 Enable =Preview= for the existing Document/Slides output and heading synchronization.
 
+Plugin 0.20 adds the *sparkles* icon on every slide in both Story views.
+Click =Edit slide with AI=, enter instructions, inspect =Slide source= if needed,
+then =Send=. The request goes to the current host conversation, not a new agent
+or model. =Save and send= first saves *all current document edits* using the
+normal version checks. A failed save or concurrent file change prevents sending.
+Only the selected H2 subtree plus its path, version and location is attached;
+other slides and the preamble are not included. Manual continuations belong to
+that subtree. The agent is asked to check the current file before a targeted edit.
+Subsequent agent edits still use the existing external-change/merge review.
+
+The action requires a saved local file and a host advertising chat messaging.
+Without that capability, =Copy request= provides the scoped request instead;
+it neither saves nor sends. Unsaved imported documents must first be saved and
+opened as actual local files. Closing an unsubmitted prompt retains its text
+for that slide while this workspace remains open. If delivery is unconfirmed,
+check the chat first: matsugit does not retry automatically. A successful send
+confirms delivery, not completion of the agent's work. Nothing is published.
+
 - Click a section title, slide title or claim to edit it in place. Tab / Shift-Tab
   move between narrative fields, including the paired title and claim. Enter or
   Escape ends editing, retaining your draft edits. Inline Markdown is visible

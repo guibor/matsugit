@@ -23,9 +23,11 @@ import {saveStatus, paintSaveStatus} from './save-status.mjs';
 import {changeReview} from './change-review.mjs';
 import {publicationStatus} from './publication-status.mjs';
 import {storyView} from './story.mjs';
+import {slideAgent} from './slide-agent.mjs';
+import {slideAgentSender} from './slide-agent-request.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.19.0'});
+const app = new App({name: 'matsugit', version: '0.20.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
@@ -127,7 +129,15 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows})) $(id).append(createElement(icon));
 tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,enabled:()=>!demo&&!state.loading});
+const agentSlide = slideAgent({
+  snapshot:()=>({...state,text:text(),generation:loadSequence}),
+  enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!state.delivering&&!tables.pending(),
+  save, read:resourceRead, notice,
+  path:async()=>state.path || (await call('matsugit_path',state.session?{session:state.session}:{})).path,
+  sender:()=>slideAgentSender(app,extensions),
+});
 story=storyView({editor,state,notice,changed:scheduleRecovery,
+  askAgent:node=>agentSlide.open(node),
   enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!tables.pending(),
   sourceView:from=>{
     changeLayout('source');

@@ -100,6 +100,17 @@
     <button type="submit" class="delivery-primary">Add slide</button>
   </form>
 </dialog>
+<dialog id="slide-agent-dialog" class="delivery-dialog" aria-labelledby="slide-agent-title">
+  <form id="slide-agent-form">
+    <div class="recovery-heading"><h2 id="slide-agent-title"><span id="slide-agent-icon"></span>Edit slide with AI</h2><button type="button" id="slide-agent-close" title="Close" aria-label="Close"></button></div>
+    <p id="slide-agent-context"></p>
+    <label>Instructions<textarea id="slide-agent-prompt" rows="4" maxlength="8000" required></textarea></label>
+    <details id="slide-agent-source-panel"><summary>Slide source</summary><pre id="slide-agent-source"></pre></details>
+    <div id="slide-agent-request-panel" hidden><label>Request<textarea id="slide-agent-request" readonly rows="6"></textarea></label></div>
+    <p id="slide-agent-status" role="status" aria-live="polite"></p>
+    <div class="slide-agent-actions"><button type="button" id="slide-agent-copy" title="Copy request" aria-label="Copy request"></button><button type="submit" id="slide-agent-send" class="delivery-primary"></button></div>
+  </form>
+</dialog>
 <div id="action-feedback" role="status" aria-live="polite" hidden></div>
 <div id="role-help" role="tooltip" hidden></div>
 <div id="presentation-controls" hidden aria-label="Presentation controls">

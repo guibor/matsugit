@@ -26,6 +26,9 @@ move the selection. =h= / =l= jump between sections. Escape or a background
 click clears selection. Scrolling with a mouse or trackpad never changes it.
 =Add slide= accepts a title and optional claim, leaving the body empty for you
 or your agent to develop. Bring the preview alongside only when needed.
+Each slide's sparkles icon opens *Edit slide with AI*: write your request and
+send it to the current chat, with that slide's source attached. Unsaved work
+requires an explicit *Save and send*. No separate agent, model or AI account.
 The Markdown/Org file remains the single draft, with Undo, recovery,
 concurrent-edit review and explicit Save.
 See [[file:docs/codex.org][Story controls and source boundaries]].

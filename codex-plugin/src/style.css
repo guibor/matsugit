@@ -133,6 +133,16 @@ button[data-feedback=busy] svg{animation:action-spin 1s linear infinite}
 .story-actions{display:flex;align-items:center;gap:1px;opacity:0}.story-row:hover .story-actions,.story-row:focus-within .story-actions{opacity:1}
 .story-actions button{width:26px;height:26px;min-height:26px;display:grid;place-items:center;padding:3px}.story-actions svg{width:14px;height:14px}
 .story-actions [data-drag=true]{cursor:grab}
+.story-actions .story-ai{color:var(--accent)}
+#slide-agent-dialog{box-sizing:border-box}
+#slide-agent-dialog h2{display:flex;align-items:center;gap:8px;font-size:17px}
+#slide-agent-icon{display:flex}
+#slide-agent-dialog textarea{box-sizing:border-box;width:100%;min-width:0;resize:vertical;font:inherit;line-height:1.5;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:8px}
+#slide-agent-context{margin:8px 0 16px}
+#slide-agent-status{min-height:18px}
+#slide-agent-dialog summary{cursor:pointer;font-size:12px;color:var(--muted)}
+.slide-agent-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.slide-agent-actions button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px}
 .story-edit{resize:none;overflow:auto;display:block;box-sizing:border-box;width:100%;min-height:26px;max-height:320px;padding:2px 4px;border:1px solid var(--accent);border-radius:3px;background:var(--bg);color:var(--fg);font:600 15px/1.45 var(--font-sans,system-ui,sans-serif)}
 .story-claim .story-edit{font-size:14px;font-weight:400;line-height:1.5}.story-section .story-edit{font-size:13px;font-weight:650}
 .story-edit:focus{outline:1px solid var(--accent)}.story-edit:invalid{border-color:#ad5126}

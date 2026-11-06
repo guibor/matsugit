@@ -10,6 +10,9 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-browser-test-'));
 const fixture = process.env.MATSUGIT_SHOWCASE_SOURCE;
 const standardOnly = process.env.MATSUGIT_STANDARD_MCP === '1';
+const chatMode = process.env.MATSUGIT_TEST_CHAT || '';
+const messages = [];
+let failChat = false;
 const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
 const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
@@ -47,6 +50,8 @@ const server = http.createServer(async (req, res) => {
       return res.end(app);
     }
     if (req.url === '/result') return res.end(JSON.stringify(await client.callTool({name: 'matsugit_open', arguments: {path: source}})));
+    if (req.url === '/test-messages') return res.end(JSON.stringify(messages));
+    if (req.url === '/test-fail-chat' && req.method === 'POST') { failChat = true; return res.end('{}'); }
     if (req.url === '/untitled-result') return res.end(JSON.stringify(await client.callTool({name: 'matsugit_workspace', arguments: {}})));
     if (req.url === '/restart' && req.method === 'POST') {
       await client.close(); fs.mkdirSync(inherited); await start(); fs.rmdirSync(inherited);
@@ -58,7 +63,16 @@ const server = http.createServer(async (req, res) => {
       const message = JSON.parse(raw), params = message.params;
       let result = {};
       if (message.method === 'ui/initialize') result = {protocolVersion: '2026-01-26', hostInfo: {name: 'Isolated test host', version: '1.0.0'},
-        hostCapabilities: {serverTools: {}, serverResources: {}, openLinks: {}, ...(standardOnly ? {} : {experimental: {'openai/resource': {}}})}, hostContext: {theme: 'light', displayMode: 'fullscreen'}};
+        hostCapabilities: {serverTools: {}, serverResources: {}, openLinks: {},
+          ...(chatMode ? {message:{text:{}}} : {}),
+          experimental:{...(standardOnly ? {} : {'openai/resource':{}}), ...(chatMode === 'extended' ? {'openai/message':{}} : {})}},
+        hostContext: {theme: 'light', displayMode: 'fullscreen'}};
+      else if (message.method === 'ui/message') {
+        if (!chatMode) throw Error('Chat unsupported');
+        messages.push(params);
+        await new Promise(resolve=>setTimeout(resolve,200));
+        if (failChat) { failChat = false; throw Error('Simulated lost acknowledgement'); }
+      }
       else if (standardOnly && message.method.startsWith('openai/')) throw Error('Host has no OpenAI extensions');
       else if (message.method === 'tools/call') result = await client.callTool(standardOnly ? params : {...params, _meta: {'openai/resource': {path: source}}});
       else if (message.method === 'resources/read') {
