@@ -23,7 +23,7 @@ def wait(frame, expression, timeout=120):
 
 def checkpoint(frame):
     frame.evaluate('matsugitWorkspace.flushRecovery()')
-    wait(frame, 'document.getElementById("recovery-status").textContent === "Recovery saved"', 20)
+    wait(frame, 'document.getElementById("recovery-status").textContent === "Draft backed up"', 20)
 
 shots = Path(tempfile.mkdtemp(prefix='matsugit-recovery-shots-'))
 server = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')], stdout=subprocess.PIPE, text=True)

@@ -62,6 +62,11 @@ The =Theme= dropdown lists installed packs automatically and preserves the
 project default; switching styles does not rewrite your source.
 Independent external edits merge into your draft; overlapping changes have a
 side-by-side review with per-conflict choices. Merging never saves automatically.
+The header distinguishes =Saved to file= from =Unsaved draft=; =Draft backed up=
+only describes the separate recovery copy. File updates leave a persistent receipt.
+When edits overlap, Save opens =Review before saving= instead of becoming a dead
+button. Compare the passages, then explicitly =Save reviewed file= or =Keep editing=.
+A failed write retains the reviewed draft; a newer file requires another review.
 Plugin 0.15 adds a review of *all* external changes, grouped by heading, with
 selective acceptance and a resulting-draft preview. The comparison icon labelled
 =Review latest external changes= also reviews a clean auto-merge; later independent

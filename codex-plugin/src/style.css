@@ -9,6 +9,15 @@
 #theme{font:inherit;color:inherit;width:180px;max-width:180px;min-width:0;text-overflow:ellipsis}#theme:focus-visible{outline:2px solid var(--accent);outline-offset:1px}@media(max-width:700px){#theme{width:140px}}
 #save-state{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;font-size:11px;color:var(--muted)}#save-state svg{width:14px;height:14px}#save-state[data-kind=dirty]{color:var(--accent)}#save-state[data-kind=review],#save-state[data-kind=error]{color:var(--color-text-warning,#946000)}#dirty{display:none}@media(prefers-color-scheme:dark){#save-state[data-kind=review],#save-state[data-kind=error]{color:var(--color-text-warning,#f6c56b)}}
 #compact-markup[aria-pressed=true]{background:var(--muted-bg);color:var(--accent)}
+#notice{background:var(--muted-bg);color:var(--fg);border-color:var(--border);flex-wrap:wrap;flex:none}
+#notice[data-kind=review]{border-left:3px solid #b07a23}
+.notice-copy{flex:1;min-width:180px;line-height:1.5}.notice-copy strong,.notice-copy span{display:block}.notice-copy span{color:var(--muted)}
+.notice-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.notice-actions button{border:1px solid var(--border);font-size:12px}
+#notice [hidden]{display:none}#notice-dismiss{width:28px;height:28px;min-height:28px;border:0!important;padding:5px}
+#notice-save{color:var(--accent)}body.presenting #notice{display:none}
+#merge-context{font-size:12px;line-height:1.5;overflow-wrap:anywhere;color:var(--muted);white-space:pre-line}
+#merge-dialog [hidden]{display:none}#merge-dialog .incoming-actions{position:sticky;bottom:-16px;background:var(--bg);border-top:1px solid var(--border);padding:12px 0;margin-bottom:0}
+#merge-dialog .merge-choices{flex-wrap:wrap}#merge-dialog .incoming-actions button{white-space:normal}
 body.presenting #app{padding:0;min-height:0}
 body.presenting #app>header,body.presenting #app>nav,body.presenting #app>footer,body.presenting #recovery-banner{display:none}
 body.presenting #workspace{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}

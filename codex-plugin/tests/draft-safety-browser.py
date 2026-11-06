@@ -21,6 +21,10 @@ try:
         frame.wait_for_function('()=>!!window.matsugitWorkspace?.state.rendered',timeout=180000)
         frame.locator('#auto').uncheck();frame.locator('#sync').uncheck()
         original=Path(ready['source']).read_text()
+        def full_versions():
+            frame.locator('#reload').click()
+            frame.locator('#merge-options summary').click()
+            frame.locator('#merge-versions').click()
         # An initial file read must never be an undoable insertion of the whole file.
         frame.locator('#undo').click()
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==original, 'Undo erased the initial file'
@@ -36,7 +40,7 @@ try:
         Path(ready['source']).write_text(incoming)
         frame.evaluate('matsugitWorkspace.reload()')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==draft, 'An agent update replaced recently saved local edits without review'
-        frame.locator('#reload').click()
+        full_versions()
         frame.locator('#incoming-dialog').wait_for(state='visible')
         frame.locator('#incoming-use').click()
         frame.wait_for_function('()=>!document.getElementById("incoming-dialog").open')
@@ -79,7 +83,7 @@ try:
         page.wait_for_timeout(100)
         page.unroute('**/rpc',delay_read)
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==edited
-        frame.locator('#reload').click()
+        full_versions()
         frame.locator('#incoming-dialog').wait_for(state='visible')
         assert frame.locator('#incoming-local').input_value()==edited
         assert frame.locator('#incoming-file').input_value()==second
@@ -88,7 +92,7 @@ try:
         frame.locator('#incoming-keep').click()
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==edited
         # The reviewed version must still be current when explicitly accepted.
-        frame.locator('#reload').click()
+        full_versions()
         frame.locator('#incoming-dialog').wait_for(state='visible')
         latest='Agent opening revised\n'+incoming+'\nThird agent edit\n'
         Path(ready['source']).write_text(latest)

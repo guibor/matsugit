@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             frame.locator('#auto').uncheck()
             frame.locator('#sync').uncheck()
             frame.locator('[data-layout="source"]').click()
-            assert frame.locator('#save-state').inner_text() == 'Saved'
+            assert frame.locator('#save-state').inner_text() == 'Saved to file'
 
             def current():
                 return frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
@@ -54,17 +54,22 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
                 frame.evaluate('matsugitWorkspace.reload()')
                 wait(frame, '!matsugitWorkspace.state.merging')
 
+            def full_versions():
+                frame.locator('#reload').click()
+                frame.locator('#merge-options summary').click()
+                frame.locator('#merge-versions').click()
+
             mine = original.replace('Alpha original','Alpha mine')
             incoming = original.replace('Gamma original','Gamma agent')
             edit(mine)
-            assert frame.locator('#save-state').inner_text() == 'Unsaved'
+            assert frame.locator('#save-state').inner_text() == 'Unsaved draft'
             source.write_text(incoming)
             reread()
             merged = mine.replace('Gamma original','Gamma agent')
             assert current() == merged, (current(), frame.locator('#notice-text').inner_text())
             assert source.read_text() == incoming
             assert not frame.evaluate('matsugitWorkspace.state.conflict')
-            assert frame.locator('#save-state').inner_text() == 'Unsaved'
+            assert frame.locator('#save-state').inner_text() == 'Unsaved draft'
             records = [json.loads(f.read_text()) for f in Path(ready['recovery']).glob('*.json')]
             assert any(r['text'] == mine for r in records)
             frame.locator('#undo').click()
@@ -74,7 +79,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving')
             assert source.read_text() == merged
-            assert frame.locator('#save-state').inner_text() == 'Saved'
+            assert frame.locator('#save-state').inner_text() == 'Saved to file'
             assert 'Saved to the source file at' in frame.locator('#save-state').get_attribute('title')
             print('PASS: non-overlapping auto merge, safety copy, rebased Undo/Redo, explicit Save', flush=True)
 
@@ -109,8 +114,8 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             reread()
             assert current() == local
             assert frame.evaluate('matsugitWorkspace.state.conflict')
-            assert frame.locator('#save-state').inner_text() == 'Review changes'
-            frame.locator('#reload').click()
+            assert frame.locator('#save-state').inner_text() == 'Changed elsewhere'
+            full_versions()
             frame.locator('#incoming-merge').click()
             frame.locator('#merge-dialog').wait_for(state='visible')
             assert frame.locator('#merge-apply').is_disabled()
@@ -132,7 +137,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             wait(frame, '!matsugitWorkspace.state.merging && document.getElementById("merge-status").textContent.includes("changed again")')
             assert current() == local and source.read_text() == newer
             frame.locator('#merge-cancel').click()
-            frame.locator('#reload').click()
+            full_versions()
             frame.locator('#incoming-merge').click()
             frame.locator('#merge-dialog').wait_for(state='visible')
             frame.locator('#merge-mine').click()
@@ -166,7 +171,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             edit(result.replace('Gamma agent','Gamma local again'))
             source.write_text(result.replace('Gamma agent','Gamma agent again'))
             reread()
-            frame.locator('#reload').click()
+            full_versions()
             frame.locator('#incoming-merge').click()
             frame.locator('#merge-dialog').wait_for(state='visible')
             frame.locator('#merge-mine').click()

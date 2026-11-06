@@ -154,6 +154,13 @@ credentials without authorization. Start a new session after plugin installation
 The plugin includes its renderer; optional chart dependencies remain separate.
 # Canonical source and Git sync (plugin 0.11+)
 
+Saving is separate from both recovery and Git: `Saved to file`, `Unsaved draft`
+and `Draft backed up` report different states. In plugin 0.23+, a blocked Save
+opens a version comparison. `Save reviewed file` explicitly writes the reviewed
+result after safety checks; `Keep editing` writes nothing. Independent merges
+remain drafts and leave a persistent receipt. Never claim a backup, merge or
+local save has pushed or published the document.
+
 The Git sync toolbar icon checks upstream and explicitly fast-forwards the checkout;
 no background pull is enabled. Non-overlapping unstaged/untracked changes are
 retained; overlapping paths, staged changes and divergence require Git review.

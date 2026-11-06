@@ -1,6 +1,22 @@
 #+title: matsugit in Codex
 
 * Downloads
+Plugin 0.23 makes file-saving and draft backups distinct. =Saved to file= means
+the editor matches its last known file version; =Draft backed up= means a separate
+recovery checkpoint exists, not that the file was saved or published. Clean file
+updates and independent merges leave persistent receipts. Merged drafts remain
+unsaved until explicitly saved.
+
+For overlapping file edits, Save and the receipt's =Review changes= open the same
+passage comparison. Choose your edit, the file edit, both, or write a combined
+passage. =Save reviewed file= backs up the draft, checks the versions again and
+writes the selected file only. =Keep editing= closes without saving. A failed
+write keeps the reviewed draft and allows retry; a newer file offers =Review
+latest file= instead of forced overwrite. =More options > Compare whole files=
+retains the full-version/download workflow, while the toolbar's external-change
+review still allows selective acceptance into an unsaved draft. Git publication
+is separate and is never triggered by Save.
+
 Plugin 0.22.2 fixes Git-check retries, retains non-overlapping local edits on pull,
 and lists blocking paths. =Check again= stays available after an error;
 =Review publish...= opens the separate target review for sending changes.

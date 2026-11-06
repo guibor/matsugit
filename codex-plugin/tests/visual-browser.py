@@ -173,8 +173,8 @@ try:
         assert 'External paragraph' not in frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         frame.locator('#table-close').click()
         frame.locator('#reload').click()
-        frame.locator('#incoming-dialog').wait_for(state='visible')
-        frame.locator('#incoming-use').click()
+        frame.locator('#merge-dialog').wait_for(state='visible')
+        frame.locator('#merge-apply').click()
         wait(frame, '!matsugitWorkspace.state.conflict && matsugitWorkspace.state.base.includes("External paragraph")')
         print('Refresh retains unapplied table draft on external conflict', flush=True)
         # Open a new unapplied draft and verify restoration, not only serialization.

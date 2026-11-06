@@ -19,7 +19,7 @@ import {setOutlineDepth, outlineKeys} from './outline.mjs';
 import {updateThemePicker} from './theme-picker.mjs';
 import {mergeResult} from './merge-result.mjs';
 import {mergeDialog} from './merge-dialog.mjs';
-import {saveStatus, paintSaveStatus} from './save-status.mjs';
+import {saveStatus, paintSaveStatus, changeNotice} from './save-status.mjs';
 import {changeReview} from './change-review.mjs';
 import {publicationStatus} from './publication-status.mjs';
 import {storyView} from './story.mjs';
@@ -28,7 +28,7 @@ import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.22.2'});
+const app = new App({name: 'matsugit', version: '0.23.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const downloadFile = fileDownloads(demo ? null : app);
@@ -50,6 +50,7 @@ let story;
 let publication;
 let refreshRequested = false, copying = false, feedbackTimer;
 let incomingDocument = null;
+let noticeMessage = '';
 let mergeAttempt = null;
 const mergeReview = mergeDialog();
 const externalReview = changeReview();
@@ -89,12 +90,22 @@ function actionFeedback(id, phase, message) {
 }
 const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
-const notice = (message = '') => {
-  message ||= incomingDocument ? 'An incoming document is waiting. Your draft is retained.'
-    : state.conflict ? 'The file changed outside this editor. Your draft is retained. Review both versions before choosing.' : '';
-  $('notice').hidden = !message; $('notice-text').textContent = message;
-  $('reload').hidden = !state.conflict && !incomingDocument;
-};
+function paintNotice() {
+  const receipt = changeNotice(state, dirty());
+  const message = noticeMessage || (incomingDocument ? 'Another document is waiting. Your current draft is retained.' : receipt?.detail || '');
+  $('notice').hidden = !message;
+  $('notice').dataset.kind = state.conflict ? 'review' : 'info';
+  $('notice-title').hidden = !receipt;
+  $('notice-title').textContent = receipt?.title || '';
+  $('notice-text').textContent = message;
+  $('reload').hidden = !state.conflict && !incomingDocument && !(state.fileReceipt && externalChange);
+  $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
+  $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
+  $('notice-save').hidden = !state.fileReceipt || state.conflict || !dirty();
+  $('notice-save').disabled = $('save').disabled;
+  $('notice-dismiss').hidden = !state.fileReceipt || state.conflict || !!incomingDocument;
+}
+const notice = (message = '') => { noticeMessage = message; paintNotice(); };
 const status = message => { $('status').textContent = message; };
 const editability = new Compartment();
 const setup = new Compartment();
@@ -129,8 +140,8 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
-  'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows})) $(id).append(createElement(icon));
-tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,downloadFile,enabled:()=>!demo&&!state.loading});
+  'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
+tables=tableDialog({editor,state,call,changed:()=>{scheduleRecovery();if(tables)refreshControls();},notice,downloadFile,enabled:()=>!demo&&!state.loading});
 const agentSlide = slideAgent({
   snapshot:()=>({...state,text:text(),generation:loadSequence}),
   enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!state.delivering&&!tables.pending(),
@@ -217,16 +228,18 @@ function refreshControls() {
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
   paintSaveStatus($('save-state'), saveStatus(state, dirty(), tables.pending()));
-  $('save').disabled = !!demo || state.saving || state.merging || state.delivering || !state.writable || !state.etag || state.conflict || !dirty();
+  $('save').disabled = !!demo || state.loading || state.saving || state.merging || state.delivering || tables.pending() || !state.writable || !state.etag || (!state.conflict && !dirty());
+  $('save').title = tables.pending() ? 'Apply table edits to the draft first' : state.conflict ? 'Review changes before saving' : 'Save file';
+  $('save').setAttribute('aria-label', $('save').title);
   $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving || state.merging;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
   $('refresh').setAttribute('aria-label', $('refresh').title);
   $('filename').textContent = state.name;
   $('filename').title = state.name;
-  $('reload').hidden = !state.conflict && !incomingDocument;
+  paintNotice();
   if (!state.rendering && !state.saving) status(state.conflict ? 'External changes detected'
     : state.rendered && state.renderedRevision !== state.revision ? 'Preview out of date'
-    : dirty() ? 'Unsaved changes' : demo ? 'Read-only design preview' : state.etag ? 'Saved' : 'Local draft');
+    : dirty() ? 'Unsaved draft' : demo ? 'Read-only design preview' : state.etag ? 'Saved to file' : 'Local draft');
   updateModelContext();
 }
 for (const button of document.querySelectorAll('[data-depth]')) button.onclick = () => {
@@ -505,7 +518,7 @@ async function reload(force = false, manual = false, expectedEtag = null) {
       externalChange = {base:state.base, local:text(), incoming:data.text, data, appliedText:null};
     }
     if ((state.conflict || dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
-      state.conflict = true; notice('The file changed outside this editor. Your draft is retained. Review both versions before choosing.');
+      state.conflict = true; notice();
       const key = `${state.revision}:${data.etag}`;
       if (dirty() && !redoDepth(editor.state) && !tables.pending() && !incomingDocument
           && !$('incoming-dialog').open && !mergeReview.isOpen() && !externalReview.isOpen() && mergeAttempt !== key) {
@@ -514,7 +527,7 @@ async function reload(force = false, manual = false, expectedEtag = null) {
         state.merging = true; refreshControls();
         try {
           const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:data.text});
-          if (!merge.conflicts) await applyMerged(data, mergeResult(merge), snapshot);
+          if (!merge.conflicts) await applyMerged(data, mergeResult(merge), snapshot, 'merged');
         } catch(error) { if (sequence === loadSequence) notice(`Draft retained. ${error.message}`); }
         finally { state.merging = false; }
       }
@@ -522,7 +535,7 @@ async function reload(force = false, manual = false, expectedEtag = null) {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
       state.saveError = null; state.lastSavedAt = null;
       state.conflict = false;
-      if (data.text !== text()) { tables.reset(); replaceText(data.text, {baseline:true}); }
+      if (data.text !== text()) { tables.reset(); replaceText(data.text, {baseline:true}); state.fileReceipt = 'updated'; }
       if (externalChange?.data.etag === data.etag) externalChange.appliedText = data.text;
       notice(); scheduleRender();
       scheduleRecovery();
@@ -540,7 +553,7 @@ function checkMergeSnapshot(snapshot) {
     throw Error('The draft changed. Nothing was replaced; review the versions again.');
   if (tables.pending()) throw Error('Apply or cancel the table edit before merging.');
 }
-async function applyMerged(data, merged, snapshot) {
+async function applyMerged(data, merged, snapshot, receipt = 'reviewed') {
   checkMergeSnapshot(snapshot);
   if (!data.etag) throw Error('The host did not provide a file version; cannot safely apply this merge.');
   if (new TextEncoder().encode(merged).length > 2 * 1024 * 1024) throw Error('Merged draft exceeds the 2 MiB editor limit.');
@@ -559,8 +572,8 @@ async function applyMerged(data, merged, snapshot) {
   if (merged !== latest.text) replaceText(merged);
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
   state.conflict = false;
-  notice('Changes merged into your draft. Review and Save when ready; a pre-merge recovery copy was kept.');
-  actionFeedback('refresh', 'done', 'External edits merged into draft; review and Save');
+  state.fileReceipt = receipt;
+  notice();
   scheduleRecovery(); scheduleRender(); refreshControls();
 }
 async function refresh(forceFull = false) {
@@ -581,25 +594,30 @@ async function refresh(forceFull = false) {
   refreshRequested = true;
   await render();
 }
-async function save() {
-  if ($('save').disabled) return;
+async function save({review = true} = {}) {
+  if ($('save').disabled) return false;
+  if (state.conflict) { if (review) await reviewForSave(); return false; }
   const value = text(), sequence = loadSequence;
   readSequence++;
   state.saving = true; refreshControls(); status('Saving');
   try {
     const result = state.uri ? await extensions.resources.write(state.uri, {text: value, ifMatch: state.etag})
       : await call('matsugit_save', {session: state.session, text: value, etag: state.etag});
-    if (sequence !== loadSequence) return;
+    if (sequence !== loadSequence) return false;
     if (result.outcome === 'saved') {
       state.base = value; state.etag = result.etag; state.conflict = false; state.saveError = null; state.lastSavedAt = Date.now();
+      state.fileReceipt = null;
       if (externalChange) externalChange.data = {text:value,etag:result.etag,writable:state.writable};
       notice();
+      return true;
     }
     else if (result.outcome === 'conflict') {
-      state.conflict = true; notice('Save refused: the file changed outside this editor. Your draft is retained.');
+      state.conflict = true; notice('The file changed before Save completed. Your draft is retained; review before saving.');
     } else throw Error(result.outcome === 'too-large' ? 'The file exceeds the host write limit.' : 'The host did not save the file.');
   } catch (error) { if (sequence === loadSequence) { state.saveError = error.message; notice(error.message); } }
   finally { if (sequence === loadSequence) { readSequence++; state.saving = false; refreshControls(); scheduleRecovery(); await flushRecovery(); } }
+  if (review && sequence === loadSequence && state.conflict) await reviewForSave();
+  return false;
 }
 function offerIncoming(data) {
   incomingDocument = data;
@@ -615,6 +633,7 @@ async function load(data, {acceptRevision = null} = {}) {
   incomingDocument = null;
   mergeAttempt = null;
   externalChange = null;
+  noticeMessage = '';
   story.reset();
   tables.reset();
   const suppliedRecovery = data.recovery;
@@ -631,7 +650,7 @@ async function load(data, {acceptRevision = null} = {}) {
   if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
   Object.assign(state, {uri: data.file?.resourceUri || null, session: data.session || null,
     name: data.file?.name || data.name || 'Untitled.md', path:data.path || null, conflict: false, rendered: null, renderedRevision: -1,
-    resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false, saveError:null, lastSavedAt:null,
+    resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false, saveError:null, lastSavedAt:null, fileReceipt:null,
     bases: {}, revisions: {}, forceFull: false,
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
   themeCatalog = {}; themeSequence++;
@@ -674,7 +693,7 @@ async function load(data, {acceptRevision = null} = {}) {
     state.loading = false;
     editor.dispatch({effects: editability.reconfigure(editable(!demo))});
     notice(state.writable && !state.etag ? 'The host supplied no file version. Saving is disabled to protect concurrent edits.' : '');
-    if (state.conflict) notice('Recovered draft differs from the current file. Download the draft or reload the file; Save is blocked.');
+    if (state.conflict) notice('Recovered draft differs from the saved file. Both versions are retained for review.');
     else if (suppliedRecovery) notice(state.writable ? 'Recovered local draft. The source file was not changed.' : 'Recovered local copy. Download to keep it; the original file is unavailable here.');
     if (state.uri) {
       disposeUpdates = extensions.resources.addUpdateHandler(({params}) => { if (params.uri === state.uri) reload(); });
@@ -737,14 +756,14 @@ function applyRecovery(record) {
   if(record.view?.tableDraft)setTimeout(()=>tables.restore(record.view.tableDraft),0);
 }
 function recoveryFailure(error) {
-  $('recovery-status').textContent = 'Recovery unavailable';
+  $('recovery-status').textContent = 'Draft backup unavailable';
   $('recovery-status').title = error.message; $('recovery-status').dataset.error = 'true';
 }
 function scheduleRecovery() {
   if (demo || state.loading || !recoveryId) return;
   if (recoveryCandidate && !dirty()) return;
   recoveryPending = true;
-  $('recovery-status').textContent = 'Recovery pending';
+  $('recovery-status').textContent = 'Backing up draft...';
   clearTimeout(recoveryTimer); recoveryTimer = setTimeout(flushRecovery, 600);
 }
 async function flushRecovery() {
@@ -759,7 +778,7 @@ async function flushRecovery() {
       const result = await call('matsugit_recovery_checkpoint', snapshot);
       if (sequence !== loadSequence) return;
       $('recovery-status').dataset.error = 'false';
-      $('recovery-status').textContent = recoveryPending ? 'Recovery pending' : 'Recovery saved';
+      $('recovery-status').textContent = recoveryPending ? 'Backing up draft...' : 'Draft backed up';
       $('recovery-status').title = `Private recovery copy: ${new Date(result.updated).toLocaleString()}. Original file not saved.`;
     } catch (error) { if (sequence === loadSequence) recoveryFailure(error); }
   })();
@@ -828,7 +847,7 @@ async function restoreCopy(record) {
       state.loading = false; editor.dispatch({effects: editability.reconfigure(editable(!demo))});
     }
   }
-  notice(state.conflict ? 'Recovered draft differs from the current file. Download it or reload the file; Save is blocked.' : 'Recovered local draft. The source file was not changed.');
+  notice(state.conflict ? 'Recovered draft differs from the saved file. Both versions are retained for review.' : 'Recovered local draft. The source file was not changed.');
   scheduleRecovery(); refreshControls(); await flushRecovery(); render();
 }
 $('restore-draft').onclick = async () => {
@@ -854,7 +873,9 @@ function hostContext(context) {
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   for (const side of ['top','bottom','left','right']) document.documentElement.style.setProperty(`--safe-${side}`, `${context?.safeAreaInsets?.[side] || 0}px`);
 }
-$('save').onclick = save;
+$('save').onclick = () => save();
+$('notice-save').onclick = () => save();
+$('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
 publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
 delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication});
@@ -863,13 +884,48 @@ $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };
 $('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); scheduleRecovery(); };
-$('reload').onclick = reviewIncoming;
+$('reload').onclick = () => incomingDocument ? reviewIncoming() : state.conflict ? reviewForSave() : reviewAllChanges();
 $('external-review').onclick = reviewAllChanges;
 $('incoming-review').onclick = () => { $('incoming-dialog').close(); void reviewAllChanges(); };
 async function resolvePlan(plan) {
   if (!plan.conflicts) return mergeResult(plan);
   return new Promise((resolve, reject) => mergeReview.open(plan, resolve,
     () => reject(Error('Merge canceled; draft retained.'))));
+}
+async function reviewForSave() {
+  if (state.loading || state.saving || state.merging || state.delivering || incomingDocument) return;
+  if (tables.pending()) { notice('Your table draft is retained. Apply or close the table edit before reviewing file changes.'); return; }
+  const snapshot = mergeSnapshot();
+  state.merging = true; refreshControls();
+  try {
+    const data = await resourceRead();
+    const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:data.text});
+    checkMergeSnapshot(snapshot);
+    if (!externalChange || externalChange.data.etag !== data.etag)
+      externalChange = {base:snapshot.base, local:snapshot.text, incoming:data.text, data, appliedText:null};
+    let prepared = null;
+    mergeReview.open(merge, async candidate => {
+      if (state.loading || state.saving || state.merging || state.delivering) throw Error('Wait for the current operation.');
+      if (prepared) {
+        if (state.revision !== prepared.revision || state.etag !== prepared.etag || text() !== prepared.text || state.conflict)
+          throw Error('The versions changed after review. Your draft is retained; review the latest file.');
+      }
+      if (!prepared || text() !== candidate) {
+        state.merging = true; refreshControls();
+        try {
+          await applyMerged(data, candidate, prepared ? mergeSnapshot() : snapshot);
+          prepared = {revision:state.revision, etag:state.etag, text:candidate};
+        } finally { state.merging = false; refreshControls(); }
+      }
+      // A failed write leaves the reviewed result in the draft for retry, never
+      // re-applies an older snapshot over subsequent typing or another file edit.
+      if (!dirty() && !state.conflict) { state.fileReceipt = null; notice(); return; }
+      if (!await save({review:false})) throw Error(state.conflict
+        ? 'The file changed again before saving. Your reviewed draft is retained; review the latest file.'
+        : `Reviewed draft retained, not saved. ${state.saveError || 'Save is unavailable.'}`);
+    }, undefined, {save:true, context:`File: ${state.path || state.name}\nOnly the reviewed version will be saved. Git publication is unchanged.`, recheck:reviewForSave, versions:reviewIncoming});
+  } catch (error) { notice(error.message); }
+  finally { state.merging = false; refreshControls(); }
 }
 async function reviewAllChanges() {
   if (!externalChange || state.saving || state.merging || tables.pending()) return;

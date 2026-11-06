@@ -39,7 +39,7 @@
       <button id="refresh" title="Render preview" aria-label="Render preview"></button>
     </div>
   </nav>
-  <div id="notice" role="status" hidden><span id="notice-text"></span><button id="reload" hidden>Review changes</button></div>
+  <div id="notice" role="status" hidden><div class="notice-copy"><strong id="notice-title" hidden></strong><span id="notice-text"></span></div><div class="notice-actions"><button id="reload" hidden>Review changes</button><button id="notice-save" hidden>Save file</button><button id="notice-dismiss" title="Dismiss update receipt" aria-label="Dismiss update receipt" hidden></button></div></div>
   <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
   <div id="workspace" data-layout="split">
     <section id="source-pane" aria-label="Source">
@@ -145,15 +145,17 @@
 </dialog>
 <dialog id="merge-dialog" aria-labelledby="merge-title">
   <div class="merge-heading"><h2 id="merge-title">Merge changes</h2><span id="merge-count" role="status"></span><button id="merge-previous" title="Previous conflict (Alt-Left)" aria-label="Previous conflict"></button><button id="merge-next" title="Next conflict (Alt-Right)" aria-label="Next conflict"></button></div>
+  <p id="merge-context" hidden></p>
   <section id="merge-conflict">
     <details><summary id="merge-line">Common base</summary><textarea id="merge-base" aria-label="Common base" readonly></textarea></details>
-    <div class="merge-versions"><label>Your draft<textarea id="merge-local" readonly></textarea></label><label>File on disk<textarea id="merge-incoming" readonly></textarea></label></div>
-    <div class="merge-choices"><button id="merge-mine">Use mine</button><button id="merge-file">Use file</button><button id="merge-both">Keep both</button></div>
-    <label>Resolution<textarea id="merge-result"></textarea></label>
+    <div class="merge-versions"><label>Your draft<textarea id="merge-local" readonly></textarea></label><label>Saved file (changed elsewhere)<textarea id="merge-incoming" readonly></textarea></label></div>
+    <div class="merge-choices"><button id="merge-mine">Keep my edit</button><button id="merge-file">Keep file edit</button><button id="merge-both">Keep both</button></div>
+    <label>Result for this passage<textarea id="merge-result"></textarea></label>
   </section>
-  <details id="merge-preview"><summary>Merged document</summary><textarea id="merge-complete" aria-label="Merged document" readonly></textarea></details>
+  <details id="merge-preview"><summary>Full resulting document</summary><textarea id="merge-complete" aria-label="Merged document" readonly></textarea></details>
   <p id="merge-status" role="status"></p>
-  <div class="incoming-actions"><button id="merge-cancel">Cancel</button><button id="merge-apply">Apply to draft</button></div>
+  <details id="merge-options" hidden><summary>More options</summary><button id="merge-versions">Compare whole files</button></details>
+  <div class="incoming-actions"><button id="merge-cancel">Keep editing</button><button id="merge-recheck" hidden>Review latest file</button><button id="merge-apply">Apply to draft</button></div>
 </dialog>
 <dialog id="table-dialog" aria-labelledby="table-title">
   <div class="recovery-heading"><h2 id="table-title">Edit table</h2><span id="table-cell" aria-live="polite"></span><button id="table-expand" title="Expand table editor" aria-label="Expand table editor"></button><button id="table-close" title="Close table editor" aria-label="Close table editor"></button></div>

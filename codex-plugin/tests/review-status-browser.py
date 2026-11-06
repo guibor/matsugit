@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
             edit(expected.replace('Alpha later typing','Alpha local overlap'))
             remote = expected.replace('Alpha later typing','Alpha external overlap').replace('Beta original','Beta second agent')
             source.write_text(remote); frame.evaluate('matsugitWorkspace.reload()')
-            frame.locator('#reload').click(); frame.locator('#incoming-review').click()
+            frame.locator('#external-review').click()
             frame.locator('#changes-dialog').wait_for(state='visible')
             frame.locator('#changes-preview').click()
             frame.locator('#merge-dialog').wait_for(state='visible')
