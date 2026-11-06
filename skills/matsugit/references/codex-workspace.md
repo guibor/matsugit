@@ -12,10 +12,16 @@ configuration. Preview is local, uses temporary files and does not save or publi
 Use `layout: "story"` with `matsugit_open` when the user wants to work on narrative
 structure. Plugin 0.18 offers Overview and Walkthrough within Story. Overview
 is a dense indented narrative map; Walkthrough is a scrollable sequence of
-slide-shaped surfaces showing only the title and claim. Both pair each H2 title
+slide-shaped surfaces showing the title, claim and takeaways. Both pair each H2 title
 with its H3 claim, grouped under H1 sections, and edit the same source. Switching
 keeps the current slide and is view-only. Walkthrough has previous/next controls
 and PageUp/PageDown on a focused slide. There are no separate title/claim tabs.
+Plugin 0.19 separates scrolling from selection: arrows and j/k scroll when no
+row is selected, or move an explicit selection. h/l jump between sections;
+PageUp/PageDown and Home/End also work. Escape or clicking the background clears
+selection. Wheel scrolling never selects. Text fields retain ordinary typing.
+Takeaways appear in both views. Single-line Markdown/Org blocks and Markdown
+callouts edit inline; multiline takeaways open at their source location.
 Click either field to edit; Tab moves between fields. Add slide accepts a title
 and optional claim with an empty body. An empty body is unfinished work, not
 permission to invent evidence. When asked to fill it, retain the user's title,

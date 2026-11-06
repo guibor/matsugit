@@ -116,6 +116,7 @@ button[data-feedback=busy] svg{animation:action-spin 1s linear infinite}
 #story-list{overflow:auto;flex:1;min-height:0;padding:8px max(12px,calc((100% - 1100px)/2));scroll-padding:16px;container-type:inline-size}
 .story-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:start;gap:8px;padding:10px 6px;border-left:3px solid transparent;outline:none}
 .story-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#story-list:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .story-context{display:none}
 .story-selected{border-left-color:var(--accent);background:color-mix(in srgb,var(--accent) 4%,transparent)}
 .story-section{margin-top:16px;border-bottom:1px solid var(--border);padding-top:6px;padding-bottom:6px}
@@ -155,14 +156,19 @@ button[data-feedback=busy] svg{animation:action-spin 1s linear infinite}
 #story-pane[data-story-mode=overview] .story-claim,#story-pane[data-story-mode=overview] .story-add-claim,#story-pane[data-story-mode=overview] .story-detail{grid-column:2}
 #story-pane[data-story-mode=overview] .story-title,#story-pane[data-story-mode=overview] .story-edit{font-size:13px;line-height:1.4;min-height:24px;padding:2px 3px}
 #story-pane[data-story-mode=overview] .story-claim .story-title{color:var(--fg);font-weight:400}
+.story-takeaway{margin-top:10px;border-left:3px solid var(--accent);padding:4px 8px;background:color-mix(in srgb,var(--accent) 6%,var(--bg))}
+.story-takeaway-label{display:block;font-size:10px;font-weight:650;color:var(--muted);line-height:1.5}
+.story-takeaway .story-title{white-space:pre-line}
+#story-pane[data-story-mode=overview] .story-takeaway{grid-column:1/-1;margin-top:2px;padding:2px 6px}
+#story-pane[data-story-mode=overview] .story-takeaway .story-title,#story-pane[data-story-mode=overview] .story-takeaway .story-edit{font-size:12px;line-height:1.4;font-weight:550}
 #story-pane[data-story-mode=overview] .story-marker{line-height:24px;font-size:10px}
 #story-pane[data-story-mode=overview] .story-detail{font-size:10px;margin-top:0}
 #story-pane[data-story-mode=overview] .story-actions{grid-column:3;grid-row:1;flex-wrap:nowrap}
 
-#story-pane[data-story-mode=walkthrough] #story-list{padding:16px max(12px,calc((100% - 960px)/2));scroll-snap-type:y proximity}
+#story-pane[data-story-mode=walkthrough] #story-list{padding:16px max(12px,calc((100% - 960px)/2))}
 #story-pane[data-story-mode=walkthrough] .story-section{margin-top:16px;border:0;padding:6px 8px}
 #story-pane[data-story-mode=walkthrough] .story-section .story-marker{visibility:hidden}
-#story-pane[data-story-mode=walkthrough] .story-slide{width:100%;min-width:0;max-width:100%;aspect-ratio:16/9;min-height:300px;box-sizing:border-box;grid-template-columns:28px minmax(0,1fr) auto;grid-template-rows:auto minmax(min-content,1fr);gap:4px 10px;margin:8px 0 24px;padding:16px 18px;border:1px solid var(--border);border-radius:4px;scroll-snap-align:start;background:var(--bg)}
+#story-pane[data-story-mode=walkthrough] .story-slide{width:100%;min-width:0;max-width:100%;min-height:max(300px,56.25cqw);box-sizing:border-box;grid-template-columns:28px minmax(0,1fr) auto;grid-template-rows:auto minmax(min-content,1fr);gap:4px 10px;margin:8px 0 24px;padding:16px 18px;border:1px solid var(--border);border-radius:4px;background:var(--bg)}
 #story-pane[data-story-mode=walkthrough] .story-slide.story-selected{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
 #story-pane[data-story-mode=walkthrough] .story-slide .story-context{display:block;grid-column:2;grid-row:1;align-self:center;min-width:0;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 #story-pane[data-story-mode=walkthrough] .story-slide .story-actions{grid-column:3;grid-row:1;justify-self:end;opacity:.5}
@@ -173,6 +179,8 @@ button[data-feedback=busy] svg{animation:action-spin 1s linear infinite}
 #story-pane[data-story-mode=walkthrough] .story-claim .story-title,#story-pane[data-story-mode=walkthrough] .story-claim .story-edit{font-size:20px;line-height:1.45;font-weight:400;color:var(--muted)}
 #story-pane[data-story-mode=walkthrough] .story-add-claim{margin-top:16px}
 #story-pane[data-story-mode=walkthrough] .story-detail{margin-top:24px}
+#story-pane[data-story-mode=walkthrough] .story-takeaway{margin-top:28px;padding:10px 14px}
+#story-pane[data-story-mode=walkthrough] .story-takeaway .story-title,#story-pane[data-story-mode=walkthrough] .story-takeaway .story-edit{font-size:18px;line-height:1.45;font-weight:550;min-height:28px}
 @container(max-width:700px){
   #story-pane[data-story-mode=overview] .story-row{grid-template-columns:22px minmax(0,1fr);padding-right:4px}
   #story-pane[data-story-mode=overview] .story-slide .story-body{display:block}

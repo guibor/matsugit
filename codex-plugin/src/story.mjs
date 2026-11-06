@@ -14,22 +14,37 @@ function button(icon, name, run) {
 export function storyView({editor, state, enabled, notice, sourceView, changed}) {
   const panel = $('story-pane'), list = $('story-list');
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
+  let hasSelection = false;
   const collapsed = new Set();
   const text = () => editor.state.doc.toString();
   const org = () => state.name.toLowerCase().endsWith('.org');
-  const active = () => state.layout === 'story';
+  const active = () => state.layout === 'story' && !document.body.classList.contains('presenting');
   const walkthrough = () => state.storyMode === 'walkthrough';
   const say = message => { $('story-status').textContent = message; };
   const refresh = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(render); };
-  const select = from => editor.dispatch({selection:{anchor:from}});
-  const fields = () => [...model.nodes, ...model.slides.flatMap(n => n.claims.filter(c => c.block))];
-  const owner = node => node?.kind === 'claim' ? node.parent : node;
+  const select = from => { hasSelection = true; editor.dispatch({selection:{anchor:from}}); };
+  const fields = () => [...model.nodes, ...model.slides.flatMap(n => [...n.claims.filter(c => c.block), ...n.takeaways])];
+  const owner = node => ['claim','takeaway'].includes(node?.kind) ? node.parent : node;
+  const selectedNode = () => hasSelection ? owner(model?.nodes.findLast(n => n.from <= editor.state.selection.main.head)) : null;
+  const position = () => hasSelection ? editor.state.selection.main.head : Number(visibleSlide()?.dataset.from ?? 0);
+  function selectionStyle() {
+    const node = selectedNode();
+    for (const row of list.children) row.classList.toggle('story-selected', Number(row.dataset.from) === node?.from);
+  }
+  function clearSelection() {
+    hasSelection = false; selectionStyle(); navigation();
+    list.focus({preventScroll:true});
+  }
+  function scrollTo(from) {
+    list.querySelector(`[data-from="${from}"]`)?.scrollIntoView({block:walkthrough() ? 'start' : 'nearest'});
+    navigation();
+  }
   function focus(from) {
     const row = list.querySelector(`[data-from="${from}"]`);
     row?.focus({preventScroll:true}); row?.scrollIntoView({block:walkthrough() ? 'start' : 'nearest'});
   }
   function currentSlide() {
-    const selected = owner(model?.nodes.findLast(n => n.from <= editor.state.selection.main.head));
+    const selected = selectedNode() || model?.slides.find(n => n.from === Number(visibleSlide()?.dataset.from));
     return selected?.kind === 'slide' ? selected : selected?.children.find(n => n.kind === 'slide') || model?.slides[0];
   }
   function navigation() {
@@ -42,11 +57,11 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
   function visit(direction) {
     finishEdit(); render();
     const index = model.slides.indexOf(currentSlide()), next = model.slides[index + direction];
-    if (next) focus(next.from);
+    if (next) hasSelection ? focus(next.from) : scrollTo(next.from);
   }
   function visibleSlide() {
     const bounds = list.getBoundingClientRect(), rows = [...list.querySelectorAll('.story-slide')];
-    const target = bounds.top + Math.min(120, bounds.height / 3);
+    const target = bounds.top + 8;
     const visible = rows.filter(row => {
       const box = row.getBoundingClientRect(); return box.bottom > bounds.top && box.top < bounds.bottom;
     });
@@ -64,7 +79,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     // A slide remains in view when returning to an overview with folded sections.
     const node = model.nodes.find(n => n.from === anchor);
     if (node?.parent) collapsed.delete(node.parent.from);
-    render(); focus(anchor); changed();
+    render(); scrollTo(anchor); changed();
   };
   $('story-previous').append(createElement(ChevronLeft)); $('story-previous').onclick = () => visit(-1);
   $('story-next').append(createElement(ChevronRight)); $('story-next').onclick = () => visit(1);
@@ -72,14 +87,14 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     cancelAnimationFrame(scrollFrame);
     scrollFrame = requestAnimationFrame(() => {
       if (!active() || !walkthrough() || editing || renderedSource !== text()) return;
-      const row = visibleSlide();
-      if (row && Number(row.dataset.from) !== currentSlide()?.from) select(Number(row.dataset.from));
+      navigation();
     });
   }, {passive:true});
   function apply(result, message) {
     if (!result) return;
     if (!enabled()) return;
     collapsed.clear();
+    hasSelection = true;
     editor.dispatch({changes:result.changes, selection:{anchor:result.anchor},
       annotations:[isolateHistory.of('full'), Transaction.userEvent.of('move.story')]});
     render(); focus(result.anchor); say(message);
@@ -110,7 +125,8 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     try { range = titleRange(text(), node, org()); }
     catch (error) { notice(error.message); return; }
     const input = document.createElement('textarea');
-    input.rows = 1; input.value = range.text; input.setAttribute('aria-label', `Edit ${node.kind} title`);
+    input.rows = 1; input.value = range.text;
+    input.setAttribute('aria-label', node.kind === 'takeaway' ? 'Edit takeaway' : `Edit ${node.kind} title`);
     input.className = 'story-edit'; input.spellcheck = true;
     const current = {input, ...range, heading:node.from, snapshot:text()};
     editing = current;
@@ -130,7 +146,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       try {
         editor.dispatch({changes:{from:current.from,to:current.to,insert:value},
           selection:{anchor:current.from + Math.min(input.selectionEnd, value.length)},
-          annotations:Transaction.userEvent.of('input.story')});
+          annotations:Transaction.userEvent.of('input.type.story')});
         current.to = current.from + value.length; current.snapshot = text();
       } finally { ownInput = false; }
     };
@@ -180,7 +196,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
   $('story-new-close').onclick = () => $('story-new-dialog').close();
   function newSlide() {
     if (!enabled()) return;
-    const snapshot = text(), position = editor.state.selection.main.head;
+    const snapshot = text(), at = position();
     const dialog = $('story-new-dialog'), title = $('story-new-slide-title'), claim = $('story-new-claim');
     title.value = ''; claim.value = '';
     $('story-new-form').onsubmit = event => {
@@ -188,7 +204,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       if (!enabled()) return;
       if (snapshot !== text()) { notice('The draft changed. Close this form and choose the insertion point again.'); return; }
       try {
-        const result = insertStory(text(),position,'slide',org(),{title:title.value,claim:claim.value.replace(/[\r\n]+/g,' ')});
+        const result = insertStory(text(),at,'slide',org(),{title:title.value,claim:claim.value.replace(/[\r\n]+/g,' ')});
         dialog.close(); apply(result,'Slide added with an empty body. Unsaved.');
       } catch (error) { notice(error.message); }
     };
@@ -201,7 +217,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       try {
         finishEdit();
         if (kind === 'slide') { newSlide(); return; }
-        const result = insertStory(text(),editor.state.selection.main.head,kind,org());
+        const result = insertStory(text(),position(),kind,org());
         apply(result,`${kind === 'slide' ? 'Slide' : 'Section'} added. Unsaved.`);
         const node = model.nodes.find(n => n.from === result.anchor);
         if (node) edit(node);
@@ -221,7 +237,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     const empty = model.slides.filter(n => n.empty).length;
     $('story-count').textContent = `${model.slides.length} slides${empty ? ` / ${empty} empty` : ''}`;
     $('story-empty').hidden = !!model.sections.length || !!model.slides.length;
-    const selected = owner(model.nodes.findLast(n => n.from <= editor.state.selection.main.head));
+    const selected = selectedNode();
     for (const node of model.nodes) {
       if (node.kind === 'claim') continue;
       let parent = node.parent, hidden = false;
@@ -240,6 +256,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       row.setAttribute('aria-label', `${node.kind}: ${node.label}`);
       row.classList.toggle('story-selected', selected?.from === node.from);
       row.onfocus = () => select(node.from);
+      row.onclick = event => { if (!event.target.closest('button,textarea,select')) focus(node.from); };
       const marker = document.createElement('div'); marker.className = 'story-marker';
       marker.title = node.kind === 'slide' ? 'Slide title (H2)' : 'Section (H1)';
       if (node.kind === 'section') {
@@ -253,10 +270,16 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       const body = document.createElement('div'); body.className = 'story-body';
       function field(heading) {
         const slot = document.createElement('div'); slot.dataset.heading = heading.from;
-        slot.className = heading.kind === 'claim' ? 'story-claim' : 'story-heading';
+        slot.className = heading.kind === 'takeaway' ? 'story-takeaway' : heading.kind === 'claim' ? 'story-claim' : 'story-heading';
         const title = document.createElement('button'); title.type = 'button'; title.className = 'story-title';
-        title.textContent = heading.label || 'Untitled'; title.title = `Edit ${heading.kind} title`;
-        title.disabled = !enabled(); title.onclick = () => { select(heading.from); edit(heading); };
+        title.textContent = heading.label || 'Untitled';
+        let inline = true;
+        if (heading.kind === 'takeaway') {
+          const label = document.createElement('span'); label.className = 'story-takeaway-label'; label.textContent = 'Takeaway'; slot.append(label);
+          try { titleRange(text(),heading,org()); } catch { inline = false; }
+        }
+        title.title = heading.kind === 'takeaway' ? (inline ? 'Edit takeaway' : 'Edit takeaway in source') : `Edit ${heading.kind} title`;
+        title.disabled = !enabled(); title.onclick = () => { select(owner(heading).from); inline ? edit(heading) : sourceView(heading.from); };
         slot.append(title); body.append(slot);
       }
       field(node);
@@ -275,6 +298,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
           count.textContent = node.empty ? 'Empty body' : `+ ${node.continuations} continuation${node.continuations > 1 ? 's' : ''}`;
           count.className = 'story-detail'; body.append(count);
         }
+        for (const takeaway of node.takeaways) field(takeaway);
       }
       const actions = document.createElement('div'); actions.className = 'story-actions';
       if (node.kind !== 'claim') {
@@ -318,16 +342,12 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
       row.append(marker,context,body,actions);
       row.onkeydown = event => {
         if (event.target.matches('textarea,select')) return;
-        if (walkthrough() && ['PageUp','PageDown'].includes(event.key)) {
-          event.preventDefault(); visit(event.key === 'PageUp' ? -1 : 1);
-        } else if (event.altKey && ['ArrowUp','ArrowDown'].includes(event.key)) {
+        if (event.altKey && !event.ctrlKey && !event.metaKey && ['ArrowUp','ArrowDown'].includes(event.key)) {
           event.preventDefault(); step(node.from,event.key === 'ArrowUp' ? -1 : 1);
-        } else if (event.target === row && ['ArrowUp','ArrowDown'].includes(event.key)) {
-          event.preventDefault(); (event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling)?.focus();
         } else if (event.target === row && event.key === 'Enter') {
           event.preventDefault(); edit(node);
-        } else if (!walkthrough() && event.target === row && ['ArrowLeft','ArrowRight'].includes(event.key) && node.kind === 'section') {
-          event.preventDefault(); event.key === 'ArrowLeft' ? collapsed.add(node.from) : collapsed.delete(node.from); render(); focus(node.from);
+        } else if (!walkthrough() && event.target === row && event.key === ' ' && node.kind === 'section') {
+          event.preventDefault(); collapsed.has(node.from) ? collapsed.delete(node.from) : collapsed.add(node.from); render(); focus(node.from);
         }
       };
       list.append(row);
@@ -341,6 +361,39 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
     if ((event.metaKey || event.ctrlKey) && ['z','y'].includes(event.key.toLowerCase())) {
       event.preventDefault(); if (enabled()) (event.shiftKey || event.key.toLowerCase() === 'y' ? redo : undo)(editor);
     }
+  });
+  // Scrolling is view-only. Only an explicit row focus/click selects a slide.
+  document.addEventListener('pointerdown', event => {
+    if (!active() || event.button !== 0 || event.target.closest('.story-row,button,input,select,textarea,dialog,a,[role=separator]')) return;
+    finishEdit(); clearSelection();
+  });
+  document.addEventListener('keydown', event => {
+    if (!active() || event.defaultPrevented || event.isComposing || event.altKey || event.metaKey || event.ctrlKey
+      || document.querySelector('dialog[open]') || event.target.isContentEditable
+      || event.target.closest('textarea,input,select')) return;
+    const key = event.key;
+    if (key === 'Escape') { event.preventDefault(); clearSelection(); return; }
+    if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','j','k','h','l','PageUp','PageDown','Home','End'].includes(key) || event.shiftKey) return;
+    event.preventDefault();
+    const direction = ['ArrowUp','ArrowLeft','k','h','PageUp','Home'].includes(key) ? -1 : 1;
+    if (key === 'h' || key === 'l') {
+      const at = position(), sections = model.sections;
+      const current = sections.findLast(n => n.from <= at);
+      const next = sections[sections.indexOf(current) + direction];
+      if (next) hasSelection ? focus(next.from) : list.querySelector(`[data-from="${next.from}"]`)?.scrollIntoView({block:'start'});
+    } else if (hasSelection) {
+      const rows = [...list.querySelectorAll(walkthrough() ? '.story-slide' : '.story-row')];
+      const from = selectedNode()?.from;
+      const next = key === 'Home' ? rows[0] : key === 'End' ? rows.at(-1)
+        : direction < 0 ? rows.findLast(row => Number(row.dataset.from) < from)
+        : rows.find(row => Number(row.dataset.from) > from);
+      if (next) focus(Number(next.dataset.from));
+    } else if (key === 'Home' || key === 'End') {
+      list.scrollTo({top:key === 'Home' ? 0 : list.scrollHeight,behavior:'instant'});
+    } else {
+      list.scrollBy({top:direction * (key.startsWith('Page') ? list.clientHeight * .85 : 72),behavior:'instant'});
+    }
+    navigation();
   });
   return {
     refresh,
@@ -371,11 +424,10 @@ export function storyView({editor, state, enabled, notice, sourceView, changed})
         collapsed.clear(); mapped.forEach(pos => collapsed.add(pos));
         refresh();
       } else if (update.selectionSet && active() && !editing) {
-        const node = owner(model?.nodes.findLast(n => n.from <= update.state.selection.main.head));
-        for (const row of list.children) row.classList.toggle('story-selected',Number(row.dataset.from) === node?.from);
+        selectionStyle();
         navigation();
       }
     },
-    reset() { editing = null; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
+    reset() { editing = null; hasSelection = false; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
   };
 }

@@ -110,9 +110,9 @@ Choose =Story= in the top view switch, then choose a presentation of the narrati
   title/claim pairs. Wider windows place each pair side by side; narrower panes
   put the claim beneath its title. Fold sections to inspect the larger structure.
 - =Walkthrough=: scroll through slide-shaped surfaces showing only the editable
-  title and claim, with section context and slide numbers. There is no evidence
+  title, claim and takeaways, with section context and slide numbers. There is no evidence
   body here, even when the real slide has one. Previous/next buttons and
-  =PageUp= / =PageDown= on a focused slide step through the argument.
+  =PageUp= / =PageDown= scroll without selecting, or step through selected slides.
 
 Switching keeps your place and never changes source or adds an Undo step.
 Walkthrough shows all slides, including those folded in Overview. Returning
@@ -125,8 +125,20 @@ Enable =Preview= for the existing Document/Slides output and heading synchroniza
   move between narrative fields, including the paired title and claim. Enter or
   Escape ends editing, retaining your draft edits. Inline Markdown is visible
   while editing; stable heading IDs/classes and Org tags/properties stay intact.
+- Takeaways appear beneath the title/claim in both views. Single-line fenced
+  Markdown, =[!TAKEAWAY]= callouts and native Org takeaways can be edited inline.
+  Multiline takeaways remain visible; click one to edit at its source location.
+  Notes, source blocks and agent comments are not exposed as takeaways.
+- With nothing selected, =Up= / =Down=, =Left= / =Right= and =k= / =j= scroll.
+  =PageUp= / =PageDown= scroll a viewport; =Home= / =End= go to the ends.
+  =h= / =l= visit the previous/next section. They never select or reorder text.
+  Click a row's number/background, or Tab to a row, to select it. Then the
+  same keys move selection instead (Page keys step slides in Walkthrough).
+  Escape or clicking outside the rows clears selection. Wheel/trackpad scrolling
+  leaves an existing selection where it was. None of these keys intercepts
+  typing or caret movement in a field, form, dialog, source editor or presentation.
 - Drag by the grip, or use up/down arrows to move among siblings. =Alt-Up= /
-  =Alt-Down= work on a focused row. Ordinary arrow keys visit rows; Enter edits.
+  =Alt-Down= work on a focused row. Enter edits the focused title.
 - Move a slide between sections with the two-way arrow, or drop its grip on a
   section title. The destination selector appends it to that section. Dropping
   on another slide inserts before/after the highlighted boundary.
@@ -138,7 +150,7 @@ Enable =Preview= for the existing Document/Slides output and heading synchroniza
   or agent request is invented. =Empty body= identifies slides awaiting detail.
   Save, then ask your agent to develop those slides without changing their order
   or claims. The folder-plus adds a section. A slide without a claim offers =+ Claim=.
-- In Overview, the chevron folds a section; Left/Right also fold/unfold a focused parent.
+- In Overview, the chevron or Space on a focused section folds/unfolds it.
   The code icon returns to that heading in the regular source editor.
 - =Ctrl/Cmd-Z= and =Ctrl/Cmd-Shift-Z= undo/redo. Each move is one Undo step.
   Edits enter the same draft immediately; only Save writes the file.

@@ -27,6 +27,14 @@ export function storyModel(source, org = false) {
         ...b, kind:'claim', block:true, parent:node, end:b.to, children:[],
         label:source.slice(b.startEnd, b.endFrom).trim(),
       }))].sort((a,b) => a.from-b.from);
+      node.takeaways = parsed.blocks.filter(b => b.role === 'takeaway' && b.from > node.from && b.to <= node.end
+        && !blocks.some(outer => outer !== b && b.from > outer.from && b.to <= outer.to
+          && ['notes','source','sources','agent-comment','comment'].includes(outer.role)))
+        .sort((a,b) => a.from-b.from).map(b => ({
+          ...b, kind:'takeaway', block:true, parent:node, end:b.to, children:[],
+          label:source.slice(b.startEnd, b.endFrom ?? b.to)
+            .replace(b.syntax === 'callout' ? /^ {0,3}>[ \t]?/gm : /$^/, '').trim(),
+        }));
       let body = source.slice(node.to, node.end);
       for (const claim of [...node.claims].reverse())
         body = body.slice(0,claim.from-node.to) + body.slice(claim.to-node.to);
@@ -39,8 +47,15 @@ export function storyModel(source, org = false) {
 
 export function titleRange(source, node, org = false) {
   if (node.block) {
-    const raw = source.slice(node.startEnd,node.endFrom), value = raw.trim();
-    if (!value || /[\r\n]/.test(value)) throw Error('Edit this multiline claim block in source view.');
+    const raw = source.slice(node.startEnd,node.endFrom ?? node.to), value = raw.trim();
+    if (node.syntax === 'callout') {
+      const lines = [...raw.matchAll(/(?:^|\n) {0,3}>[ \t]?([^\r\n]*)/g)].filter(m => m[1].trim());
+      if (lines.length !== 1) throw Error('Edit this multiline takeaway in source view.');
+      const match = lines[0], text = match[1].trim();
+      const from = node.startEnd + match.index + match[0].length - match[1].length + match[1].indexOf(text);
+      return {from,to:from+text.length,text};
+    }
+    if (!value || /[\r\n]/.test(value)) throw Error(`Edit this multiline ${node.kind} block in source view.`);
     const from = node.startEnd + raw.indexOf(value);
     return {from,to:from+value.length,text:value};
   }

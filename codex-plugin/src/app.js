@@ -25,7 +25,7 @@ import {publicationStatus} from './publication-status.mjs';
 import {storyView} from './story.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.18.0'});
+const app = new App({name: 'matsugit', version: '0.19.0'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,

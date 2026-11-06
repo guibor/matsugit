@@ -166,3 +166,35 @@ test('full story survives a leading blank and commented authoring guide; moves p
   assert(moved.startsWith(guide));
   assert.equal(storyModel(moved).slides.length,3);
 });
+
+test('takeaways stay with slides, exclude hidden blocks, and edit only their text', () => {
+  for (const org of [false,true]) {
+    const start = org ? '** First\r\n*** Claim\r\n' : '## First\r\n### Claim\r\n';
+    const block = (role,body) => org ? `#+begin_${role}\r\n${body}\r\n#+end_${role}\r\n`
+      : `:::: ${role}\r\n${body}\r\n::::\r\n`;
+    const source = start + block('takeaway','Decide **now**') + block('notes',block('takeaway','Hidden note'))
+      + block('agent-comment',block('takeaway','Hidden request')) + block('source',block('takeaway','Hidden source'))
+      + (org ? '** Second\r\n' : '## Second\r\n') + block('takeaway','First line\r\nSecond line');
+    const model = storyModel(source,org);
+    assert.deepEqual(model.slides.map(n => n.takeaways.map(t=>t.label)),[['Decide **now**'],['First line\r\nSecond line']]);
+    const range = titleRange(source,model.slides[0].takeaways[0],org);
+    assert.equal(source.slice(range.from,range.to),'Decide **now**');
+    assert.equal(source.slice(0,range.from)+'Revised'+source.slice(range.to),source.replace('Decide **now**','Revised'));
+    assert.throws(()=>titleRange(source,model.slides[1].takeaways[0],org),/multiline takeaway/);
+    const moved = apply(source,adjacentMove(source,model.slides[1].from,-1,org));
+    assert.equal(storyModel(moved,org).slides[0].takeaways[0].label,'First line\r\nSecond line');
+  }
+});
+
+test('callout takeaways preserve quote prefixes and never read notes or examples', () => {
+  const source = '## Title\r\n\r\n> [!TAKEAWAY]\r\n> Keep it simple\r\n\r\n'
+    + '> [!TAKEAWAY]\r\n> First\r\n> Second\r\n\r\n'
+    + '```md\n> [!TAKEAWAY]\n> Example\n```\n\n'
+    + '<!--\n> [!TAKEAWAY]\n> Comment\n-->\n\n'
+    + '::: notes\n> [!TAKEAWAY]\n> Secret\n:::\n';
+  const takeaways = storyModel(source).slides[0].takeaways;
+  assert.deepEqual(takeaways.map(t=>t.label),['Keep it simple','First\r\nSecond']);
+  const range = titleRange(source,takeaways[0]);
+  assert.equal(source.slice(0,range.from)+'New'+source.slice(range.to),source.replace('Keep it simple','New'));
+  assert.throws(()=>titleRange(source,takeaways[1]),/multiline takeaway/);
+});
