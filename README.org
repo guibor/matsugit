@@ -100,6 +100,12 @@ workspace; =Apply= updates the draft and =Save= writes the file. The copy icon
 beside the filename copies the actual source path, not a temporary preview URL.
 See [[file:docs/codex.org][the workspace guide]] for recovery and format boundaries.
 
+Exports use the host's download handler, including older Codex hosts. The
+dialog retains the prepared file and offers =Download again= without rendering
+it twice. A cancelled or failed transfer is not reported as a completed download.
+Source and table-draft downloads use the same delivery path; no public upload is
+needed. A browser-only fallback cannot confirm receipt.
+
 Short forms reduce layout boilerplate: =:::: columns 2:1= groups H4 regions,
 and a quoted =[!TAKEAWAY]= marks the conclusion. The braces icon can show quiet
 structural labels instead of delimiters; column ratios remain directly editable.

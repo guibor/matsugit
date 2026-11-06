@@ -1,8 +1,11 @@
-import {createElement, X, Upload, Plus, GitPullRequestArrow} from 'lucide';
+import {createElement, X, Upload, Plus, GitPullRequestArrow, Download} from 'lucide';
+import {exportMime} from './download.mjs';
 
-export function delivery({call, state, text, theme, notice, download, demo, reload, load, hasUnsaved, refreshControls, publication}) {
+export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, hasUnsaved, refreshControls, publication}) {
   const $ = id => document.getElementById(id);
   let busy = false, plan = null, options = {};
+  let prepared = null;
+  $('export-download-retry').append(createElement(Download), 'Download again');
   for (const id of ['close-export', 'close-publish']) $(id).append(createElement(X));
   $('publish').append(createElement(Upload));
   $('repository-toggle').append(createElement(Plus));
@@ -30,7 +33,7 @@ export function delivery({call, state, text, theme, notice, download, demo, relo
     busy = value;
     state.delivering = value;
     refreshControls();
-    for (const id of ['export-run', 'publish-review', 'publish-confirm', 'publish-move', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
+    for (const id of ['export-run', 'export-download-retry', 'publish-review', 'publish-confirm', 'publish-move', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
   }
   async function preferences(progress) {
     options = (await run('options', {}, progress)).result;
@@ -80,6 +83,7 @@ export function delivery({call, state, text, theme, notice, download, demo, relo
     if (busy) return;
     $('export-dialog').showModal();
     $('export-progress').textContent = '';
+    prepared = null; $('export-ready').hidden = true;
     $('export-destination').value = 'download';
     $('export-replace').checked = false; $('export-replace-row').hidden = true;
     lock(true);
@@ -104,13 +108,34 @@ export function delivery({call, state, text, theme, notice, download, demo, relo
     $('export-replace-row').hidden = source || $('export-destination').value !== 'sync';
     $('pptx-warning').hidden = $('export-format').value !== 'pptx';
   };
+  async function sendPrepared() {
+    $('export-ready').hidden = false;
+    $('export-filename').textContent = `${prepared.name} (${Math.ceil(prepared.blob.size / 1024)} KiB)`;
+    $('export-progress').textContent = 'Sending to host downloads...';
+    try {
+      const message = await downloadFile(prepared);
+      $('export-progress').textContent = [message, ...(prepared.warnings || [])].join('\n\n');
+    } catch (error) {
+      $('export-progress').textContent = `Download not completed: ${error.message}\n\nThe prepared file is retained. Download again does not rebuild the export.`;
+    }
+  }
+  $('export-download-retry').onclick = async () => {
+    if (busy || !prepared) return;
+    lock(true);
+    try { await sendPrepared(); }
+    finally { lock(false); $('export-format').onchange(); }
+  };
   $('export-run').onclick = async () => {
     if (busy) return;
     const format = $('export-format').value;
-    if (format === 'source') { download(); $('export-dialog').close(); return; }
     const args = snapshot(), sync = $('export-destination').value === 'sync';
+    prepared = null; $('export-ready').hidden = true;
     lock(true); $('export-progress').textContent = 'Preparing export...';
     try {
+      if (format === 'source') {
+        prepared = {name:args.name,blob:new Blob([args.text],{type:'text/plain;charset=utf-8'})};
+        await sendPrepared(); return;
+      }
       const job = await run('export', {...args, format, sync_folder:sync, replace:$('export-replace').checked}, $('export-progress'));
       if (!sync) {
         const chunks = []; let offset = 0, done = false;
@@ -118,14 +143,14 @@ export function delivery({call, state, text, theme, notice, download, demo, relo
           const part = await call('matsugit_export_chunk', {...job.owner, job:job.job, offset});
           chunks.push(Uint8Array.from(atob(part.chunk), c => c.charCodeAt(0)));
           offset = part.next; done = part.done;
-          $('export-progress').textContent = `Downloading ${Math.round(offset / 1024)} KiB`;
+          $('export-progress').textContent = `Receiving export: ${Math.round(offset / 1024)} KiB`;
         }
-        const url = URL.createObjectURL(new Blob(chunks));
-        const link = document.createElement('a'); link.href = url;
-        link.download = args.name.replace(/\.[^.]+$/, '') + '.' + format;
-        link.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+        prepared = {name:args.name.replace(/\.[^.]+$/, '') + '.' + format,
+          blob:new Blob(chunks,{type:exportMime[format]}),warnings:job.result.warnings};
+        await sendPrepared();
+      } else {
+        $('export-progress').textContent = [job.result.path, job.result.sync, ...(job.result.warnings || [])].filter(Boolean).join('\n\n');
       }
-      $('export-progress').textContent = [sync ? job.result.path : 'Download ready.', job.result.sync, ...(job.result.warnings || [])].filter(Boolean).join('\n\n');
     } catch (error) { $('export-progress').textContent = error.message; }
     finally { lock(false); $('export-format').onchange(); }
   };

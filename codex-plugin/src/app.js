@@ -25,11 +25,13 @@ import {publicationStatus} from './publication-status.mjs';
 import {storyView} from './story.mjs';
 import {slideAgent} from './slide-agent.mjs';
 import {slideAgentSender} from './slide-agent-request.mjs';
+import {fileDownloads} from './download.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.22.0'});
+const app = new App({name: 'matsugit', version: '0.22.1'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
+const downloadFile = fileDownloads(demo ? null : app);
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
   path:null, editorMode:'raw', storyPreview:false, storyMode:'overview', storySize:'large',
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
@@ -128,7 +130,7 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows})) $(id).append(createElement(icon));
-tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,enabled:()=>!demo&&!state.loading});
+tables=tableDialog({editor,state,call,changed:scheduleRecovery,notice,downloadFile,enabled:()=>!demo&&!state.loading});
 const agentSlide = slideAgent({
   snapshot:()=>({...state,text:text(),generation:loadSequence}),
   enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!state.delivering&&!tables.pending(),
@@ -691,10 +693,10 @@ async function load(data, {acceptRevision = null} = {}) {
     }
   }
 }
-function download() {
-  const url = URL.createObjectURL(new Blob([text()], {type: 'text/plain;charset=utf-8'}));
-  const link = document.createElement('a'); link.href = url; link.download = state.name;
-  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+async function download() {
+  status('Sending download...');
+  try { status(await downloadFile({name:state.name,blob:new Blob([text()],{type:'text/plain;charset=utf-8'})})); }
+  catch (error) { status('Download not completed'); notice(error.message); }
 }
 function recoveryScope() {
   return {...(state.session ? {session: state.session} : {}), ...(state.uri ? {resourceUri: state.uri} : {})};
@@ -854,7 +856,7 @@ function hostContext(context) {
 }
 $('save').onclick = save;
 publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
-delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, demo, reload, load,
+delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication});
 $('insert').onclick = () => insertMenu(editor);
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);

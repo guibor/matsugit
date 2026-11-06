@@ -11,7 +11,7 @@ import {createElement, Bold, Italic, Strikethrough, Code, Undo2, Redo2, Combine,
 import {tableExtensions, tableHTML, focusCell, tableContext, selectTableAxis, alignTableColumns, spreadsheetPaste} from '../../editor/table-core.js';
 import {tableRanges} from './visual.mjs';
 
-export function tableDialog({editor, state, call, changed, notice, enabled}) {
+export function tableDialog({editor, state, call, changed, notice, downloadFile, enabled}) {
   const $=id=>document.getElementById(id), dialog=$('table-dialog');
   let current=null, rich=null, busy=false, baseline='', token=0;
   let placement=null, resize=null;
@@ -141,11 +141,13 @@ export function tableDialog({editor, state, call, changed, notice, enabled}) {
   $('table-close').append(createElement(X));$('table-close').onclick=close;
   $('table-expand').append(createElement(Maximize2));$('table-expand').onclick=expand;
   $('table-apply').append(createElement(Check));$('table-apply').append('Apply');
-  $('table-download').append(createElement(Download));$('table-download').onclick=()=>{
+  $('table-download').append(createElement(Download));$('table-download').onclick=async()=>{
     const html=rich?tableHTML(rich):current?.html;
     if(!html)return;
-    const url=URL.createObjectURL(new Blob([html],{type:'text/html'}));
-    const link=document.createElement('a');link.href=url;link.download='table-draft.html';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    $('table-download').disabled=true; message('Sending table download...');
+    try { message(await downloadFile({name:'table-draft.html',blob:new Blob([html],{type:'text/html'})})); }
+    catch(error) { message(error.message); }
+    finally { $('table-download').disabled=false; }
   };
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
   dialog.addEventListener('keydown',event=>{

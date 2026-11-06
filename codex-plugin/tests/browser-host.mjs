@@ -11,6 +11,7 @@ const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-browser-test-'
 const fixture = process.env.MATSUGIT_SHOWCASE_SOURCE;
 const standardOnly = process.env.MATSUGIT_STANDARD_MCP === '1';
 const chatMode = process.env.MATSUGIT_TEST_CHAT || '';
+const downloadMode = process.env.MATSUGIT_TEST_DOWNLOAD || 'browser';
 const messages = [];
 let failChat = false;
 const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
@@ -31,13 +32,35 @@ app = (await client.readResource({uri: 'ui://matsugit/workspace-v1'})).contents[
 await start();
 if (process.platform !== 'win32') fs.rmdirSync(inherited);
 const host = `<!doctype html><meta charset="utf-8"><style>html,body,iframe{margin:0;border:0;width:100%;height:100%;display:block;overflow:hidden}</style>
-<iframe src="/app" id="app" allow="clipboard-write"></iframe><script>
+<iframe src="/app" id="app" allow="clipboard-write" ${downloadMode === 'browser' ? '' : 'sandbox="allow-scripts allow-same-origin allow-forms allow-modals"'}></iframe><script>
+window.downloadRequests=[];window.rejectDownload=false;window.exportRequests=0;
 window.addEventListener('message',async e=>{if(e.source!==document.getElementById('app').contentWindow||e.data?.jsonrpc!=='2.0')return;
 const message=e.data;
 if(message.method==='ui/notifications/initialized'){
 const result=await(await fetch(location.search.includes('file')?'/file-result':location.search.includes('untitled')?'/untitled-result':'/result')).json();
 e.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:result},'*');return;}
 if(message.id===undefined)return;
+if(message.method==='tools/call'&&message.params.name==='matsugit_action'&&message.params.arguments?.action==='export')window.exportRequests++;
+if(message.method==='ui/download-file'){
+  const reply=value=>e.source.postMessage({jsonrpc:'2.0',id:message.id,...value},'*');
+  const mode=${JSON.stringify(downloadMode)},params=message.params;
+  if(mode==='browser'){reply({error:{code:-32601,message:'Method not found'}});return;}
+  let blob,name;
+  if(mode==='legacy'){
+    if(!(params.blob instanceof Blob)||!params.name){reply({error:{code:-32602,message:'Invalid MCP file download params'}});return;}
+    blob=params.blob;name=params.name;
+  }else{
+    const item=params.contents?.[0]?.resource;
+    if(!item?.blob){reply({error:{code:-32602,message:'Expected resource contents'}});return;}
+    blob=new Blob([Uint8Array.from(atob(item.blob),c=>c.charCodeAt(0))],{type:item.mimeType});
+    name=decodeURIComponent(new URL(item.uri).pathname.split('/').pop());
+  }
+  window.downloadRequests.push({name,size:blob.size,type:blob.type});
+  if(window.rejectDownload){window.rejectDownload=false;reply({result:{isError:true}});return;}
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=name;document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);reply({result:{}});return;
+}
 try{const result=await(await fetch('/rpc',{method:'POST',body:JSON.stringify(message)})).json();e.source.postMessage({jsonrpc:'2.0',id:message.id,...result},'*');}
 catch(error){e.source.postMessage({jsonrpc:'2.0',id:message.id,error:{code:-32603,message:error.message}},'*');}
 });</script>`;
@@ -64,6 +87,7 @@ const server = http.createServer(async (req, res) => {
       let result = {};
       if (message.method === 'ui/initialize') result = {protocolVersion: '2026-01-26', hostInfo: {name: 'Isolated test host', version: '1.0.0'},
         hostCapabilities: {serverTools: {}, serverResources: {}, openLinks: {},
+          ...(downloadMode === 'standard' ? {downloadFile:{}} : {}),
           ...(chatMode ? {message:{text:{}}} : {}),
           experimental:{...(standardOnly ? {} : {'openai/resource':{}}), ...(chatMode === 'extended' ? {'openai/message':{}} : {})}},
         hostContext: {theme: 'light', displayMode: 'fullscreen'}};

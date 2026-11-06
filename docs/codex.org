@@ -1,5 +1,29 @@
 #+title: matsugit in Codex
 
+* Downloads
+Plugin 0.22.1 sends exports through the host's =ui/download-file= handler rather
+than assuming an embedded browser link can download. It supports both MCP
+resource contents and the older Codex structured-cloned Blob payload. Only an
+explicit parameter rejection permits that compatibility retry; cancellation,
+denial, timeout or a closed connection never triggers a second download.
+
+Choose the download icon, select a format, then =Export=. The host handles the
+save location. =Sent to host downloads= confirms handoff, not a verified disk
+write. The dialog stays open and retains the prepared bytes; =Download again=
+retries without rebuilding. Source includes unsaved edits and remains unsaved.
+Table drafts use the same host handler.
+
+If the host has no download method, a browser fallback is offered with an
+explicit warning that receipt cannot be confirmed. Retrying is a fresh user
+gesture. Hosts that block both mechanisms require another supported export
+destination, such as a configured sync folder; that folder is on the machine
+running matsugit, not necessarily the computer displaying Codex. No public file
+hosting or cloud upload is introduced.
+
+The download browser test exercises standard and older Codex-style hosts with
+direct iframe downloads blocked, plus an ordinary browser fallback. It verifies
+PowerPoint contents, binary-identical retries, cancellation and Unicode source.
+
 * Math
 Plugin 0.21.1 bundles MathJax 3.2.2 with SVG output for both reading documents
 and slides. Inline math, display equations, aligned calculations and math in
@@ -114,7 +138,8 @@ open the global matsugit workspace to start an unsaved draft.
 - =Theme=: choose the first item to follow project defaults, or an installed
   theme to try it for this preview. This does not change your source or settings.
 - Save icon or =Ctrl/Cmd-S=: save explicitly. Rendering never saves the source.
-- Download icon: download the current source, including unsaved edits.
+- Download icon: export source (including unsaved edits), PowerPoint, PDF,
+  slide HTML or a ZIP. The source file is not saved by exporting.
 
 The renderer supports Markdown, Quarto Markdown and Org. The editor currently
 provides Markdown highlighting; Org source still renders through matsugit's
