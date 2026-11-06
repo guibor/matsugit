@@ -92,10 +92,12 @@ export function moveStory(source, from, target, placement = 'before', org = fals
   const model = storyModel(source, org), node = model.nodes.find(n => n.from === from);
   const other = model.nodes.find(n => n.from === target);
   if (!node || !other || node.kind === 'claim') throw Error('Select a section or slide to move.');
-  if (!['before', 'after', 'inside'].includes(placement)) throw Error('Unknown move position.');
-  if (placement === 'inside' ? node.kind !== 'slide' || other.kind !== 'section' : node.kind !== other.kind)
+  if (!['before', 'after', 'inside', 'start'].includes(placement)) throw Error('Unknown move position.');
+  if (['inside','start'].includes(placement) ? node.kind !== 'slide' || other.kind !== 'section' : node.kind !== other.kind)
     throw Error('Move sections beside sections, or slides beside slides / into sections.');
-  const destination = placement === 'before' ? other.from : other.end;
+  // Section introductions/properties stay above their first slide.
+  const destination = placement === 'start' ? other.children.find(n => n.kind === 'slide')?.from ?? other.end
+    : placement === 'before' ? other.from : other.end;
   if (destination >= node.from && destination <= node.end) return null;
   // An unclosed block could swallow a new sibling. Refuse structural moves only.
   if (model.unfinished.length) throw Error('Close the unfinished Markdown/Org block before moving slides.');
@@ -118,6 +120,29 @@ export function moveStory(source, from, target, placement = 'before', org = fals
   if (JSON.stringify(identities(model)) !== JSON.stringify(identities(storyModel(result,org))))
     throw Error('This move changes how Markdown/Org blocks are parsed. Close any unfinished block and retry in source view.');
   return {changes:{from:start, to:end, insert}, anchor};
+}
+
+export function moveDestinations(model, from, query = '') {
+  const source = model.nodes.find(n => n.from === from);
+  if (!source || !['slide','section'].includes(source.kind)) return [];
+  const normalize = value => value.normalize('NFKD').replace(/\p{M}/gu,'').toLocaleLowerCase();
+  const phrase = normalize(query).trim().replace(/\s+/g,' ');
+  const terms = phrase.split(' ').filter(Boolean);
+  const rank = target => normalize(target.label).includes(phrase) ? 2
+    : normalize(`${target.context} ${target.claim}`).includes(phrase) ? 1 : 0;
+  const sectionName = node => `Section ${model.sections.indexOf(node) + 1}: ${node.label}`;
+  return model.nodes.filter(n => n.from !== from && (n.kind === 'section' || source.kind === 'slide' && n.kind === 'slide'))
+    .map(node => {
+      const label = node.kind === 'section' ? sectionName(node) : `${node.number}. ${node.label}`;
+      const context = node.kind === 'section' ? `${node.children.filter(n => n.kind === 'slide').length} slides`
+        : node.parent ? sectionName(node.parent) : 'No section';
+      const claim = (node.claims || []).map(c => c.label).join(' / ');
+      return {from:node.from, kind:node.kind, label, context, claim,
+        placements:source.kind === 'slide' && node.kind === 'section'
+          ? [['start','At start of section'],['inside','At end of section']]
+          : [['before',`Before this ${node.kind}`],['after',`After this ${node.kind}`]]};
+    }).filter(target => terms.every(term => normalize(`${target.label} ${target.context} ${target.claim}`).includes(term)))
+    .sort((a,b) => rank(b)-rank(a));
 }
 
 export function adjacentMove(source, from, direction, org = false) {

@@ -22,7 +22,11 @@ Walkthrough includes contrasting section-transition slides. Keep the original
 large view, or choose the grid icon for smaller editable slides side by side,
 grouped beneath full-width section dividers. The choice does not change exports.
 Switch without losing your place. Read the argument in sequence, rewrite either
-field, or drag a whole slide or section. Evidence, notes, tables and hidden
+field, or drag a whole slide or section. For long-distance moves, the two-way
+arrow opens =Move to...=: search by slide number, title, claim or section, then
+choose before/after a slide or the start/end of a section. =Alt-M= opens it on
+a focused row. Each move is one Undo step; dragging also scrolls at the list edges.
+Evidence, notes, tables and hidden
 comments travel with the slide, but stay out of these narrative views.
 Arrow keys and =j= / =k= scroll without selecting; with a row selected, they
 move the selection. =h= / =l= jump between sections. Escape or a background

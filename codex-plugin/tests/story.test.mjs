@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim} from '../src/story-model.mjs';
+import {storyModel, titleRange, moveStory, moveDestinations, adjacentMove, insertStory, insertClaim} from '../src/story-model.mjs';
 import {preferences} from '../src/recovery.mjs';
 
 const apply = (source, result) => result ? source.slice(0,result.changes.from) + result.changes.insert + source.slice(result.changes.to ?? result.changes.from) : source;
@@ -36,6 +36,53 @@ test('a slide moves between sections without losing its attached body', () => {
   assert(moved.endsWith(a.slice(a.indexOf('## Same'))));
   assert.equal(moved.split('Private note').length,2);
   assert(moved.startsWith(preamble+'# Context\n\n'+b));
+});
+
+test('destination search uses slide numbers, claims and section context, never hidden body text', () => {
+  const source = preamble+a+b+c, model = storyModel(source);
+  const from = model.slides[2].from;
+  assert.equal(moveDestinations(model,from,'learn first')[0].from,model.slides[1].from);
+  assert.equal(moveDestinations(model,from,'2. same context')[0].from,model.slides[1].from);
+  assert.equal(moveDestinations(model,from,'Private note').length,0);
+  assert.equal(moveDestinations(model,from,'commit').length,0);
+  assert.equal(moveDestinations(model,model.sections[0].from).length,1);
+  assert.equal(moveDestinations(model,model.nodes.find(n=>n.kind==='claim').from).length,0);
+  assert.equal(moveDestinations(model,from,'decision')[0].kind,'section');
+});
+
+test('section start keeps intros and empty sections intact, including Org properties', () => {
+  for (const org of [false,true]) {
+    const mark = org ? '*' : '#';
+    const intro = org ? ':PROPERTIES:\n:CUSTOM_ID: kept\n:END:\n\nIntro\n\n' : 'Intro\n\n';
+    const source = `${mark} First\n\n${intro}${mark.repeat(2)} One\n\nA\n\n${mark} Empty\n\nEmpty intro\n\n${mark} Last\n\n${mark.repeat(2)} Two\n\nB`;
+    const model = storyModel(source,org);
+    let moved = apply(source,moveStory(source,model.slides[1].from,model.sections[0].from,'start',org));
+    assert(moved.startsWith(`${mark} First\n\n${intro}${mark.repeat(2)} Two\n\nB\n\n${mark.repeat(2)} One`));
+    assert.deepEqual(storyModel(moved,org).sections[0].children.map(n=>n.label),['Two','One']);
+    moved = apply(source,moveStory(source,model.slides[0].from,model.sections[1].from,'start',org));
+    assert(moved.includes(`Empty intro\n\n${mark.repeat(2)} One`));
+    assert.equal(storyModel(moved,org).slides[0].parent.label,'Empty');
+    assert.equal(moveStory(source,model.slides[0].from,model.sections[0].from,'start',org),null);
+    assert.throws(()=>moveStory(source,model.sections[0].from,model.sections[1].from,'start',org),/Move sections/);
+  }
+});
+
+test('long-distance moves preserve every subtree and leave metadata in place', () => {
+  for (const org of [false,true]) {
+    const mark = org ? '*' : '#', prefix = org ? '#+title: Long\n\n' : preamble;
+    const source = prefix + Array.from({length:12},(_,section)=>`${mark} Chapter ${section+1}\n\n`
+      + Array.from({length:10},(_,i)=>`${mark.repeat(2)} Item ${section*10+i+1}\n${mark.repeat(3)} Message ${section*10+i+1}\n\nEvidence ${section*10+i+1}\n\n`).join('')).join('');
+    const model = storyModel(source,org);
+    const result = moveStory(source,model.slides[0].from,model.slides[117].from,'after',org);
+    const moved = apply(source,result), next = storyModel(moved,org);
+    assert(moved.startsWith(prefix));
+    assert.equal(next.slides[117].label,'Item 1');
+    assert.equal(next.slides[117].parent.label,'Chapter 12');
+    assert.equal(next.slides[117].from,result.anchor);
+    assert.deepEqual(next.slides.map(n=>moved.slice(n.from,n.end)).sort(),model.slides.map(n=>source.slice(n.from,n.end)).sort());
+    assert.deepEqual(moveDestinations(model,model.slides[0].from,'118.').map(n=>n.from),[model.slides[117].from]);
+    assert.equal(moveDestinations(model,model.slides[0].from,'chapter 12')[0].from,model.sections[11].from);
+  }
 });
 
 test('move arrows stay within siblings and preserve duplicate titles', () => {

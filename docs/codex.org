@@ -194,9 +194,15 @@ confirms delivery, not completion of the agent's work. Nothing is published.
   typing or caret movement in a field, form, dialog, source editor or presentation.
 - Drag by the grip, or use up/down arrows to move among siblings. =Alt-Up= /
   =Alt-Down= work on a focused row. Enter edits the focused title.
-- Move a slide between sections with the two-way arrow, or drop its grip on a
-  section title. The destination selector appends it to that section. Dropping
-  on another slide inserts before/after the highlighted boundary.
+- The two-way arrow opens =Move to...= (=Alt-M= on a focused row). Search by
+  slide number, title, claim or section. Choose before/after a slide, or the
+  start/end of a section, then =Move=. Section moves offer before/after another
+  section. Up/Down chooses a search result; Enter applies; Escape cancels.
+  Moves remain unsaved and each is one Undo step. If the draft changes while
+  choosing, reopen the picker so a move cannot use stale positions.
+- Dragging near the list's top/bottom scrolls automatically. Drop a slide's
+  grip on a section title to append it, or on another slide to insert
+  before/after the highlighted boundary.
 - A section carries all of its slides. A slide carries all text through the
   next H1/H2 boundary, including evidence, H3/H4 headings, notes and comments.
   Claims can be edited independently but are not detached from their slide.

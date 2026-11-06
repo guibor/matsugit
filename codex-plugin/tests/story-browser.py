@@ -210,8 +210,10 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             assert 'The final decision stays with this slide.' in current()
             # Move across sections via an accessible destination selector.
             first = frame.locator('.story-slide').first
-            first.get_by_role('button',name='Move to section').click()
-            frame.locator('#story-destination').select_option(label='What we do next')
+            first.get_by_role('button',name='Move to...',exact=True).click()
+            frame.locator('#story-move-search').fill('What we do next')
+            frame.locator('#story-destinations [role=option]').first.click()
+            frame.locator('#story-move-position').select_option('inside')
             frame.locator('#story-move-apply').click()
             assert titles()[-1].startswith('Demand has moved')
             assert current().index('## Demand has moved') > current().index('# What we do next')

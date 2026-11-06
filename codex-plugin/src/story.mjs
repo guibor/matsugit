@@ -2,6 +2,7 @@ import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, Chevron
 import {undo, redo, isolateHistory} from '@codemirror/commands';
 import {Transaction} from '@codemirror/state';
 import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim} from './story-model.mjs';
+import {storyMove} from './story-move.mjs';
 
 const $ = id => document.getElementById(id);
 function button(icon, name, run) {
@@ -16,10 +17,33 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
   let hasSelection = false;
   let browseAnchor = null;
+  let dragFrame = null, dragPointer = null;
   const collapsed = new Set();
   const text = () => editor.state.doc.toString();
   const org = () => state.name.toLowerCase().endsWith('.org');
   const active = () => state.layout === 'story' && !document.body.classList.contains('presenting');
+  function stopDragScroll() {
+    cancelAnimationFrame(dragFrame); dragFrame = null; dragPointer = null;
+  }
+  function dragScroll() {
+    dragFrame = null;
+    if (!drag || !dragPointer || !active() || drag.snapshot !== text()) return;
+    const box = list.getBoundingClientRect(), {x,y} = dragPointer;
+    if (x < box.left || x > box.right || y < box.top || y > box.bottom) return;
+    const edge = Math.min(64,box.height/4);
+    const speed = y < box.top+edge ? -22*(1-(y-box.top)/edge)
+      : y > box.bottom-edge ? 22*(1-(box.bottom-y)/edge) : 0;
+    if (!speed) return;
+    list.scrollTop += speed;
+    dragFrame = requestAnimationFrame(dragScroll);
+  }
+  list.addEventListener('dragover', event => {
+    if (!drag) return;
+    dragPointer = {x:event.clientX,y:event.clientY};
+    if (dragFrame === null) dragFrame = requestAnimationFrame(dragScroll);
+  });
+  list.addEventListener('dragleave', event => { if (!list.contains(event.relatedTarget)) stopDragScroll(); });
+  list.addEventListener('drop', stopDragScroll);
   const walkthrough = () => state.storyMode === 'walkthrough';
   const compact = () => walkthrough() && state.storySize === 'compact';
   const items = () => model?.nodes.filter(n => n.kind !== 'claim') || [];
@@ -193,22 +217,8 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
     const claim = model.nodes.find(n => n.from === result.anchor);
     if (claim) edit(claim);
   }
-  function destination(node) {
-    const dialog = $('story-move-dialog'), select = $('story-destination');
-    const snapshot = text(); select.replaceChildren();
-    for (const section of model.sections) {
-      const option = document.createElement('option'); option.value = String(section.from);
-      option.textContent = section.label || 'Untitled section';
-      option.selected = section.from === node.parent?.from; select.append(option);
-    }
-    $('story-move-apply').onclick = () => {
-      if (snapshot !== text()) { notice('The draft changed. Choose the destination again.'); dialog.close(); return; }
-      move(node.from, Number(select.value), 'inside'); dialog.close();
-    };
-    dialog.showModal();
-  }
-  $('story-move-close').append(createElement(X));
-  $('story-move-close').onclick = () => $('story-move-dialog').close();
+  const movePicker = storyMove({text,org,enabled,apply});
+  function destination(node) { finishEdit(); render(); movePicker.open(node.from); }
   $('story-new-close').append(createElement(X));
   $('story-new-close').onclick = () => $('story-new-dialog').close();
   function newSlide() {
@@ -337,17 +347,16 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
           const control = button(icon, label, () => step(node.from,direction));
           control.disabled = !enabled() || !siblings[index+direction]; actions.append(control);
         }
-        if (node.kind === 'slide') {
-          const control = button(ArrowRightLeft, 'Move to section', () => destination(node));
-          control.disabled = !enabled() || !model.sections.length; actions.append(control);
-        }
+        const control = button(ArrowRightLeft, 'Move to...', () => destination(node));
+        control.title = 'Move to... (Alt+M)';
+        control.disabled = !enabled(); actions.append(control);
         handle.disabled = !enabled();
         handle.ondragstart = event => {
           if (!enabled() || renderedSource !== text()) { event.preventDefault(); refresh(); return; }
           drag = {from:node.from, kind:node.kind, snapshot:text()};
           event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', node.label);
         };
-        handle.ondragend = () => { drag = null; list.querySelectorAll('[data-drop]').forEach(el => delete el.dataset.drop); };
+        handle.ondragend = () => { drag = null; stopDragScroll(); list.querySelectorAll('[data-drop]').forEach(el => delete el.dataset.drop); };
         row.ondragover = event => {
           if (!drag || drag.from === node.from || !enabled()) return;
           if (drag.kind !== node.kind && !(drag.kind === 'slide' && node.kind === 'section')) return;
@@ -371,6 +380,8 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
         if (event.target.matches('textarea,select')) return;
         if (event.altKey && !event.ctrlKey && !event.metaKey && ['ArrowUp','ArrowDown'].includes(event.key)) {
           event.preventDefault(); step(node.from,event.key === 'ArrowUp' ? -1 : 1);
+        } else if (event.altKey && !event.ctrlKey && !event.metaKey && event.code === 'KeyM') {
+          event.preventDefault(); destination(node);
         } else if (event.target === row && event.key === 'Enter') {
           event.preventDefault(); edit(node);
         } else if (!walkthrough() && event.target === row && event.key === ' ' && node.kind === 'section') {
@@ -439,6 +450,7 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
     refresh,
     finish:finishEdit,
     update(update) {
+      movePicker.update();
       if (ownInput) {
         // Inline edits change offsets for later rows. Keep their handlers current
         // without replacing the active textarea (or interrupting composition).
@@ -468,6 +480,6 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
         navigation();
       }
     },
-    reset() { editing = null; hasSelection = false; browseAnchor = null; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
+    reset() { editing = null; drag = null; stopDragScroll(); hasSelection = false; browseAnchor = null; collapsed.clear(); cancelAnimationFrame(scrollFrame); say(''); refresh(); },
   };
 }

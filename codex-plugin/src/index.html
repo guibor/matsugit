@@ -92,9 +92,15 @@
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span></footer>
 </main>
 <dialog id="story-move-dialog" class="delivery-dialog" aria-labelledby="story-move-title">
-  <div class="recovery-heading"><h2 id="story-move-title">Move slide</h2><button id="story-move-close" title="Close" aria-label="Close"></button></div>
-  <label>Section<select id="story-destination"></select></label>
-  <button id="story-move-apply" class="delivery-primary">Move to end of section</button>
+  <form id="story-move-form">
+    <div class="recovery-heading"><h2 id="story-move-title">Move slide</h2><button type="button" id="story-move-close" title="Close" aria-label="Close"></button></div>
+    <p id="story-move-source"></p>
+    <label>Destination<input id="story-move-search" type="search" placeholder="Title, claim, section or slide number" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="story-destinations" aria-expanded="true"></label>
+    <div id="story-destinations" role="listbox" aria-label="Move destinations"></div>
+    <label>Position<select id="story-move-position"></select></label>
+    <p id="story-move-status" role="status"></p>
+    <button type="submit" id="story-move-apply" class="delivery-primary">Move</button>
+  </form>
 </dialog>
 <dialog id="story-new-dialog" class="delivery-dialog" aria-labelledby="story-new-title">
   <form id="story-new-form">
