@@ -108,6 +108,10 @@ table-cell edits update in place without reloading the deck or its unchanged
 diagrams. Structural and theme changes safely rebuild; export and CI keep the
 same full renderer. See the Codex guide for the incremental-preview boundaries.
 
+Equations use bundled MathJax with SVG output in documents, slides and handouts.
+No CDN or font downloads are needed to view them. Inline symbols, table math and
+aligned calculations remain TeX in the source; ordinary currency and code stay text.
+
 Running workspaces retain their version-matched renderer across plugin-cache
 updates. Save drafts and reload to adopt a new version; updating the installed
 files no longer removes the renderer from an already-open workspace (0.3.1+).

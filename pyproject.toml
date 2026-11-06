@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matsugit"
-version = "0.19.0"
+version = "0.19.1"
 description = "Editable documents and themed slides, published together through Git"
 requires-python = ">=3.10"
 dependencies = []

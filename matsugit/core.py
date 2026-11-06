@@ -360,6 +360,22 @@ def prepare_diagrams(ast, output, theme, colours=None, cache=None):
     return diagram_components(ast, output, appearance, colours, cache)
 
 
+def math_html(node):
+    """Keep parsed TeX intact without activating Quarto's CDN math loaders."""
+    if isinstance(node, list):
+        return [math_html(child) for child in node]
+    if not isinstance(node, dict):
+        return node
+    if node.get('t') == 'Math':
+        kind, tex = node['c']
+        display = kind['t'] == 'DisplayMath'
+        left, right = (r'\[', r'\]') if display else (r'\(', r'\)')
+        mode = 'display' if display else 'inline'
+        return {'t': 'RawInline', 'c': ['html',
+            f'<span class="math {mode} matsugit-math">{left}{html.escape(tex)}{right}</span>']}
+    return {key: math_html(value) for key, value in node.items()}
+
+
 def render(settings, output, edit_url=None, *, source_text=None,
            formats=('document', 'slides'), _prepared=None, _transform=None):
     output = Path(output).resolve()
@@ -389,7 +405,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
     # Enable only native Mermaid display, not programming-language execution.
     (output / "render.qmd").write_text(
         diagram_fences(run([*pandoc, '-f', 'json', '-t', 'markdown',
-                           '--standalone', '--wrap=none'], text=json.dumps(document_ast)), render=True), encoding="utf-8")
+                           '--standalone', '--wrap=none'], text=json.dumps(math_html(document_ast))), render=True), encoding="utf-8")
     slide_ast = slide_layout(display_ast)
     if _transform:
         slide_ast = _transform(slide_ast, 'slides')
@@ -399,23 +415,26 @@ def render(settings, output, edit_url=None, *, source_text=None,
         slide_render_ast = dict(slide_ast, meta={k:v for k,v in slide_ast['meta'].items()
                                                 if k not in ('title', 'subtitle')})
     slide_source = run([*pandoc, "-f", "json", "-t", "markdown",
-                        "--standalone", "--wrap=none"], text=json.dumps(slide_render_ast))
+                        "--standalone", "--wrap=none"], text=json.dumps(math_html(slide_render_ast)))
     (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
+    has_math = math_html(display_ast) != display_ast
+    math_header = ('<script src="runtime/math-config.js"></script>\n'
+                   '<script defer src="runtime/mathjax-tex-svg.js"></script>\n') if has_math else ''
     (output / "media-head.html").write_text(
         '<link rel="stylesheet" href="runtime/media.css">\n'
         '<link rel="stylesheet" href="runtime/canvas.css">\n'
         '<link rel="stylesheet" href="runtime/layout.css">\n'
         '<script defer src="runtime/media.js"></script>\n'
         '<script defer src="runtime/canvas.js"></script>\n'
-        '<script defer src="runtime/annotations.js"></script>\n', encoding="utf-8")
+        '<script defer src="runtime/annotations.js"></script>\n' + math_header, encoding="utf-8")
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
     links = f'<a href="slides.html">Slides</a> <a href="{source_name}">Source</a>'
     if settings.get('handout'):
         links += ' <a href="handout.html">Presenter handout</a>'
         handout = run([*pandoc, '-f', 'json', '-t', 'markdown',
-                       '--standalone', '--wrap=none'], text=json.dumps(handout_layout(slide_ast)))
+                       '--standalone', '--wrap=none'], text=json.dumps(math_html(handout_layout(slide_ast))))
         (output / 'handout.qmd').write_text(diagram_fences(handout, render=True), encoding='utf-8')
     if edit_url:
         links += f' <a href="{html.escape(edit_url, quote=True)}">Edit source</a>'
@@ -426,6 +445,8 @@ def render(settings, output, edit_url=None, *, source_text=None,
         "project": {"type": "default", "render": ["render.qmd", "slides.qmd"]},
         "execute": {"enabled": False, "eval": False},
         "engine": "markdown",
+        # Parsed Math nodes above use the same local runtime in every output.
+        "html-math-method": "plain",
         "include-in-header": "media-head.html",
         "format": {
             "html": {"theme": "default", "css": "theme/" + theme["document"], "toc": True,

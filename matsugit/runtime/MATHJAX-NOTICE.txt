@@ -1,0 +1,8 @@
+MathJax 3.2.2, tex-svg-full.js (unmodified upstream distribution).
+Source: https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js
+SHA256: a4354ff94fd868aea0cc6eaaa79a57fda0588646fc46ee3700a349ee0a11cbe6
+Copyright The MathJax Consortium. Apache License 2.0; see MATHJAX-LICENSE.
+
+Bundled to keep preview/export math independent of CDNs, external fonts and
+the Reveal MathJax 2 loader. math-config.js is matsugit's configuration.
+The runtime is embedded only when a document contains parsed mathematics.

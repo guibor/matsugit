@@ -177,6 +177,10 @@ def setup_ci(settings, provider):
         ".matsugit-ci/runtime/annotations.js": Path(__file__).parent / "runtime/annotations.js",
         ".matsugit-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
         ".matsugit-ci/runtime/layout.css": Path(__file__).parent / "runtime/layout.css",
+        ".matsugit-ci/runtime/math-config.js": Path(__file__).parent / "runtime/math-config.js",
+        ".matsugit-ci/runtime/mathjax-tex-svg.js": Path(__file__).parent / "runtime/mathjax-tex-svg.js",
+        ".matsugit-ci/runtime/MATHJAX-LICENSE": Path(__file__).parent / "runtime/MATHJAX-LICENSE",
+        ".matsugit-ci/runtime/MATHJAX-NOTICE.txt": Path(__file__).parent / "runtime/MATHJAX-NOTICE.txt",
     }
     for name in ('package.json', 'package-lock.json', 'render.mjs'):
         sources['.matsugit-ci/diagram_runtime/' + name] = Path(__file__).parent / 'diagram_runtime' / name

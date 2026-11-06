@@ -62,6 +62,8 @@ class CoreTests(unittest.TestCase):
         settings = config(self.source)
         setup_ci(settings, "github")
         self.assertTrue((self.root / ".matsugit-ci/sugar.py").is_file())
+        for name in ('math-config.js', 'mathjax-tex-svg.js', 'MATHJAX-LICENSE'):
+            self.assertTrue((self.root / '.matsugit-ci/runtime' / name).is_file())
         workflow = (self.root / ".github/workflows/matsugit-pages.yml").read_text()
         self.assertIn("workflow_dispatch:", workflow)
         self.assertNotIn("  push:", workflow)

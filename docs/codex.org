@@ -1,5 +1,26 @@
 #+title: matsugit in Codex
 
+* Math
+Plugin 0.21.1 bundles MathJax 3.2.2 with SVG output for both reading documents
+and slides. Inline math, display equations, aligned calculations and math in
+tables render without CDN requests or external fonts, including in the restricted
+Codex/Cursor preview frame. Source TeX stays editable; currency and code are not
+scanned as equations. Ordinary text patches preserve already-rendered equations;
+changing an equation triggers a full render. The same runtime is included in
+HTML exports, presenter handouts and newly generated CI bundles.
+
+Only parsed math is typeset. Network-loading TeX extensions (=require= and
+=autoload=) and the HTML/settings extensions are disabled; the bundled TeX
+packages cover normal AMS mathematics. MathJax is embedded only for documents
+containing math. Existing exported HTML needs to be rebuilt to adopt the fix.
+
+Regression checks:
+#+begin_src sh
+QUARTO=quarto python3 -m unittest discover -s tests -p test_math.py
+QUARTO=quarto python3 codex-plugin/tests/math-browser.py
+#+end_src
+The browser check requires Playwright/Chromium and blocks remote requests.
+
 * Present
 Click the presentation-screen icon at the top right. It switches to slides and
 hides the editor and workspace chrome. Use arrow keys, Space, Page Up/Down or the

@@ -27,7 +27,7 @@ import {slideAgent} from './slide-agent.mjs';
 import {slideAgentSender} from './slide-agent-request.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.21.0'});
+const app = new App({name: 'matsugit', version: '0.21.1'});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
