@@ -14,8 +14,9 @@ class OrgBrowserTests(unittest.TestCase):
                                         args=['--no-sandbox'])
             try:
                 observed = {}
-                for variant in ('md-mobileye', 'org-mobileye', 'org-personal'):
+                for variant in ('md-theme-a', 'org-theme-a', 'org-theme-b'):
                     folder = root / variant
+                    self.assertTrue((folder / 'slides.html').is_file(), str(folder))
                     for file in folder.rglob('*'):
                         if file.is_file() and file.suffix in ('.html', '.md', '.org', '.qmd', '.json'):
                             self.assertNotIn('HIDDEN_REVIEW_SENTINEL', file.read_text(), str(file))
@@ -59,6 +60,6 @@ class OrgBrowserTests(unittest.TestCase):
                         self.assertEqual(errors, [])
                         page.close()
                 for width in (1440, 390):
-                    self.assertEqual(observed[('md-mobileye', width)], observed[('org-mobileye', width)])
+                    self.assertEqual(observed[('md-theme-a', width)], observed[('org-theme-a', width)])
             finally:
                 browser.close()

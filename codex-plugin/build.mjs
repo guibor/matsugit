@@ -4,12 +4,13 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {gzipSync} from 'node:zlib';
+import {collectNotices} from './notices.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const out = path.join(root, 'bundle');
 await mkdir(out, {recursive: true});
-await build({entryPoints:[path.join(root,'src/story-cli.mjs')], bundle:true,
-  outfile:path.join(out,'story-cli.mjs'), platform:'node',format:'esm',target:'node22',legalComments:'inline'});
+const story = await build({entryPoints:[path.join(root,'src/story-cli.mjs')], bundle:true,
+  outfile:path.join(out,'story-cli.mjs'), platform:'node',format:'esm',target:'node22',legalComments:'inline',metafile:true});
 const templates = execFileSync(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3', ['-c',
   'import json; from matsugit.authoring import editor_templates; print(json.dumps(editor_templates()))'],
   {cwd: path.dirname(root), encoding: 'utf8'});
@@ -51,20 +52,5 @@ const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bu
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
   define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime), __MATSUGIT_MERGE_WORKER__: JSON.stringify(mergeWorker.outputFiles[0].text)},
   legalComments: 'inline', metafile: true, banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
-const packages = new Set();
-for (const file of [...Object.keys(browser.metafile.inputs), ...Object.keys(server.metafile.inputs), ...Object.keys(mergeWorker.metafile.inputs)]) {
-  const parts = file.split('node_modules/');
-  if (parts.length < 2) continue;
-  const tail = parts.at(-1).split('/');
-  const name = tail.slice(0, tail[0].startsWith('@') ? 2 : 1).join('/');
-  packages.add(path.resolve(parts.slice(0, -1).join('node_modules/'), 'node_modules', name));
-}
-const notices = [];
-for (const directory of [...packages].sort()) {
-  const info = JSON.parse(await readFile(path.join(directory, 'package.json'), 'utf8'));
-  notices.push(`${info.name} ${info.version} (${info.license || 'see notice'})`);
-  for (const file of (await readdir(directory)).filter(file => /^(licen[sc]e|notice|copying)(\.|$)/i.test(file))) {
-    notices.push(await readFile(path.join(directory, file), 'utf8'));
-  }
-}
-await writeFile(path.join(out, 'THIRD-PARTY-NOTICES.txt'), notices.join('\n\n') + '\n');
+await writeFile(path.join(out, 'THIRD-PARTY-NOTICES.txt'),
+  await collectNotices([browser.metafile, server.metafile, mergeWorker.metafile, story.metafile]));

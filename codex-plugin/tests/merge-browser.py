@@ -191,7 +191,8 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             changed_again = current() + '\nTyped during backup\n'
             edit(changed_again)
             held[0][0].fulfill(response=held[0][1])
-            page.unroute('**/rpc', delay_backup)
+            # Wait for concurrent polling routes before removing interception.
+            page.unroute_all(behavior='wait')
             wait(frame, '!matsugitWorkspace.state.merging && document.getElementById("merge-status").textContent.includes("draft changed")')
             assert current() == changed_again
             assert source.read_text() == result.replace('Gamma agent','Gamma agent again')

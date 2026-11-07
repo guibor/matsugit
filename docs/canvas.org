@@ -40,7 +40,8 @@ Avoid navigation or external dependencies in an interactive visual.
 HTML/ZIP and the native source-CI builder carry the canvas. PDF is a static view;
 review it before sharing. Editable PowerPoint refuses a live canvas instead of
 silently losing it; replace it with a static image for that export. Existing
-Mobileye work CI needs private renderer 1.9.0 before using canvas blocks.
+Existing CI installations need a canvas-capable renderer before using canvas blocks.
+Update the renderer in each publishing target separately from the local plugin.
 
 The Document tab is still a reading document. Claims remain supporting text,
 columns and comparisons reflow, and takeaways stay adjacent to their argument.

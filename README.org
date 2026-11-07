@@ -149,7 +149,10 @@ document to restore its theme, selected slide and split view, with an explicit
 offer to recover unsaved text. The history icon lists recovery copies, including
 unnamed drafts. A newer file on disk is never silently replaced by recovered text.
 
-Requires Codex Desktop with MCP Apps, Node 22+, Python 3.10+, Git and Quarto:
+Requires Codex Desktop with MCP Apps, Node 22+, Python 3.10+, Git and Quarto.
+Tables, Org conversion and source-to-CI operations also need Pandoc >=3.7.0.2;
+Quarto alone may bundle an older version. See the
+[[file:docs/codex.org::*Install][one-time converter setup]] before using those features.
 #+begin_src sh
 codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit
@@ -596,7 +599,7 @@ settings, safe conversion and deployment compatibility.
 =matsugit convert --from org --to markdown= reads stdin and preserves the
 slide settings and blocks for existing Markdown CI pipelines. The reverse
 conversion uses =--from markdown --to org=. Neither runs Babel/document code.
-The optional table converter provisioned by =setup-editor= supplies Pandoc.
+The converter provisioned by =setup-editor= supplies the required Pandoc.
 
 * Review with an agent
 

@@ -90,6 +90,21 @@ Git and Quarto on the Codex process's PATH. The renderer is included; a separate
 pip install of matsugit is not required. Chart preparation still needs
 matsugit's optional chart environment.
 
+Tables, Org conversion and source-to-CI publication require *Pandoc >=3.7.0.2*.
+Some Quarto releases bundle an older Pandoc. If you already have the matsugit
+CLI, run =matsugit setup-editor= once. Otherwise, from a source checkout:
+#+begin_src sh
+git clone https://github.com/guibor/matsugit.git
+cd matsugit
+python3 -m matsugit setup-editor
+#+end_src
+Use an existing checkout rather than cloning again if you have one. This
+explicit setup reuses a suitable installed converter or downloads an official,
+checksum-verified binary into =~/.local/share/matsugit/tools=. It does not
+replace system Pandoc or require a pip installation. The plugin discovers
+that isolated converter automatically. On unsupported platforms, install
+Pandoc yourself and set =MATSUGIT_PANDOC= to its executable path.
+
 #+begin_src sh
 codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit

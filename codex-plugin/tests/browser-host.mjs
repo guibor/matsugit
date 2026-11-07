@@ -111,6 +111,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Content-Type', 'text/html'); res.end(host);
   } catch (error) { res.end(JSON.stringify({error: {code: -32603, message: error.message}})); }
 });
-server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({port: server.address().port, source, recovery: path.join(temporary, 'recovery')})));
+server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({port: server.address().port, source,
+  recovery: path.join(temporary, 'recovery'), publication: path.join(temporary, 'publication')})));
 async function close() { server.close(); await client.close(); fs.rmSync(temporary, {recursive: true, force: true}); process.exit(); }
 process.once('SIGTERM', close); process.once('SIGINT', close);

@@ -25,5 +25,6 @@ sandbox; avoid navigation code and untrusted HTML. No document code is
 run by the renderer. Do not add interactive=true without the user's intent.
 
 HTML/ZIP/native CI preserve it; PDF is static and requires review. PPTX rejects
-canvases: use a static image instead. Existing Mobileye CI requires renderer 1.9.0.
+canvases: use a static image instead. Existing CI installations need a canvas-capable
+renderer; update publishing targets separately from the local plugin.
 Select Document or Slides before Present; Escape restores editing in both hosts.

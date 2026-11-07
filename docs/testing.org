@@ -56,7 +56,37 @@ Slide AI tests use a local mock chat host, never a real agent. They check both
 messaging capabilities, selected-slide scope, Save and send, stale-draft refusal,
 uncertain delivery without retry, prompt retention and unsupported-host copying.
 Provider status tests mock GitHub/GitLab responses; real deployment
-access is not required. =ci/checks.yml= is the complete GitHub Actions recipe to
-run these automatically. It is not activated by plugin installation: installing
-it at =.github/workflows/checks.yml= requires a maintainer with permission to
-write workflows. No account scopes are requested or expanded by matsugit.
+access is not required. =ci/checks.yml= is the reviewed GitHub Actions recipe for
+pushes to main, pull requests and manual dispatch. It checks dependency
+advisories for all three npm lockfiles and builds complete bundled license
+notices. Missing notice text fails the build, including the Story CLI graph.
+History is scanned locally on the runner with a checksum-pinned Gitleaks binary;
+findings are redacted and source is not sent to a scanning service. npm audit
+sends dependency names/versions to the npm registry, not document contents.
+This is test CI for this repository, not a deployment workflow for user documents.
+No account scopes are requested or expanded by matsugit.
+
+*CI is not active until a maintainer installs this recipe.* The credential used
+for the cleanup lacked GitHub's =workflow= scope. From a clean checkout, with
+workflow-authorized credentials:
+#+begin_src sh
+mkdir -p .github/workflows
+git mv ci/checks.yml .github/workflows/checks.yml
+git commit -m "Activate repository checks"
+git push
+#+end_src
+For GitHub CLI OAuth, =gh auth refresh -h github.com -s workflow= requests that
+additional scope interactively. This is an explicit maintainer decision, not a
+step performed by plugin installation. Verify the first Actions run after push.
+
+Plugin 0.25.1 overrides the exact Zod pin in =@openai/mcp-extensions= 0.2.1
+with the project's patched Zod 4 dependency. See
+[[https://github.com/advisories/GHSA-mrhx-c7xc-m3w5][GHSA-mrhx-c7xc-m3w5]].
+The lockfile resolves 4.6.7; the minimum is 4.6.6. Remove the scoped override
+when upstream accepts a patched version, after rerunning the protocol tests.
+An advisory scan checks published advisories, not every possible security flaw.
+
+The optional =MATSUGIT_ORG_PREVIEWS= browser corpus uses directories named
+=md-theme-a=, =org-theme-a= and =org-theme-b=. The first two must be equivalent
+Markdown/Org renders; the third tests a second theme. Keep private theme assets
+and real documents outside this repository.

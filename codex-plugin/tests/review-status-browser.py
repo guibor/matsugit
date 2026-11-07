@@ -24,11 +24,11 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
     fixture = root/'deck.md'
     original = '# Review\n\n## First\n\nAlpha original\n\n## Second\n\nBeta original\n\n## Third\n\nGamma original\n'
     fixture.write_text(original)
-    receipts = root/'receipts'; receipts.mkdir()
     host = subprocess.Popen(['node',str(ROOT/'codex-plugin/tests/browser-host.mjs')],stdout=subprocess.PIPE,text=True,
-        env=dict(os.environ,MATSUGIT_SHOWCASE_SOURCE=str(fixture),MATSUGIT_PUBLICATION_STATE=str(receipts),QUARTO='/missing-quarto-for-editor-test'))
+        env=dict(os.environ,MATSUGIT_SHOWCASE_SOURCE=str(fixture),QUARTO='/missing-quarto-for-editor-test'))
     try:
         ready = json.loads(host.stdout.readline()); source = Path(ready['source'])
+        receipts = Path(ready['publication']); receipts.mkdir(exist_ok=True)
         receipt_file = receipts/(hashlib.sha256(str(source.resolve()).encode()).hexdigest()+'.json')
         receipt_file.write_text(json.dumps(dict(version=1,stage='pushed',revision='a'*40,pushed_at='2026-01-01T00:00:00Z',
             source_sha256=hashlib.sha256(original.encode()).hexdigest(),detail='Pushed; deployment not verified.',

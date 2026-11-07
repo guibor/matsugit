@@ -1,7 +1,8 @@
-# Optional GitHub Actions recipe. Install as .github/workflows/checks.yml
-# using a maintainer's existing workflow-authorized credentials.
+# Install at .github/workflows/checks.yml using workflow-authorized credentials.
+# Repository checks only. This workflow never publishes documents or deploys sites.
 name: Renderer and workspace checks
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -13,6 +14,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository history for credentials
+        run: |
+          curl --fail --silent --show-error --location https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz --output /tmp/gitleaks.tar.gz
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz' | sha256sum --check
+          mkdir -p /tmp/matsugit-security-tools
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp/matsugit-security-tools gitleaks
+          /tmp/matsugit-security-tools/gitleaks git --redact --ignore-gitleaks-allow --log-opts=--all .
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -21,7 +31,12 @@ jobs:
           node-version: '22'
       - uses: quarto-dev/quarto-actions/setup@v2
       - name: Install workspace dependencies
-        run: npm ci --prefix codex-plugin
+        run: npm ci --ignore-scripts --prefix codex-plugin
+      - name: Dependency advisories
+        run: |
+          npm audit --package-lock-only --ignore-scripts --audit-level=high --prefix codex-plugin
+          npm audit --package-lock-only --ignore-scripts --audit-level=high --prefix editor
+          npm audit --package-lock-only --ignore-scripts --audit-level=high --prefix matsugit/diagram_runtime
       - name: Ensure span-aware Pandoc is available
         run: python3 -m matsugit setup-editor
       - name: Build workspace and run protocol tests
