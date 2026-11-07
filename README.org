@@ -1,17 +1,28 @@
 #+title: matsugit
 
+Created by [[https://github.com/guibor][MDF (guibor)]]. [[file:LICENSE][MIT licensed]].
+
 Previously named Folioforge. Existing users: read the
 [[file:docs/migration.org][copy-paste migration guide]] before replacing a plugin or moving an installation.
 
-*One Markdown or Org source. A reading document. A deck worth presenting.*
+*Your next presentation starts with the notes you already have.*
 
-Write the argument once. Compose it from evidence, comparisons, charts and
-decisions. Preview a readable document and a Reveal.js presentation, change the
-theme without rewriting the story, and publish both through Git when ready.
+Turn working notes into a clear story and a consistently styled deck. Then keep
+thinking: rewrite a claim, move a slide, update the evidence, and preview the
+result. Spend your time improving the argument, not moving text boxes.
 
-matsugit is for people who want their presentation to remain a document they
-can edit, review and version. No manual positioning of every box. No mandatory
-AI service. No separate slide copy drifting away from the source.
+*You control the story. The theme handles the formatting.*
+
+Keep titles, claims, evidence and takeaways in one editable Markdown file.
+Review the narrative in Story, edit readable content beside the slides, and
+present in your chosen theme. The same file becomes a reading document: no
+separate slide copy drifting away from the source.
+
+Use an agent to shape the first draft or challenge your reasoning. Make everyday
+edits directly. Changing a number, rewriting a title or moving a slide does not
+require another AI call; rendering itself uses no model tokens. Small iterations
+can refresh in seconds, while first builds and complex diagrams can take longer.
+Review the output before sharing. Org is also supported when that is your workflow.
 
 * Edit and preview inside Codex
 
@@ -710,3 +721,17 @@ Optional real-browser tests require Playwright and Chrome:
 #+begin_src sh
 MATSUGIT_BROWSER_TESTS=1 CHROME=/path/to/chrome python3 -m unittest discover -s tests -p test_editor_browser.py
 #+end_src
+
+* License and attribution
+
+matsugit's original code and documentation are available under the
+[[file:LICENSE][MIT License]], copyright MDF (guibor). Please link to the
+[[https://github.com/guibor/matsugit][original project]] when sharing it; a visible credit is appreciated, not an
+additional license requirement. Copies and substantial portions must retain
+the copyright and license notice as specified in MIT.
+
+Third-party components keep their own licenses. See the workspace's
+[[file:codex-plugin/bundle/THIRD-PARTY-NOTICES.txt][dependency notices]], the table editor's
+[[file:matsugit/editor_assets/THIRD-PARTY-LICENSES.txt][license notices]] and the bundled
+[[file:matsugit/runtime/MATHJAX-LICENSE][MathJax license]]. Separately supplied private themes, logos and organization
+assets are not licensed by this repository's MIT grant.

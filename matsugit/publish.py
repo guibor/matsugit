@@ -171,6 +171,7 @@ def setup_ci(settings, provider):
         ".matsugit-ci/vega.py": Path(__file__).parent / "vega.py",
         ".matsugit-ci/handout.py": Path(__file__).parent / "handout.py",
         ".matsugit-ci/build.py": templates / "build.py",
+        ".matsugit-ci/runtime/MATSUGIT-LICENSE": Path(__file__).parent / "runtime/MATSUGIT-LICENSE",
         ".matsugit-ci/runtime/media.js": Path(__file__).parent / "runtime/media.js",
         ".matsugit-ci/runtime/canvas.js": Path(__file__).parent / "runtime/canvas.js",
         ".matsugit-ci/runtime/canvas.css": Path(__file__).parent / "runtime/canvas.css",
