@@ -59,18 +59,35 @@ with tempfile.TemporaryDirectory(prefix='matsugit-theme-catalog-') as temporary:
             frame.locator('#theme').select_option('')
             frame.locator('#refresh').click()
             wait(frame, 'matsugitWorkspace.state.resolvedTheme === "alpha" && !matsugitWorkspace.state.rendering')
-            for width in (1440, 390):
+            for width in (320, 390, 480, 560, 700, 900, 1440):
                 page.set_viewport_size({'width':width, 'height':1000})
                 assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                toolbar = frame.evaluate('''() => {
+                  const controls = [...document.querySelectorAll('header button')]
+                    .filter(button => button.getClientRects().length)
+                    .map(button => ({id:button.id, ...button.getBoundingClientRect().toJSON()}));
+                  const overlaps = [];
+                  for (let left = 0; left < controls.length; left++)
+                    for (let right = left + 1; right < controls.length; right++) {
+                      const a = controls[left], b = controls[right];
+                      if (Math.min(a.right,b.right) - Math.max(a.left,b.left) > .5 &&
+                          Math.min(a.bottom,b.bottom) - Math.max(a.top,b.top) > .5)
+                        overlaps.push([a.id,b.id]);
+                    }
+                  return {controls, overlaps};
+                }''')
+                assert not toolbar['overlaps'], (width, toolbar['overlaps'])
+                assert all(control['left'] >= 0 and control['right'] <= width for control in toolbar['controls']), (width, toolbar)
                 theme_box = frame.locator('#theme').bounding_box()
                 refresh_box = frame.locator('#refresh').bounding_box()
                 assert theme_box['x'] >= 0 and theme_box['x'] + theme_box['width'] <= width
                 assert theme_box['x'] + theme_box['width'] <= refresh_box['x']
-                page.screenshot(path=str(shots / f'themes-{width}.png'))
+                if width in (320, 390, 700, 1440):
+                    page.screenshot(path=str(shots / f'themes-{width}.png'))
             assert source.read_bytes() == original
             assert not errors, errors
             browser.close()
-            print(f'PASS: installed dropdown, explicit theme, configured default, rescan, unchanged source, responsive toolbar; screenshots {shots}', flush=True)
+            print(f'PASS: installed dropdown, explicit theme, configured default, rescan, unchanged source, non-overlapping responsive toolbars; screenshots {shots}', flush=True)
     finally:
         host.terminate()
         try:
