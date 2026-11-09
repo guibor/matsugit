@@ -17,6 +17,13 @@ local editor. `matsugit_workspace` opens an unsaved draft. Desktop file handlers
 can open Markdown/QMD/Org through opaque host resource URIs; never invent a path
 from one of those URIs. A terminal-only host cannot display this UI.
 
+From plugin 0.25.3, pass `layout: "split"`, `format: "slides"`, and
+`editor: "visual"` to open readable Markdown beside the deck. Use
+`format: "document"` for reading output or `editor: "raw"` for source editing.
+Check the connected tool schema before using these options with an older plugin.
+Org retains its native source editor. A missing source/result is an error, not
+an empty document; do not claim the viewer opened when the panel is blank.
+
 The workspace has Story, Source/Markdown, Render and Split layouts, plus independent
 Document/Slides tabs. It uses the normal matsugit renderer and project/theme
 configuration. Preview is local, uses temporary files and does not save or publish.

@@ -29,11 +29,11 @@ test('recovery MCP survives process restart, scopes files and preserves current 
     const {id} = ok(await call('recovery_begin', {session, name: 'deck.md'}));
     ok(await call('recovery_checkpoint', {session, id, generation: 1, text: '# Private draft\nשלום', base: '# Original\n', view: {format: 'slides'}}));
     const listed = await call('recovery_list', {session});
-    assert.equal(listed._meta.items.length, 1);
-    assert.doesNotMatch(JSON.stringify(listed.content), /Private draft|deck.md|Original/);
+    assert.equal(ok(listed).items.length, 1);
+    assert.doesNotMatch(JSON.stringify(listed.content), /Private draft|Original/);
     const other = ok(await call('open', {path: second}));
     assert.equal((await call('recovery_restore', {session: other.session, id})).isError, true);
-    assert.equal((await call('recovery_forget', {session: other.session, id, token: listed._meta.items[0].token})).isError, true);
+    assert.equal((await call('recovery_forget', {session: other.session, id, token: ok(listed).items[0].token})).isError, true);
     const unnamed = ok(await call('recovery_begin', {name: 'Untitled.md'}, file));
     ok(await call('recovery_checkpoint', {id: unnamed.id, generation: 1, text: 'unnamed', base: '', view: {}}, file));
     assert.equal(ok(await call('recovery_restore', {id: unnamed.id}, file)).recovery.owner, null);

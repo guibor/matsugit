@@ -21,23 +21,25 @@ const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
 const readOnly = {readOnlyHint: true, destructiveHint: false, openWorldHint: false};
-const viewOptions = {layout: z.enum(['source', 'render', 'split', 'story']).optional(), format: z.enum(['document', 'slides']).optional()};
+const viewOptions = {layout: z.enum(['source', 'render', 'split', 'story']).optional(), format: z.enum(['document', 'slides']).optional(), editor: z.enum(['raw', 'visual']).optional()};
 const appOnly = {_meta: {ui: {visibility: ['app']}}};
 const result = (data, meta) => ({content: [{type: 'text', text: JSON.stringify(data)}], structuredContent: data, ...(meta ? {_meta: meta} : {})});
+// App-only tools need ordinary MCP payloads too: not every host forwards _meta.
+const appResult = (data, meta) => result({...data, ...meta});
 const guard = fn => async (...args) => {
   try { return await fn(...args); }
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.25.2'});
+  const server = new McpServer({name: 'matsugit', version: '0.25.3'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
-    guard(async args => result({computed:true}, {merge:await merges.plan(args)})));
+    guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
   new OpenAIExtensions(server);
   server.registerTool('matsugit_table', {description:'Convert or validate a selected table locally. Does not save or publish.', ...appOnly,
     inputSchema:z.object({operation:z.enum(['open','check','serialize']), source:z.string().max(1024*1024),
       html:z.string().max(1024*1024).optional(), format:z.enum(['markdown','org']).optional()}), annotations:readOnly},
-    guard(async args => result({converted:true}, await tables.run(args))));
+    guard(async args => appResult({converted:true}, await tables.run(args))));
   server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
     inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository','sync-plan','sync','exchange-plan','exchange','publication-status']), session:z.string().optional(), check:z.boolean().optional(),
       assets:z.array(z.string().max(4096)).max(100).optional(), message:z.string().min(1).max(500).optional(),
@@ -52,7 +54,7 @@ serveStdio(() => {
     guard(async ({job,session},context) => result(actions.status(job,session,getResourcePath(context.mcpReq?._meta)))));
   server.registerTool('matsugit_export_chunk', {description:'Download a bounded chunk of this workspace export.', ...appOnly,
     inputSchema:z.object({job:z.string(),session:z.string().optional(),offset:z.number().int().nonnegative()}),annotations:readOnly},
-    guard(async ({job,session,offset},context) => {const {chunk,...data}=actions.chunk(job,offset,session,getResourcePath(context.mcpReq?._meta)); return result(data,{chunk});}));
+    guard(async ({job,session,offset},context) => {const {chunk,...data}=actions.chunk(job,offset,session,getResourcePath(context.mcpReq?._meta)); return appResult(data,{chunk});}));
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: runtime.app,
     _meta: {'openai/ui': {preferredDisplayMode: 'fullscreen', availableDisplayModes: ['fullscreen']},
@@ -72,7 +74,7 @@ serveStdio(() => {
     guard(async ({path: file, ...options}) => { const data = store.open(file); const {text, ...summary} = data; return result({...summary, ...options}, {source: text}); }));
   server.registerTool('matsugit_read', {description: 'Refresh the document already opened in this workspace.', ...appOnly,
     inputSchema: z.object({session: z.string()}), annotations: readOnly},
-    guard(async ({session}) => { const {text, ...data} = store.source(session); return result(data, {source: text}); }));
+    guard(async ({session}) => { const {text, ...data} = store.source(session); return appResult(data, {source: text}); }));
   server.registerTool('matsugit_path', {description:'Read the real local path of the already-open document, if supplied by the host.', ...appOnly,
     inputSchema:z.object({session:z.string().optional()}),annotations:readOnly},
     guard(async ({session},context)=>result({path:store.owner(session,getResourcePath(context.mcpReq?._meta))})));
@@ -87,7 +89,7 @@ serveStdio(() => {
     inputSchema: z.object({...scope, name: z.string().max(512)}), annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
     guard(async (args, context) => {
       const data = recovery.begin({...args, owner: recoveryOwner(args, context)});
-      return result({id: data.id}, {candidate: data.candidate});
+      return appResult({id: data.id}, {candidate: data.candidate});
     }));
   server.registerTool('matsugit_recovery_checkpoint', {description: 'Checkpoint workspace text and view settings in private local recovery storage. Never writes the original file or publishes.', ...appOnly,
     inputSchema: z.object({...scope, id: z.string(), generation: z.number().int().nonnegative(),
@@ -98,7 +100,7 @@ serveStdio(() => {
     inputSchema: z.object(scope), annotations: readOnly},
     guard(async (args, context) => {
       const owner = recoveryOwner(args, context);
-      return result({}, recovery.list(owner || (args.resourceUri ? 'resource:' + args.resourceUri : undefined)));
+      return appResult({}, recovery.list(owner || (args.resourceUri ? 'resource:' + args.resourceUri : undefined)));
     }));
   server.registerTool('matsugit_recovery_restore', {description: 'Read the recovery copy explicitly selected in the picker. Does not save or overwrite the source.', ...appOnly,
     inputSchema: z.object({...scope, id: z.string()}), annotations: readOnly},
@@ -112,7 +114,7 @@ serveStdio(() => {
           data = store.open(record.owner);
         } catch { data.missingSource = true; }
       }
-      return result({}, {workspace: data, recovery: record});
+      return appResult({}, {workspace: data, recovery: record});
     }));
   server.registerTool('matsugit_recovery_forget', {description: 'Delete only the recovery copy explicitly confirmed in the picker, never its source document.', ...appOnly,
     inputSchema: z.object({...scope, id: z.string(), token: z.string()}),
@@ -137,7 +139,7 @@ serveStdio(() => {
     inputSchema: z.object({job: z.string(), format: z.enum(['document', 'slides']), offset: z.number().int().nonnegative(), session: z.string().optional()}), annotations: readOnly},
     guard(async ({job, format, offset, session}, context) => {
       const {chunk, ...data} = store.chunk(job, format, offset, session, getResourcePath(context.mcpReq?._meta));
-      return result(data, {chunk});
+      return appResult(data, {chunk});
     }));
   return server;
 }, {onerror: error => console.error(error)});

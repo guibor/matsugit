@@ -70,7 +70,7 @@ console.log(JSON.stringify({theme: 'default'}));
         }
         assert.equal(status.state, 'ready', status.error);
         const result = await client.callTool({name: 'matsugit_preview_chunk', arguments: {job, session, format: 'document', offset: 0}});
-        const rendered = JSON.parse(result._meta.chunk);
+        const rendered = JSON.parse(result.structuredContent.chunk);
         assert.equal(rendered.cwd, fs.realpathSync(path.dirname(rendered.output)));
         assert.equal(rendered.pwd, rendered.cwd);
         const snapshot = path.resolve(path.dirname(rendered.worker), '..');

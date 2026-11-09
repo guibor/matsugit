@@ -54,6 +54,7 @@ body.presenting #source-pane,body.presenting #divider{display:none}
 .delivery-dialog input:not([type=checkbox]){font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;width:100%;box-sizing:border-box;min-width:0}
 #repository-picker{border-bottom:1px solid var(--border);padding-bottom:12px}
 .identity #copy-path{width:28px;height:28px;min-height:28px;flex:none;display:grid;place-items:center;color:var(--muted)}
+header{flex-wrap:wrap}.identity{flex:1 1 340px;max-width:100%}.identity strong,#brand-icon{flex-shrink:0}#filename{flex:1 1 80px}.actions{margin-left:auto;max-width:100%;flex-wrap:wrap;justify-content:flex-end}
 #source-pane{display:flex;flex-direction:column}.source-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);flex:none}
 .source-tools .segmented button{font-size:12px;min-height:26px;padding:3px 10px}.source-tools>button{width:30px;height:30px;display:grid;place-items:center}
 .source-tools{flex-wrap:wrap;justify-content:flex-start}.source-tools>button{margin-left:auto}.source-tools .outline-depth button{min-width:26px;padding:3px 6px}.outline-depth button[hidden]{display:none}

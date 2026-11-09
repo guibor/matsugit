@@ -46,12 +46,12 @@ test('real renderer survives cache removal and keeps save/conflict and increment
       }
       assert.equal((await ready(first)).kind, 'full');
       const html = await call('matsugit_preview_chunk', {session, job: first, format: 'document', offset: 0});
-      assert.match(html._meta.chunk, /<!DOCTYPE html>/i);
+      assert.match(html.structuredContent.chunk, /<!DOCTYPE html>/i);
       const changed = original.replace('Before the update.', 'After the update.');
       const second = (await call('matsugit_preview', {session, text: changed, base: first})).structuredContent.job;
       assert.equal((await ready(second)).kind, 'patch');
       const patch = await call('matsugit_preview_chunk', {session, job: second, format: 'document', offset: 0});
-      assert.match(patch._meta.chunk, /After the update/);
+      assert.match(patch.structuredContent.chunk, /After the update/);
       const slides = (await call('matsugit_preview', {session, text: changed, format: 'slides'})).structuredContent.job;
       assert.equal((await ready(slides)).kind, 'full');
       assert.equal(fs.readFileSync(file, 'utf8'), original);

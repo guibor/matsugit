@@ -111,12 +111,12 @@ try:
         frame = opened()
         frame.locator('#restore-draft').click()
         wait(frame, 'matsugitWorkspace.state.conflict')
-        assert frame.locator('#save').is_disabled()
+        assert frame.locator('#save').get_attribute('aria-label') == 'Review changes before saving'
         assert source.read_text() == '# External newer version\n'
         frame.locator('#reload').click()
         wait(frame, '!matsugitWorkspace.state.conflict && matsugitWorkspace.editor.state.doc.toString() === "# External newer version\\n"')
         assert source.read_text() == '# External newer version\n'
-        print('External edit blocks recovered Save; explicit Reload resolves conflict', flush=True)
+        print('External edit requires review before Save; explicit Reload resolves conflict', flush=True)
 
         # Unnamed workspaces are recoverable without borrowing the host file path.
         frame = opened('?untitled')

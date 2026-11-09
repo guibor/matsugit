@@ -12,6 +12,14 @@ const fixture = process.env.MATSUGIT_SHOWCASE_SOURCE;
 const standardOnly = process.env.MATSUGIT_STANDARD_MCP === '1';
 const chatMode = process.env.MATSUGIT_TEST_CHAT || '';
 const downloadMode = process.env.MATSUGIT_TEST_DOWNLOAD || 'browser';
+const resultMode = process.env.MATSUGIT_TEST_RESULT || 'full';
+const openOptions = JSON.parse(process.env.MATSUGIT_TEST_OPEN_OPTIONS || '{}');
+function hostResult(result) {
+  if (resultMode === 'full') return result;
+  const {_meta, ...rest} = result;
+  if (resultMode === 'text-only') delete rest.structuredContent;
+  return rest;
+}
 const messages = [];
 let failChat = false;
 const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
@@ -26,7 +34,7 @@ await client.connect(new StdioClientTransport({command: process.execPath,
   env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: path.join(temporary, 'absent.json'),
     MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery'),
     MATSUGIT_PUBLICATION_STATE: path.join(temporary, 'publication')}, stderr: 'inherit'}));
-opened = await client.callTool({name: 'matsugit_open', arguments: {path: source}});
+opened = await client.callTool({name: 'matsugit_open', arguments: {path: source, ...openOptions}});
 session = opened.structuredContent.session;
 app = (await client.readResource({uri: 'ui://matsugit/workspace-v1'})).contents[0].text;
 }
@@ -73,7 +81,7 @@ const server = http.createServer(async (req, res) => {
       res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' data: blob:; style-src 'unsafe-inline' data: blob:; img-src data: blob:; font-src data: blob:; frame-src blob:; base-uri https://matsugit.invalid; connect-src 'none'");
       return res.end(app);
     }
-    if (req.url === '/result') return res.end(JSON.stringify(await client.callTool({name: 'matsugit_open', arguments: {path: source}})));
+    if (req.url === '/result') return res.end(JSON.stringify(hostResult(await client.callTool({name: 'matsugit_open', arguments: {path: source, ...openOptions}}))));
     if (req.url === '/test-messages') return res.end(JSON.stringify(messages));
     if (req.url === '/test-fail-chat' && req.method === 'POST') { failChat = true; return res.end('{}'); }
     if (req.url === '/untitled-result') return res.end(JSON.stringify(await client.callTool({name: 'matsugit_workspace', arguments: {}})));
@@ -99,10 +107,10 @@ const server = http.createServer(async (req, res) => {
         if (failChat) { failChat = false; throw Error('Simulated lost acknowledgement'); }
       }
       else if (standardOnly && message.method.startsWith('openai/')) throw Error('Host has no OpenAI extensions');
-      else if (message.method === 'tools/call') result = await client.callTool(standardOnly ? params : {...params, _meta: {'openai/resource': {path: source}}});
+      else if (message.method === 'tools/call') result = hostResult(await client.callTool(standardOnly ? params : {...params, _meta: {'openai/resource': {path: source}}}));
       else if (message.method === 'resources/read') {
         const latest = await client.callTool({name: 'matsugit_read', arguments: {session}});
-        result = {contents: [{uri: params.uri, text: latest._meta.source, _meta: {'openai/resource': latest.structuredContent}}]};
+        result = {contents: [{uri: params.uri, text: latest.structuredContent.source, _meta: {'openai/resource': latest.structuredContent}}]};
       } else if (message.method === 'openai/resources/write') {
         result = (await client.callTool({name: 'matsugit_save', arguments: {session, text: params.text, etag: params.ifMatch}})).structuredContent;
       }

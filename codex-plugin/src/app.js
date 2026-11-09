@@ -1,4 +1,5 @@
 import {App, applyDocumentTheme, applyHostStyleVariables} from '@modelcontextprotocol/ext-apps';
+import {hostResultData, sourceText} from './host-results.mjs';
 import {OpenAIExtensions} from '@openai/mcp-extensions/app';
 import {EditorView, basicSetup} from 'codemirror';
 import {keymap} from '@codemirror/view';
@@ -206,8 +207,7 @@ $('compact-markup').onclick = () => {
 
 async function call(name, args) {
   const response = await app.callServerTool({name, arguments: args});
-  if (response.isError) throw Error(response.content?.filter(item => item.type === 'text').map(item => item.text).join('\n') || 'Operation failed.');
-  return {...response.structuredContent, ...response._meta};
+  return hostResultData(response);
 }
 function refreshControls() {
   story?.refresh();
@@ -495,7 +495,7 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
     return {text: value, etag: item.openaiMetadata?.etag, writable: item.openaiMetadata?.writable === true};
   }
   const result = await call('matsugit_read', {session});
-  return {...result, text: result.source};
+  return {...result, text: sourceText(result)};
 }
 async function reload(force = false, manual = false, expectedEtag = null) {
   if ((!state.uri && !state.session) || state.loading || state.saving || state.merging || (state.refreshing && !manual)) return false;
@@ -623,6 +623,11 @@ function offerIncoming(data) {
   incomingDocument = data;
   notice('An incoming document was not opened because you have a draft. Review the versions or keep editing.');
 }
+function applyOpenView(data) {
+  if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
+  if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
+  if (['raw', 'visual'].includes(data.editor)) changeEditorMode(data.editor);
+}
 async function load(data, {acceptRevision = null} = {}) {
   if (state.saving || state.merging) { notice('Wait for the current save or merge before opening another document.'); return; }
   if ((dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && acceptRevision !== state.revision) { offerIncoming(data); return; }
@@ -636,7 +641,7 @@ async function load(data, {acceptRevision = null} = {}) {
   noticeMessage = '';
   story.reset();
   tables.reset();
-  const suppliedRecovery = data.recovery;
+  const suppliedRecovery = data.recovery, requestedView = data;
   const sequence = ++loadSequence;
   refreshRequested = false; actionFeedback('refresh', '');
   readSequence++;
@@ -665,9 +670,11 @@ async function load(data, {acceptRevision = null} = {}) {
     if (state.uri) {
       if (!extensions.resources) throw Error('This host does not support file editing. Use the matsugit_open tool for the selected local file.');
       data = await resourceRead();
+    } else if (state.session && typeof data.source !== 'string' && typeof data.text !== 'string') {
+      data = await resourceRead();
     }
     if (sequence !== loadSequence) return;
-    const source = data.source ?? data.text ?? '';
+    const source = sourceText(data);
     if (new TextEncoder().encode(source).length > 2 * 1024 * 1024 || source.includes('\0')) throw Error('Invalid source or document exceeds the 2 MiB editor limit.');
     state.base = source; state.etag = data.etag;
     state.writable = !!data.writable; replaceText(state.base, {baseline:true});
@@ -690,6 +697,7 @@ async function load(data, {acceptRevision = null} = {}) {
     }
     // Restoring an existing copy must not depend on creating another backup.
     if (suppliedRecovery) applyRecovery(suppliedRecovery);
+    else applyOpenView(requestedView);
     state.loading = false;
     editor.dispatch({effects: editability.reconfigure(editable(!demo))});
     notice(state.writable && !state.etag ? 'The host supplied no file version. Saving is disabled to protect concurrent edits.' : '');
@@ -1066,12 +1074,14 @@ if (demo) {
   app.addEventListener('toolinput', ({arguments: args}) => {
     if (args?.file && args.file.resourceUri !== state.uri) load(args);
   });
-  app.ontoolresult = result => {
-    const data = {...result.structuredContent, ...result._meta};
-    if (data.file && data.file.resourceUri === state.uri) return;
-    if (data.session && data.session === state.session) { reload(); return; }
-    if (!data.file && !(data.name && (typeof data.source === 'string' || typeof data.text === 'string'))) return;
-    load(data);
+  app.ontoolresult = async result => {
+    try {
+      const data = hostResultData(result);
+      if (data.file && data.file.resourceUri === state.uri) return;
+      if (data.session && data.session === state.session) { await reload(); applyOpenView(data); return; }
+      if (!data.file && !data.session && !(data.name && (typeof data.source === 'string' || typeof data.text === 'string'))) return;
+      await load(data);
+    } catch (error) { notice(error.message); status('Could not open document'); }
   };
   app.addEventListener('hostcontextchanged', hostContext);
   try { await app.connect(); hostContext(app.getHostContext()); }
