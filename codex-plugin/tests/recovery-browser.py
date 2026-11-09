@@ -171,7 +171,7 @@ try:
         try:
             frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,insert:'<!-- Still editable -->\\n'}})")
             frame.evaluate('matsugitWorkspace.flushRecovery()')
-            wait(frame, 'document.getElementById("recovery-status").textContent === "Recovery unavailable"')
+            wait(frame, 'document.getElementById("recovery-status").textContent === "Draft backup unavailable"')
             assert not source.read_text().startswith('<!-- Still editable')
         finally:
             storage.chmod(0o700)
