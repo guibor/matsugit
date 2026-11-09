@@ -114,9 +114,11 @@ try:
         assert frame.locator('#save').get_attribute('aria-label') == 'Review changes before saving'
         assert source.read_text() == '# External newer version\n'
         frame.locator('#reload').click()
+        frame.locator('#merge-file').click()
+        frame.locator('#merge-apply').click()
         wait(frame, '!matsugitWorkspace.state.conflict && matsugitWorkspace.editor.state.doc.toString() === "# External newer version\\n"')
         assert source.read_text() == '# External newer version\n'
-        print('External edit requires review before Save; explicit Reload resolves conflict', flush=True)
+        print('External edit requires review before Save; reviewed file choice resolves conflict', flush=True)
 
         # Unnamed workspaces are recoverable without borrowing the host file path.
         frame = opened('?untitled')
