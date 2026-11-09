@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matsugit"
-version = "0.21.1"
+version = "0.21.2"
 description = "Editable documents and themed slides, published together through Git"
 license = {file = "LICENSE"}
 authors = [{name = "MDF (guibor)"}]

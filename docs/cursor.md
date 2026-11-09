@@ -23,6 +23,17 @@ editing, downloads and reviewed source-to-CI publication use the same runtime as
 Codex. `/matsugit-publish` prepares a plan; it does not grant push approval.
 
 Update the checkout and rerun `setup-cursor` to refresh its managed configuration.
+The installed skill follows that checkout; do not maintain another editable copy
+in `~/.cursor/skills/matsugit`. Setup recognizes identical copies, receipt-matching
+older copies, and complete skill trees from the checkout's available Git history.
+It keeps the original under `~/.cursor/matsugit-skill-backups/` before linking.
+Finder metadata and Python caches do not count as instruction edits.
+
+`matsugit setup-cursor --check` reports the installed and source paths without
+changing anything. An unrecognized skill is retained with a list of differing
+files. This is distinct from Git divergence: `git pull` updates the checkout,
+not an independent copied skill or a running editor's cached connection.
+
 Story editing, title/claim pairs, takeaways, section transitions, compact grid,
 long-distance moves, visual Markdown/table editing, source/preview following,
 Present, exports, explicit Save, external-change review, recovery and reviewed
@@ -113,8 +124,10 @@ team settings or publish a plugin just to preview a deck.
 
 ## Update and troubleshoot
 
-- **Refresh instructions:** rerun the same `npx skills add` command, reviewing
-  local skill edits before replacement. Source and output files are unaffected.
+- **Refresh instructions:** for the interactive setup, update the checkout and
+  rerun `matsugit setup-cursor`. For a skill-only installation, rerun the same
+  `npx skills add` command, reviewing local skill edits before replacement.
+  Source documents and output files are unaffected.
 - **Refresh renderer:** for a `uv` tool installation, use
   `uv tool upgrade matsugit`. Do not replace a working custom launcher.
 - **No `/matsugit`:** restart/reload Cursor, then start a new Agent chat. Check

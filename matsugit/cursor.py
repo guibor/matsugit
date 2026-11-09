@@ -8,6 +8,7 @@ import sys
 import tempfile
 
 from .core import Error, read_json
+from .skill_install import SkillPlan
 
 
 def atomic(path, content):
@@ -40,6 +41,7 @@ def install(checkout=None, *, home=None, check=False):
     for path in (config_path, receipt):
         if path.is_symlink(): raise Error(f'Refusing to replace symlink: {path}')
     original = config_path.read_bytes() if config_path.exists() else None
+    receipt_original = receipt.read_bytes() if receipt.exists() else None
     previous = read_json(receipt) if receipt.exists() else {}
     data = read_json(config_path) if config_path.exists() else {}
     servers = data.get('mcpServers', {})
@@ -50,21 +52,32 @@ def install(checkout=None, *, home=None, check=False):
     entry = {'command':node, 'args':[str(server)], 'env':environment}
     if 'matsugit' in servers and servers['matsugit'] not in (entry, previous.get('server')):
         raise Error('Cursor already has a different matsugit server. Review it before changing configuration')
-    if skill_link.exists() or skill_link.is_symlink():
-        if skill_link.resolve() != skill:
-            raise Error(f'Existing Cursor skill retained: {skill_link}. Reconcile it before installing')
-    writes = {}
+    try:
+        skill_plan = SkillPlan(skill, skill_link, previous.get('skill'))
+    except ValueError as exc:
+        raise Error('Existing Cursor skill retained. ' + str(exc)) from exc
+    writes, originals = {}, {}
     for source in sorted(commands.glob('*.md')):
         target = base / 'commands' / source.name
         body = source.read_bytes()
         if target.is_symlink(): raise Error(f'Existing command is a symlink: {target}')
-        if target.exists() and target.read_bytes() != body:
+        before = target.read_bytes() if target.exists() else None
+        if before is not None and before != body:
             expected = previous.get('commands', {}).get(source.name)
-            if hashlib.sha256(target.read_bytes()).hexdigest() != expected:
+            if hashlib.sha256(before).hexdigest() != expected:
                 raise Error(f'Custom Cursor command retained: {target}')
         writes[target] = body
+        originals[target] = before
     if check:
-        return f'Would configure matsugit MCP, shared skill and {len(writes)} commands in {base}'
+        return (f'Would configure matsugit MCP and {len(writes)} commands in {base}\n'
+                + skill_plan.describe())
+    for path, before in {config_path:original, receipt:receipt_original, **originals}.items():
+        if path.is_symlink() or (path.read_bytes() if path.exists() else None) != before:
+            raise Error(f'Cursor file changed during setup; retained: {path}')
+    try:
+        skill_backup = skill_plan.apply(base / 'matsugit-skill-backups')
+    except ValueError as exc:
+        raise Error(str(exc)) from exc
     base.mkdir(parents=True, exist_ok=True)
     if original is not None and servers.get('matsugit') != entry:
         backup = Path(tempfile.mkdtemp(prefix='matsugit-backup-', dir=base)) / 'mcp.json'
@@ -72,10 +85,16 @@ def install(checkout=None, *, home=None, check=False):
     if config_path.is_symlink() or (config_path.read_bytes() if config_path.exists() else None) != original:
         raise Error('Cursor configuration changed during setup; retry')
     data['mcpServers'] = dict(servers, matsugit=entry)
-    atomic(config_path, (json.dumps(data, ensure_ascii=False, indent=2) + '\n').encode())
-    skill_link.parent.mkdir(parents=True, exist_ok=True)
-    if not skill_link.exists(): skill_link.symlink_to(skill, target_is_directory=True)
-    for path, body in writes.items(): atomic(path, body)
-    atomic(receipt, (json.dumps({'server':entry, 'commands':{
-        path.name:hashlib.sha256(body).hexdigest() for path,body in writes.items()}}, indent=2) + '\n').encode())
-    return f'Cursor matsugit configured: {config_path}. Enable/reload its MCP server and open a new chat. No documents published.'
+    writes[config_path] = (json.dumps(data, ensure_ascii=False, indent=2) + '\n').encode()
+    writes[receipt] = (json.dumps({'server':entry, 'skill':skill_plan.receipt, 'commands':{
+        path.name:hashlib.sha256(body).hexdigest() for path,body in writes.items()
+        if path != config_path}}, indent=2) + '\n').encode()
+    originals.update({config_path: original, receipt: receipt_original})
+    for path, body in writes.items():
+        if path.is_symlink() or (path.read_bytes() if path.exists() else None) != originals[path]:
+            raise Error(f'Cursor file changed during setup; retained: {path}')
+        if body != originals[path]:
+            atomic(path, body)
+    backup_message = f' Previous skill retained at {skill_backup}.' if skill_backup else ''
+    return (f'Cursor matsugit configured: {config_path}. Skill follows {skill}.' + backup_message
+            + ' Enable/reload its MCP server and open a new chat. No documents published.')

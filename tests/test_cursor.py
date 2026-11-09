@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 from pathlib import Path
 import unittest
@@ -60,6 +61,44 @@ class CursorTests(unittest.TestCase):
         mcp = (ROOT / manifest['mcpServers']).read_text()
         self.assertIn('${CURSOR_PLUGIN_ROOT}', mcp)
         self.assertNotIn('${PLUGIN_ROOT}', mcp)
+
+    def test_skill_only_copy_is_migrated_without_reinstall_conflict(self):
+        skill = self.base / 'skills/matsugit'
+        shutil.copytree(ROOT / 'skills/matsugit', skill)
+        (skill / '.DS_Store').write_bytes(b'Finder metadata')
+        result = cursor.install(ROOT, home=self.home)
+        self.assertTrue(skill.is_symlink())
+        self.assertIn('Previous skill retained at', result)
+        backups = list((self.base / 'matsugit-skill-backups').glob('*/matsugit/.DS_Store'))
+        self.assertEqual(len(backups), 1)
+        receipt = json.loads((self.base / 'matsugit-install.json').read_text())
+        self.assertIn('SKILL.md', receipt['skill']['files'])
+        times = {p: p.stat().st_mtime_ns for p in (self.config,
+                 self.base / 'matsugit-install.json', self.base / 'commands/matsugit-slides.md')}
+        cursor.install(ROOT, home=self.home)
+        self.assertEqual(times, {p: p.stat().st_mtime_ns for p in times})
+
+    def test_receipted_skill_copy_can_update_without_git(self):
+        root = self.home / 'archive'
+        for name in ('skills', 'cursor-commands', 'codex-plugin/bundle'):
+            shutil.copytree(ROOT / name, root / name)
+        cursor.install(root, home=self.home)
+        skill = self.base / 'skills/matsugit'
+        skill.unlink()
+        shutil.copytree(root / 'skills/matsugit', skill)
+        (root / 'skills/matsugit/SKILL.md').write_text('new instructions')
+        cursor.install(root, home=self.home)
+        self.assertEqual((skill / 'SKILL.md').read_text(), 'new instructions')
+
+    def test_custom_skill_reference_blocks_setup_before_config_changes(self):
+        skill = self.base / 'skills/matsugit'
+        shutil.copytree(ROOT / 'skills/matsugit', skill)
+        (skill / 'references/setup.md').write_text('custom setup')
+        before = self.config.read_bytes()
+        with self.assertRaisesRegex(Error, 'references/setup.md'):
+            cursor.install(ROOT, home=self.home)
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertFalse((self.base / 'matsugit-install.json').exists())
 
 
 if __name__ == '__main__': unittest.main()
