@@ -1,5 +1,7 @@
 import {App, applyDocumentTheme, applyHostStyleVariables} from '@modelcontextprotocol/ext-apps';
 import {hostResultData, sourceText} from './host-results.mjs';
+import {cursorHost, inlineEditorHeight} from './host-view.mjs';
+import {version} from '../package.json';
 import {OpenAIExtensions} from '@openai/mcp-extensions/app';
 import {EditorView, basicSetup} from 'codemirror';
 import {keymap} from '@codemirror/view';
@@ -8,7 +10,7 @@ import {GFM} from '@lezer/markdown';
 import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
 import {EditorState, Compartment, Transaction} from '@codemirror/state';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
+import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, insertMenu, compactMarkup, slideSeparators} from './authoring.mjs';
@@ -29,7 +31,7 @@ import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
 
 const $ = id => document.getElementById(id);
-const app = new App({name: 'matsugit', version: '0.25.2'});
+const app = new App({name: 'matsugit', version});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const downloadFile = fileDownloads(demo ? null : app);
@@ -52,6 +54,7 @@ let publication;
 let refreshRequested = false, copying = false, feedbackTimer;
 let incomingDocument = null;
 let noticeMessage = '';
+let lastModelContext = '', currentHostContext = {}, changingDisplayMode = false;
 let mergeAttempt = null;
 const mergeReview = mergeDialog();
 const externalReview = changeReview();
@@ -142,6 +145,8 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
+$('workspace-version').textContent = version;
+$('workspace-version').title = `matsugit workspace ${version}`;
 tables=tableDialog({editor,state,call,changed:()=>{scheduleRecovery();if(tables)refreshControls();},notice,downloadFile,enabled:()=>!demo&&!state.loading});
 const agentSlide = slideAgent({
   snapshot:()=>({...state,text:text(),generation:loadSequence}),
@@ -871,16 +876,54 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) flush
 window.addEventListener('pagehide', flushRecovery);
 setInterval(() => { if (recoveryPending) flushRecovery(); }, 2000);
 function updateModelContext() {
-  if (!demo && app.getHostContext()) app.updateModelContext({structuredContent: {
+  if (demo || !app.getHostContext() || cursorHost(app.getHostContext(), app.getHostVersion())) return;
+  // Cursor turns passive context updates into composer edits and can steal focus.
+  // Explicit slide AI requests send their own context and remain available.
+  const structuredContent = {
     file: state.name, layout: state.layout, format: state.format, dirty: dirty(), revision: state.revision,
     conflict: state.conflict, previewCurrent: state.renderedRevision === state.revision,
-  }}).catch(() => {});
+  };
+  const next = JSON.stringify(structuredContent);
+  if (next === lastModelContext) return;
+  lastModelContext = next;
+  app.updateModelContext({structuredContent}).catch(() => {
+    if (lastModelContext === next) lastModelContext = '';
+  });
 }
 function hostContext(context) {
+  currentHostContext = {...currentHostContext, ...context};
+  context = currentHostContext;
   if (context?.theme) applyDocumentTheme(context.theme);
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   for (const side of ['top','bottom','left','right']) document.documentElement.style.setProperty(`--safe-${side}`, `${context?.safeAreaInsets?.[side] || 0}px`);
+  const height = inlineEditorHeight(context);
+  document.documentElement.dataset.displayMode = context.displayMode || '';
+  if (height !== null) document.documentElement.style.setProperty('--inline-editor-height', `${height}px`);
+  else document.documentElement.style.removeProperty('--inline-editor-height');
+  const modes = context.availableDisplayModes || [];
+  const expanded = context.displayMode === 'fullscreen';
+  const button = $('expand-workspace');
+  button.hidden = !modes.includes(expanded ? 'inline' : 'fullscreen');
+  button.title = expanded ? 'Exit expanded workspace' : 'Expand workspace';
+  button.setAttribute('aria-label', button.title);
+  button.replaceChildren(createElement(expanded ? Minimize2 : Maximize2));
+  const host = app.getHostVersion();
+  $('workspace-version').title = `matsugit workspace ${version}; ${host?.name || context.userAgent || 'host'} ${host?.version || ''}; ${context.displayMode || 'default'} view`;
+  editor.requestMeasure();
 }
+$('expand-workspace').onclick = async () => {
+  if (changingDisplayMode) return;
+  changingDisplayMode = true;
+  $('expand-workspace').disabled = true;
+  try {
+    const mode = currentHostContext.displayMode === 'fullscreen' ? 'inline' : 'fullscreen';
+    if (!currentHostContext.availableDisplayModes?.includes(mode)) return;
+    const result = await app.requestDisplayMode({mode});
+    hostContext({displayMode:result.mode});
+    if (result.mode !== mode) notice('The editor host kept the current workspace size.');
+  } catch (error) { notice('Could not resize the workspace: ' + error.message); }
+  finally { changingDisplayMode = false; $('expand-workspace').disabled = false; }
+};
 $('save').onclick = () => save();
 $('notice-save').onclick = () => save();
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };

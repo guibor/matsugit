@@ -66,6 +66,11 @@ file. Narrow embedded panels wrap their toolbar without overlapping save status.
 The open tool accepts =editor="visual"= alongside =layout="split"= and
 =format="slides"=, so an agent can open the requested view directly.
 
+Plugin 0.25.5 avoids Cursor's focus-stealing chat-context updates while typing and
+requests a taller inline editor within the host's limits. The footer identifies
+the running workspace version. This is still a chat panel in inline-only hosts,
+not a native editor tab; see [[file:docs/cursor.md][Cursor sizing and compatibility]].
+
 *One canonical file, including web edits.* With Source to CI publishing, choose
 =Move source and assets into target; leave local symlinks= to avoid a second
 editable copy. This is explicit opt-in, with a reviewed file list. Existing

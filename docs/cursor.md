@@ -46,6 +46,24 @@ action retains a copyable request and downloads offer the supported fallback;
 neither silently reports success. Actual desktop support depends on the Cursor
 version, so protocol tests alone do not establish every installed host's support.
 
+### Panel size and typing
+
+Cursor 3.26.16 advertises only inline MCP App views, capped at 800 pixels tall;
+it does not offer a full editor tab through this plugin protocol. From workspace
+0.25.5, matsugit requests a 760-pixel panel within the host's limits instead of
+inheriting a short chat-card height. The expand icon is shown only when the host
+actually advertises another display mode. Present does not enlarge the host window.
+
+That Cursor build also turns `ui/update-model-context` into a chat-composer update.
+matsugit no longer sends passive updates while editing in Cursor, because they can
+pull focus out of the editor. The explicit slide AI action still sends its selected
+slide and prompt. This workaround does not change saves or source/preview sync.
+
+The workspace footer shows the running engine version. Hover it for the host and
+display mode; a newly downloaded ZIP does not update an already-open panel.
+Reload the installed MCP connection and open a fresh workspace after an upgrade.
+Do not keep both a manual and imported copy of the same MCP server enabled.
+
 Do not install both this global MCP entry and a duplicate marketplace MCP server.
 The `.cursor-plugin/` manifest also packages the shared skill, MCP and commands
 for Cursor's plugin distribution mechanism. No marketplace submission or team
