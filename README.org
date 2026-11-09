@@ -67,8 +67,10 @@ copy publication remains available. The Git sync icon offers =Pull updates= or
 edits, lets you resolve overlapping passages here, then shows the destination,
 optional referenced assets and commit message. Only =Commit and push= writes the
 reviewed result and sends it. Unrelated local files are not committed; there is
-no automatic stash, reset or force push. =Check again= stays available after
-failure. =Review publish...= remains the separate flow for a different target.
+no automatic stash, reset or force push. Source-to-CI publication also leaves
+unrelated unstaged and untracked files untouched; staged work still requires
+separate review. =Check again= stays available after failure. =Review publish...=
+remains the separate flow for a different target.
 See [[file:docs/canonical-source.org][canonical source and Git synchronization]] for limits and CLI use.
 
 The local Codex plugin puts the source and both outputs in one workspace:

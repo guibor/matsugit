@@ -115,6 +115,24 @@ class CanonicalTests(unittest.TestCase):
         self.assertFalse(self.source.is_symlink())
         self.assertEqual(git(self.repo, 'diff', '--cached', '--name-only'), 'unrelated.txt')
 
+    def test_unrelated_unstaged_and_untracked_work_survives_publication(self):
+        tracked = self.repo / 'unrelated.txt'
+        tracked.write_text('Committed value\n')
+        git(self.repo, 'add', 'unrelated.txt')
+        git(self.repo, 'commit', '-m', 'Add unrelated file')
+        git(self.repo, 'push')
+        tracked.write_text('Local draft\n')
+        untracked = self.repo / 'another draft.txt'
+        untracked.write_text('Untracked draft\n')
+
+        sha = publish(self.settings, confirmed=True)
+
+        self.assertEqual(git(self.remote, 'rev-parse', 'main'), sha)
+        self.assertEqual(tracked.read_text(), 'Local draft\n')
+        self.assertEqual(untracked.read_text(), 'Untracked draft\n')
+        self.assertEqual(git(self.repo, 'diff', '--cached', '--name-only'), '')
+        self.assertEqual(git(self.repo, 'stash', 'list'), '')
+
     def test_inplace_topics_preserves_sibling_assets_without_copying(self):
         (self.repo / 'scripts').mkdir()
         (self.repo / 'scripts/build_pages.py').write_text('# synthetic existing renderer\n')

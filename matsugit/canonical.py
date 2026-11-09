@@ -20,10 +20,9 @@ def preflight(settings, paths):
         raise Error(f"Switch the target to {settings['branch']} first")
     if git(repo, 'diff', '--cached', '--name-only'):
         raise Error('Staged changes exist; publish them separately first')
-    changes = set(filter(None, git(repo, 'diff', '--name-only', '-z', 'HEAD').split('\0')))
-    changes.update(filter(None, git(repo, 'ls-files', '--others', '--exclude-standard', '-z').split('\0')))
-    if changes - set(paths):
-        raise Error('Unrelated local changes exist; commit/reconcile them first (nothing was stashed)')
+    # Unstaged and untracked work can coexist with a scoped publication. Git
+    # rejects a fast-forward that would overwrite it, and publish() stages and
+    # commits only the reviewed paths.
     return git(repo, 'rev-parse', 'HEAD')
 
 

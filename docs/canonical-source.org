@@ -35,9 +35,12 @@ matsugit publish /path/deck.md --target docs --build ci --move-source
 
 Subsequent publication from the canonical file uses it in place, without another
 bundle/copy. A unique configured target matching the real checkout takes priority
-over the host default; explicit =--target= still wins. Staged or unrelated changes
-stop publication. If upstream changes the source during the pre-publication pull,
-the publisher stops for review instead of committing an older snapshot over it.
+over the host default; explicit =--target= still wins. Staged changes stop
+publication, while unrelated unstaged and untracked files remain untouched and
+are never included in the scoped commit. If an upstream fast-forward would
+overwrite local work, Git stops the operation. If upstream changes the source
+during the pre-publication pull, the publisher stops for review instead of
+committing an older snapshot over it.
 If push fails, the canonical files, links and local commit stay recoverable;
 review the checkout and retry =git push= there.
 
