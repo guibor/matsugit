@@ -24,7 +24,8 @@ def files(root, *, git_hash=None, include_generated=False):
     def unreadable(error):
         raise error
     for directory, dirs, names in os.walk(root, followlinks=False, onerror=unreadable):
-        for name in [*dirs, *names]:
+        dirs.sort()
+        for name in sorted([*dirs, *names]):
             path = Path(directory) / name
             relative = path.relative_to(root).as_posix()
             mode = path.lstat().st_mode
