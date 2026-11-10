@@ -230,17 +230,41 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             assert len(titles()) == 3
             frame.locator('.story-section').first.get_by_role('button',name='Fold section').click()
             assert current() == before
-            # Save and receive an agent edit while Story is open. No title draft is lost.
+            # Saved moves make the external writer's base ambiguous. Keep the
+            # title draft and require review rather than guessing its parent.
             frame.locator('#save').click(); wait(frame,'!matsugitWorkspace.state.saving')
             saved = source.read_text()
             frame.locator('.story-claim .story-title').first.click()
             field = frame.get_by_role('textbox',name='Edit claim title')
             field.fill('A deliberately edited local claim')
+            local = current()
             incoming = saved.replace('The final decision stays with this slide.','New supporting evidence from the agent.')
             source.write_text(incoming)
             frame.evaluate('matsugitWorkspace.reload()'); wait(frame,'!matsugitWorkspace.state.merging')
-            assert 'A deliberately edited local claim' in current()
-            assert 'New supporting evidence from the agent.' in current()
+            assert frame.evaluate('matsugitWorkspace.state.conflict && matsugitWorkspace.state.ambiguousExternal')
+            assert current() == local and source.read_text() == incoming
+            frame.locator('#more').click()
+            frame.locator('#external-review').click()
+            frame.locator('#changes-dialog').wait_for(state='visible')
+            frame.locator('#changes-preview').click()
+            wait(frame,'!document.getElementById("changes-apply").disabled')
+            reviewed = local.replace('The final decision stays with this slide.','New supporting evidence from the agent.')
+            assert frame.locator('#changes-result').input_value() == reviewed
+            frame.locator('#changes-apply').click()
+            wait(frame,'!document.getElementById("changes-dialog").open')
+            assert current() == reviewed and source.read_text() == incoming
+            assert not frame.evaluate('matsugitWorkspace.state.conflict')
+            # Once reviewed, independent file edits combine while a title is
+            # still being typed. Only the author's changes remain unsaved.
+            frame.locator('.story-claim .story-title').first.click()
+            frame.get_by_role('textbox',name='Edit claim title').fill('A deliberately edited local claim, refined')
+            local = current()
+            incoming = incoming.replace('Observe activation.', 'Observe the activation signal.')
+            source.write_text(incoming)
+            frame.evaluate('matsugitWorkspace.reload()'); wait(frame,'!matsugitWorkspace.state.merging')
+            assert current() == local.replace('Observe activation.', 'Observe the activation signal.')
+            assert source.read_text() == incoming
+            assert not frame.evaluate('matsugitWorkspace.state.conflict')
             frame.locator('button[data-layout="story"]').click()
             frame.locator('.story-edit').wait_for(state='hidden')
             frame.locator('#story-preview').check()
