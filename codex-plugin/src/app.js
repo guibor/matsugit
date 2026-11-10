@@ -14,7 +14,7 @@ import {gallery} from './gallery.mjs';
 import {share} from './share.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding} from './check.mjs';
-import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
+import {createElement, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} from './authoring.mjs';
@@ -40,7 +40,7 @@ const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
 const downloadFile = fileDownloads(demo ? null : app);
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
-  path:null, editorMode:'raw', storyPreview:false, storyMode:'overview', storySize:'large',
+  path:null, autosave:true, editorMode:'raw', storyPreview:false, storyMode:'overview', storySize:'large',
   session: null, uri: null, revision: 0, renderedRevision: -1, rendering: false,
   format: 'document', layout: 'split', rendered: null, saving: false, loading: false, pendingRender: false,
   bases: {}, revisions: {}, forceFull: false,
@@ -137,6 +137,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
     }
     if (update.docChanged && !state.loading) { state.revision++; refreshControls(); scheduleRender(); }
     if (update.docChanged) check?.schedule();
+    if (update.docChanged && !state.loading) scheduleAutosave();
     if ((update.docChanged || update.selectionSet) && !state.loading) scheduleRecovery();
     if ((update.selectionSet || update.docChanged) && !state.loading && !followingPreview) {
       origin = 'source'; clearTimeout(followTimer); followTimer = setTimeout(followSource, 180);
@@ -154,6 +155,28 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
 $('insert').append('Add');
+$('more').append(createElement(Ellipsis));
+function moreMenu(open) {
+  $('more-panel').hidden = !open; $('more').setAttribute('aria-expanded', String(open));
+}
+$('more').onclick = () => moreMenu($('more-panel').hidden);
+$('more-panel').addEventListener('click', event => { if (event.target.closest('button')) moreMenu(false); });
+document.addEventListener('pointerdown', event => { if (!$('more-wrap').contains(event.target)) moreMenu(false); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('more-panel').hidden) { moreMenu(false); $('more').focus(); } });
+// Autosave: write the draft to its file shortly after typing stops. It uses
+// the same version-checked Save, so a newer file is never overwritten; it
+// waits while a table edit, merge, review or share is in progress.
+let autosaveTimer;
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  if (demo || !state.autosave || !state.writable || !state.etag) return;
+  autosaveTimer = setTimeout(async () => {
+    if (!state.autosave || state.conflict || !dirty()) return;
+    if (state.loading || state.saving || state.merging || state.delivering || tables.pending()) { scheduleAutosave(); return; }
+    await save({review: false});
+  }, 1500);
+}
+$('autosave').onchange = () => { state.autosave = $('autosave').checked; refreshControls(); scheduleAutosave(); scheduleRecovery(); };
 $('workspace-version').textContent = version;
 $('workspace-version').title = `matsugit workspace ${version}`;
 tables=tableDialog({editor,state,call,changed:()=>{scheduleRecovery();if(tables)refreshControls();},notice,downloadFile,enabled:()=>!demo&&!state.loading});
@@ -665,6 +688,7 @@ function applyOpenView(data) {
   if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
   if (['raw', 'visual'].includes(data.editor)) changeEditorMode(data.editor);
+  if (typeof data.autosave === 'boolean') { state.autosave = data.autosave; $('autosave').checked = data.autosave; }
 }
 async function load(data, {acceptRevision = null} = {}) {
   if (state.saving || state.merging) { notice('Wait for the current save or merge before opening another document.'); return; }
@@ -787,7 +811,7 @@ function recoveryScope() {
 function viewState() {
   const style = document.documentElement.style;
   return {layout: state.layout, storyPreview:state.storyPreview, storyMode:state.storyMode, storySize:state.storySize, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
-    editorMode:state.editorMode,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
+    editorMode:state.editorMode,autosave:state.autosave,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
     positions: state.positions};
@@ -801,6 +825,7 @@ function applyView(view) {
   state.storySize = view.storySize === 'compact' ? 'compact' : 'large';
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
+  if (typeof view.autosave === 'boolean') { state.autosave = view.autosave; $('autosave').checked = view.autosave; }
   $('slide-separators').checked = view.slideSeparators === true;
   editor.dispatch({effects: slideSeparators.of($('slide-separators').checked)});
   state.positions = view.positions; restoredPosition = true; origin = 'preview';

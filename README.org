@@ -49,6 +49,15 @@ You do not need to learn the syntax first (plugin 0.26).
   then say whether the site is live. It saves first, asks once before sending,
   and never needs a Git command. The detailed views are under =More options=.
 
+- *Your typing is saved for you.* From plugin 0.28 the workspace writes your
+  changes to the file a moment after you stop typing. A file that changed
+  elsewhere is never overwritten: the two versions are shown for you to choose.
+  Turn it off under =More= (the =...= menu) to save only when you press Save.
+- *Sharing shows where it stands.* Share lists its three steps (saved, sent,
+  site updated) with a tick for each one done. If the site is still rebuilding
+  you can close it: the button changes to =Shared= and a message tells you when
+  it is live.
+
 It is still one ordinary Markdown file that you own; nothing above adds a
 hidden format. The check covers slide structure, not facts or appearance, so
 look at the slides before sharing. See [[file:docs/codex.org::*Check: what is working and what is not (0.26)][Check]] and

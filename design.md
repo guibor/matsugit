@@ -137,6 +137,15 @@ existing claim or takeaway is selected instead of duplicated; nothing is added
 while a block is unclosed. The `/` completion in `authoring.mjs` uses the same
 catalogue for keyboard users.
 
+### Autosave (`app.js`)
+
+`scheduleAutosave()` runs after each document change and calls the ordinary
+`save({review: false})` 1.5 s after typing stops. It does nothing for files
+without a writable, versioned connection, backs off while a table edit, merge,
+review or share holds the document, and stops at a conflict so the existing
+review takes over. `state.autosave` comes from the `autosave` open option, the
+recovery view or the `More` menu.
+
 ### How Share works (`share.mjs`, `matsugit/share.py`)
 
 Share adds no new Git operation; it sequences the reviewed ones. `share-status`
@@ -149,6 +158,9 @@ pulls (`sync`), opens the existing conflict dialog, or sends with `exchange`.
 `receipt_plan()` attaches the project and provider to that push so
 `publication.status(check=True)` can report the site build afterwards. Share
 saves before taking the delivery lock, because Save is disabled while locked.
+`outcome()` paints the result from the stored receipt and `monitor()` polls the
+provider independently of the dialog, so the header button and a notice report
+the site build even when Share is closed.
 
 ## Agent surface
 

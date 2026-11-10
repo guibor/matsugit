@@ -563,6 +563,26 @@ per render and 20 MiB of embedded HTML per output. A failed render retains the
 last successful preview and the editor text. Preview links switch between
 document and slides; external navigation is disabled inside the preview frame.
 
+* Saving automatically (0.28)
+
+A writable file is saved a moment after typing stops (about a second and a half).
+The header shows =Saving soon=, then =Saved to file=. It is the same
+version-checked Save as the button: if the file changed elsewhere since it was
+read, nothing is written, the header says =Changed elsewhere= and the existing
+review compares the versions. Autosave waits while a table edit is open or a
+merge, review or share is running. It does not send anything to a project;
+sharing stays a separate, confirmed step.
+
+Turn it off with =More= (the =...= button) > =Save automatically=; the choice is
+remembered with the document's recovery state. Agents and scripts can open with
+=autosave: false=. Unsaved copies without a file connection are still protected
+only by the private recovery copy. Because the file now changes as you type,
+other programs watching it (an agent, another editor) see intermediate text.
+
+=More= also holds the controls that used to be icons in the header: open
+another file, recover an earlier draft, review changes made elsewhere, and
+show layout names instead of markup.
+
 * Share: one button to sync and deploy (0.27)
 
 =Share= is for people who have a GitLab or GitHub project but do not use Git.
@@ -587,6 +607,15 @@ it was; the workspace follows it (see [[file:canonical-source.org][one canonical
 copy to keep in step. Later shares exchange changes with the project: separate
 edits combine by themselves, pictures and files the deck uses go with it, and
 nothing is sent before the final =Share now=.
+
+From 0.28 the dialog lists the three steps in order (saved on this computer,
+sent to the project, the site shows it) and marks each as done, next, in
+progress, failed or unknown; the main button is the filled one and =Not now=
+closes without doing anything. The watch on the site build continues after the
+dialog is closed and after reopening the workspace within half an hour of a
+share: the header button turns from =Building site= to =Shared= or
+=Site failed= by itself and a message says so. Opening Share always looks once
+more.
 
 After sending, Share asks the project whether the site rebuilt and says =Live=
 only when the provider reports this version deployed. That uses your existing

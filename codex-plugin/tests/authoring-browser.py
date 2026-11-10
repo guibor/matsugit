@@ -40,7 +40,7 @@ try:
         frame.locator('[data-format="slides"]').click()
         wait(frame, '!!matsugitWorkspace.state.rendered?.slides && !matsugitWorkspace.state.rendering')
         frame.locator('#auto').uncheck()
-        frame.locator('#compact-markup').click()
+        frame.locator('#compact-markup').dispatch_event('click')
         assert frame.locator('.ff-block-label').count() >= 3
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
         frame.locator('select[aria-label="Column proportions"]').select_option('1:2')
@@ -48,7 +48,7 @@ try:
         frame.locator('#undo').click()
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
         page.screenshot(path=str(shots / 'compact-labels.png'))
-        frame.locator('#compact-markup').click()
+        frame.locator('#compact-markup').dispatch_event('click')
         assert frame.locator('.ff-block-label').count() == 0
         frame.evaluate(r'''() => {
           const e=matsugitWorkspace.editor, at=e.state.doc.length;

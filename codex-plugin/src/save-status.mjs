@@ -8,6 +8,7 @@ export function saveStatus(state, dirty, tablePending = false) {
   if (state.saveError && dirty) return {kind:'error', label:'Not saved', detail:state.saveError};
   if (tablePending) return {kind:'dirty', label:'Table edits', detail:'Table edits have not been applied to the draft or saved to the file'};
   if (!state.writable || !state.etag) return {kind:'local', label:dirty ? 'Unsaved copy' : 'Local copy', detail:'No writable file connection; download the source to keep this copy'};
+  if (dirty && state.autosave) return {kind:'dirty', label:'Saving soon', detail:'Saved to the file automatically a moment after you stop typing'};
   if (dirty) return {kind:'dirty', label:'Unsaved draft', detail:state.lastSavedAt ? `Changes since the last save at ${new Date(state.lastSavedAt).toLocaleTimeString()}` : 'Edits are in this workspace, not saved to the source file'};
   return {kind:'saved', label:'Saved to file', detail:state.lastSavedAt ? `Saved to the source file at ${new Date(state.lastSavedAt).toLocaleTimeString()}` : 'This draft matches the last file version read'};
 }
