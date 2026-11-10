@@ -272,7 +272,9 @@ export function checkDeck(source, org = false) {
             if (heading) add('claim-untitled', 'problem', claim.from, 'This claim has no slide title above it.', 'Add a `## Slide title` line above the claim.');
             return;
           }
-          const content = lines.some(line => line.from >= from && line.from < claim.from && !blank(line)
+          // Heading offsets start at #, after any valid Markdown indentation.
+          const claimLine = lineOf(claim.from).from;
+          const content = lines.some(line => line.from >= from && line.from < claimLine && !blank(line)
             && !claims.some(other => line.from >= other.from && line.from < (other.to ?? other.from + 1))
             && !enclosing(line.from)?.opaque && !blocks.some(block => block.opaque && block.open === line.index)
             && !(line.literal && /^\s*<!--/.test(line.text)));

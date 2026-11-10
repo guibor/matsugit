@@ -4252,7 +4252,7 @@ function structure(source, org = false) {
         const role = /(?:^|[.{\s])([a-z][a-z-]*)\b/.exec(fence[2])?.[1] || "block";
         stack.push({ from: offset, startEnd: offset + line.length, width: fence[1].length, role });
         markers.push({ from: offset, role });
-      } else if (stack.length && fence[1].length >= stack.at(-1).width) {
+      } else if (stack.length) {
         const block = stack.pop();
         blocks.push({ ...block, endFrom: offset, to: offset + line.length });
         markers.push({ from: offset, role: block.role, closing: true });

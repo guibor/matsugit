@@ -10,6 +10,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const python = process.env.MATSUGIT_PYTHON || 'python3';
 const H = '---\ntitle: T\nslide-layout: structured\n---\n\n';
 const columns = parts => ':::: columns\n' + parts.map(part => `#### ${part}\ntext\n`).join('\n') + '::::\n';
+const indentedClaims = [0, 1, 2, 3].flatMap(spaces => ['\n', '\r\n'].map(newline =>
+  (H + '## A\n\n' + ' '.repeat(spaces) + '### Claim\n\nBody.\n').replaceAll('\n', newline)));
 
 // `renderer` records what the real renderer does with the same text: 'fails'
 // (the preview stops) or 'accepts' (it renders, but not as the author meant).
@@ -80,6 +82,25 @@ test('problems sort before tips and summarize in plain words', () => {
   assert.equal(checkSummary([]).label, 'No problems');
 });
 
+test('claim indentation does not count as body content or change fix boundaries', () => {
+  for (const source of indentedClaims) {
+    assert.deepEqual(checkDeck(source), [], JSON.stringify(source));
+    const newline = source.includes('\r\n') ? '\r\n' : '\n';
+    const heading = source.split(newline).find(line => line.trimStart().startsWith('### '));
+    for (const invalid of [source.replace(heading, 'Earlier body.' + newline + newline + heading),
+      source + newline + heading + newline + 'More evidence.' + newline]) {
+      const findings = checkDeck(invalid).filter(item => item.code === 'claim-extra');
+      assert.equal(findings.length, 1, JSON.stringify(invalid));
+      const fix = findings[0].fix;
+      assert.equal(invalid.slice(fix.changes[0].from, fix.changes[0].to), '###');
+      const repaired = applyFix(invalid, fix);
+      assert.ok(repaired.includes(heading.replace('###', '####')));
+      assert.deepEqual(checkDeck(repaired), [], JSON.stringify(repaired));
+    }
+  }
+  assert.deepEqual(checkDeck(H + '## A\n\n  ::: claim\nClaim.\n  :::\n\nBody.\n'), []);
+});
+
 test('valid syntax, examples and hidden or literal content raise no findings', () => {
   const clean = [
     H + '## A\n### claim\n\n:::: columns 2:1\n#### L\nx\n\n#### R\ny\n:::\n\n::: takeaway\nDone.\n:::\n',
@@ -137,9 +158,10 @@ for text in json.load(sys.stdin):
 print(json.dumps(out))`;
   const repaired = cases.filter(item => item.fixed && !item.tip).map(item =>
     applyFix(item.source, checkDeck(item.source).find(found => found.code === item.code).fix));
-  const run = spawnSync(python, ['-c', script], {cwd: root, encoding: 'utf8', input: JSON.stringify([...cases.map(item => item.source), ...repaired])});
+  const accepted = [...repaired, ...indentedClaims];
+  const run = spawnSync(python, ['-c', script], {cwd: root, encoding: 'utf8', input: JSON.stringify([...cases.map(item => item.source), ...accepted])});
   if (run.status !== 0) { t.skip('Renderer converter unavailable: ' + run.stderr.trim().split('\n').at(-1)); return; }
   const results = JSON.parse(run.stdout);
   cases.forEach((item, index) => assert.equal(results[index], item.renderer, `${item.code}: ${JSON.stringify(item.source)}`));
-  repaired.forEach((source, index) => assert.equal(results[cases.length + index], 'accepts', JSON.stringify(source)));
+  accepted.forEach((source, index) => assert.equal(results[cases.length + index], 'accepts', JSON.stringify(source)));
 });

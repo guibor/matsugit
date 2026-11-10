@@ -50,6 +50,11 @@ class EditorTemplatesTest(unittest.TestCase):
             self.assertIn('Pending.', comment)
             self.assertIn('Request:', comment)
 
+    def test_notes_description_does_not_promise_privacy(self):
+        description = self.entries['notes']['when']
+        self.assertIn('included in slide HTML and handouts', description)
+        self.assertNotIn('Only you', description)
+
 
 if __name__ == '__main__':
     unittest.main()

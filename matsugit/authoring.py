@@ -311,7 +311,7 @@ CATALOG = {
     'chart-block': ('part', 'Chart from a table', 'Select a table first to turn it into a chart.', 'chart'),
     'region': ('part', 'Sub-heading', 'A small heading with points under it.', 'region'),
     'source': ('part', 'Source line', 'Where the evidence comes from.', 'source'),
-    'notes': ('part', 'Presenter notes', 'Only you see these while presenting.', 'notes'),
+    'notes': ('part', 'Presenter notes', 'Hidden on slides; included in slide HTML and handouts.', 'notes'),
     'break': ('part', 'Continue on a new page', 'Same title and claim, next page.', 'break'),
     'agent-comment': ('part', 'Note for the AI', 'A review request that never appears on slides.', 'comment'),
     'canvas': ('part', 'Interactive HTML', 'Embed a trusted local HTML file. Advanced.', 'canvas'),

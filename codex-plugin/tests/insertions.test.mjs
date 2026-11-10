@@ -72,3 +72,15 @@ test('a picked recipe lands in a sensible place wherever the cursor is', async (
       assert.deepEqual(checkDeck(apply(deck, change)).filter(found => found.severity === 'problem'), [], `${name} at ${position}`);
     }
 });
+
+test('Add accepts shorter closing fences that Check and the renderer accept', async () => {
+  const {placeInsertion} = await import('../src/insertions.mjs');
+  const {checkDeck} = await import('../src/check.mjs');
+  const source = '---\nslide-layout: structured\n---\n\n## One\n\n:::: columns\n#### L\nLeft.\n\n#### R\nRight.\n:::\n\n## Two\n\nBody.\n';
+  assert.deepEqual(checkDeck(source), []);
+  const recipe = {group: 'part', markdown: '> [!TAKEAWAY]\n> Conclusion.\n'};
+  const change = placeInsertion(source, source.indexOf('Left.'), 'takeaway', recipe);
+  const inserted = source.slice(0, change.from) + change.insert + source.slice(change.to);
+  assert.match(inserted, /Right\.\n:::\n\n> \[!TAKEAWAY\]\n> Conclusion\.\n\n## Two/);
+  assert.deepEqual(checkDeck(inserted), []);
+});
