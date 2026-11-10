@@ -171,6 +171,12 @@ for external editors. With conflicts, `state.ancestor` supplies a review base,
 never an automatic write. An autosave refused by the version check calls
 `reload()` rather than overwriting the file.
 
+CodeMirror cannot preserve an external insertion inside the range of an earlier
+whole-document replacement when that replacement is undone. `wholesaleHistory`
+therefore rebases the author's contribution as one Undo step in this case,
+with a recovery checkpoint of the pre-merge text. This protects the accepted
+external edit, but does not preserve every earlier Undo step.
+
 ### How Share works (`share.mjs`, `matsugit/share.py`)
 
 Share adds no new Git operation; it sequences the reviewed ones. `share-status`

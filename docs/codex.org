@@ -598,7 +598,10 @@ It retains up to 20 versions and 8 MiB. If that capacity is exceeded, external
 changes require full-version review instead of silently forgetting protection.
 Reloading the plugin starts a new session; recovery copies protect drafts, not
 the entire edit history. A pending table edit or an active Redo branch pauses
-combining. File version checks cannot prevent another program from writing
+combining. After a whole-document replacement, combining may rebase your earlier
+Undo steps into one author-edit step, so Undo cannot erase the other writer's
+accepted changes. The pre-merge draft is retained in recovery; its full Undo
+history is not. File version checks cannot prevent another program from writing
 afterward. Agents must re-read before each edit and make targeted changes.
 
 Turn it off with =More= (the =...= button) > =Save automatically=; the choice is
