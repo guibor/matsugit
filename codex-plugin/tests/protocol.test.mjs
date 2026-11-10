@@ -33,6 +33,9 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.deepEqual(handler._meta['openai/ui'].entrypoints[0].extensions, ['.md', '.markdown', '.qmd', '.org']);
     assert.deepEqual(tools.find(tool => tool.name === 'matsugit_save')._meta.ui.visibility, ['app']);
     assert.deepEqual(tools.find(tool => tool.name === 'matsugit_preview_cancel')._meta.ui.visibility, ['app']);
+    const localExport = tools.find(tool => tool.name === 'matsugit_export_save');
+    assert.deepEqual(localExport._meta.ui.visibility, ['app']);
+    assert.deepEqual(localExport.annotations, {readOnlyHint:false, destructiveHint:false, openWorldHint:false});
     const app = await client.readResource({uri: 'ui://matsugit/workspace-v1'});
     assert.match(app.contents[0].text, /Markdown/);
     assert.equal(app.contents[0].text, fs.readFileSync(path.join(root, 'codex-plugin/bundle/app.html'), 'utf8'));

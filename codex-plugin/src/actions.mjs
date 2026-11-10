@@ -2,13 +2,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
-import {randomUUID} from 'node:crypto';
+import {randomUUID, createHash} from 'node:crypto';
 import {checkedText} from './store.mjs';
 
 export class WorkspaceActions {
   jobs = new Map();
   plans = new Map();
-  constructor(runtime, store) { this.runtime = runtime; this.store = store; }
+  constructor(runtime, store, downloads = path.join(os.homedir(), 'Downloads')) {
+    this.runtime = runtime; this.store = store; this.downloads = downloads;
+  }
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
     if (['export','plan','publish','sync','exchange'].includes(args.action)) checkedText(args.text);
@@ -50,7 +52,8 @@ export class WorkspaceActions {
     const id = randomUUID();
     const extension = ['.md','.markdown','.qmd','.org'].includes(path.extname(args.name || '').toLowerCase()) ? path.extname(args.name) : '.md';
     const output = args.action === 'export' && !args.sync_folder ? path.join(directory, 'export.' + args.format) : undefined;
-    const job = {owner, directory, state:'running', action:args.action, log:'', destination:relocation?.destination};
+    const job = {owner, directory, state:'running', action:args.action, log:'', destination:relocation?.destination,
+      exportName:output ? this.exportName(args.name, args.format) : undefined};
     if (relocation) this.store.expectRelocation(owner, relocation.destination);
     this.jobs.set(id, job);
     const child = spawn(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
@@ -79,6 +82,7 @@ export class WorkspaceActions {
       if (code !== 0) { job.state='error'; job.error=job.log || 'Operation failed'; return; }
       try {
         job.result = JSON.parse(stdout); job.state = 'ready';
+        if (args.action === 'options') job.result.local_downloads = {directory:this.downloads, host:os.hostname()};
         if (['plan','sync-plan','exchange-plan'].includes(args.action)) this.plans.set(id, {action:args.action, owner, target:args.target, theme:args.theme, build:args.build, move_source:args.move_source, assets:args.assets, relocation:job.result.relocation, fingerprint:job.result.fingerprint});
         if (output) {
           const size = fs.statSync(output).size;
@@ -105,6 +109,54 @@ export class WorkspaceActions {
     try { fs.readSync(fd, buffer, 0, buffer.length, offset); }
     finally { fs.closeSync(fd); }
     return {chunk:buffer.toString('base64'), next:offset+buffer.length, done:offset+buffer.length === job.size};
+  }
+  exportName(name, format) {
+    const leaf = String(name || 'Untitled.md').split(/[\\/]/).at(-1).replace(/[\x00-\x1f\x7f]/g, '_');
+    const stem = path.parse(leaf).name.replace(/^\.+/, '') || 'Untitled';
+    let shortened = '';
+    for (const character of stem) {
+      if (Buffer.byteLength(shortened + character) > 180) break;
+      shortened += character;
+    }
+    return shortened + '.' + format;
+  }
+  saveExport(id, session, hostPath) {
+    this.status(id, session, hostPath);
+    const job = this.jobs.get(id);
+    if (job.state !== 'ready' || job.action !== 'export' || !job.file || !job.exportName)
+      throw Error('Prepare an export before saving it to Downloads');
+    if (job.savedExport && fs.existsSync(job.savedExport.path)) {
+      const stat = fs.lstatSync(job.savedExport.path);
+      if (stat.isFile() && stat.ino === job.savedExport.ino && stat.dev === job.savedExport.dev
+          && stat.size === job.size && stat.mtimeMs === job.savedExport.mtimeMs
+          && createHash('sha256').update(fs.readFileSync(job.savedExport.path)).digest('hex') === job.savedExport.sha256)
+        return {path:job.savedExport.path, size:job.size, host:os.hostname()};
+    }
+    if (fs.existsSync(this.downloads) && fs.lstatSync(this.downloads).isSymbolicLink())
+      throw Error('Downloads is a symlink. Use an explicitly configured export folder instead.');
+    fs.mkdirSync(this.downloads, {recursive:true, mode:0o700});
+    if (!fs.lstatSync(this.downloads).isDirectory()) throw Error('Downloads is not a directory');
+    // Stage privately, then link exclusively: a partial file is never presented
+    // as saved, and collisions (including symlinks) never overwrite another file.
+    const directory = fs.mkdtempSync(path.join(this.downloads, '.matsugit-export-'));
+    fs.chmodSync(directory, 0o700);
+    try {
+      const staged = path.join(directory, 'prepared');
+      fs.copyFileSync(job.file, staged, fs.constants.COPYFILE_EXCL);
+      fs.chmodSync(staged, 0o600);
+      if (fs.statSync(staged).size !== job.size) throw Error('Prepared export changed; export again');
+      const {name, ext} = path.parse(job.exportName);
+      for (let index=0; index<1000; index++) {
+        const destination = path.join(this.downloads, name + (index ? ` (${index})` : '') + ext);
+        try { fs.linkSync(staged, destination); }
+        catch (error) { if (error.code === 'EEXIST') continue; throw error; }
+        const stat = fs.statSync(destination);
+        job.savedExport = {path:destination, ino:stat.ino, dev:stat.dev, mtimeMs:stat.mtimeMs,
+          sha256:createHash('sha256').update(fs.readFileSync(staged)).digest('hex')};
+        return {path:destination, size:job.size, host:os.hostname()};
+      }
+      throw Error('Too many exports with this filename in Downloads');
+    } finally { fs.rmSync(directory, {recursive:true, force:true}); }
   }
   close() {
     for (const job of this.jobs.values()) {

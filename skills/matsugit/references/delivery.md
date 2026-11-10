@@ -12,6 +12,13 @@ and tables are native; charts/diagrams are images. Review the file before sharin
 Use PDF/HTML for rendered fidelity, or an approved native reference PPTX for
 closer PowerPoint styling. Never claim screenshots are editable shapes.
 
+If a sandboxed host cannot deliver the prepared export, use the explicit
+**Save to Downloads** action. It saves the existing PDF/PPTX/HTML/ZIP through the
+local plugin without rendering again, overwriting another file or publishing.
+The dialog identifies the plugin machine and destination, then reports the actual
+saved path. A remote plugin writes on its server, not on the user's laptop.
+Do not equate a browser download request with a confirmed saved file.
+
 ```sh
 matsugit export deck.md --format pptx --output deck.pptx
 matsugit export deck.org --format pdf --output deck.pdf

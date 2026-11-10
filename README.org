@@ -177,6 +177,11 @@ See [[file:docs/codex.org][the workspace guide]] for recovery and format boundar
 Exports use the host's download handler, including older Codex hosts. The
 dialog retains the prepared file and offers =Download again= without rendering
 it twice. A cancelled or failed transfer is not reported as a completed download.
+When an embedded host blocks downloads, =Save to Downloads= (plugin 0.27.1)
+explicitly saves the already-prepared PDF, PowerPoint, HTML or ZIP on the machine
+running the local plugin. The dialog shows that machine and folder before the
+click, then the verified saved path. Existing files are never overwritten.
+On a remote plugin server this is the server's Downloads, not the laptop's.
 Source and table-draft downloads use the same delivery path; no public upload is
 needed. A browser-only fallback cannot confirm receipt.
 

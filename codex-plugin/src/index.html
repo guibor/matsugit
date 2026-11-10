@@ -227,7 +227,15 @@
   <p id="pptx-warning" hidden>Editable text and tables; charts and diagrams are images. Complex layouts may differ. Review in PowerPoint before sharing.</p>
   <button id="export-run" class="delivery-primary">Export</button>
   <pre id="export-progress" role="status" aria-live="polite"></pre>
-  <div id="export-ready" hidden><p id="export-filename"></p><button id="export-download-retry" title="Download prepared file" aria-label="Download prepared file"></button></div>
+  <div id="export-ready" hidden>
+    <p id="export-filename"></p>
+    <div class="export-file-actions">
+      <button id="export-download-retry" title="Download prepared file" aria-label="Download prepared file"></button>
+      <button id="export-save-local" title="Save the prepared export on the plugin machine without overwriting existing files" hidden></button>
+    </div>
+    <small id="export-local-target" hidden></small>
+    <input id="export-saved-path" aria-label="Saved export path" readonly hidden>
+  </div>
 </dialog>
 <dialog id="publish-dialog" class="delivery-dialog" aria-labelledby="publish-title">
   <div class="recovery-heading"><h2 id="publish-title">Publish</h2><button id="close-publish" title="Close" aria-label="Close"></button></div>

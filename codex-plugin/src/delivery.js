@@ -1,4 +1,4 @@
-import {createElement, X, Upload, Plus, GitPullRequestArrow, Download} from 'lucide';
+import {createElement, X, Upload, Plus, GitPullRequestArrow, Download, FolderDown} from 'lucide';
 import {exportMime} from './download.mjs';
 import {gitExchange} from './git-exchange.js';
 
@@ -7,6 +7,8 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   let busy = false, plan = null, options = {}, syncPlan = null;
   let prepared = null;
   $('export-download-retry').append(createElement(Download), 'Download again');
+  $('export-save-local').append(createElement(FolderDown), 'Save to Downloads');
+  $('export-saved-path').onclick = event => event.target.select();
   for (const id of ['close-export', 'close-publish']) $(id).append(createElement(X));
   $('publish').append(createElement(Upload));
   $('repository-toggle').append(createElement(Plus));
@@ -36,7 +38,8 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     busy = value;
     state.delivering = value;
     refreshControls();
-    for (const id of ['export-run', 'export-download-retry', 'publish-review', 'publish-confirm', 'publish-move', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
+    for (const id of ['export-run', 'export-download-retry', 'export-save-local', 'publish-review', 'publish-confirm', 'publish-move', 'export-format', 'export-destination', 'publish-target', 'publish-build', 'export-replace', 'repository-toggle', 'repository-provider', 'repository-host', 'repository-name', 'repository-list', 'repository-more', 'repository-connect']) $(id).disabled = value;
+    $('export-save-local').disabled = value || !!prepared?.saved;
     $('git-sync').disabled = demo || value;
     $('git-sync-check').disabled = value;
     $('git-sync-publish').disabled = value;
@@ -110,6 +113,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     $('export-dialog').showModal();
     $('export-progress').textContent = '';
     prepared = null; $('export-ready').hidden = true;
+    $('export-saved-path').hidden = true;
     $('export-destination').value = 'download';
     $('export-replace').checked = false; $('export-replace-row').hidden = true;
     lock(true);
@@ -137,6 +141,10 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   async function sendPrepared() {
     $('export-ready').hidden = false;
     $('export-filename').textContent = `${prepared.name} (${Math.ceil(prepared.blob.size / 1024)} KiB)`;
+    $('export-save-local').hidden = !prepared.job || !options.local_downloads;
+    $('export-local-target').hidden = $('export-save-local').hidden;
+    $('export-local-target').textContent = options.local_downloads
+      ? `${options.local_downloads.host}: ${options.local_downloads.directory}` : '';
     $('export-progress').textContent = 'Sending to host downloads...';
     try {
       const message = await downloadFile(prepared);
@@ -151,11 +159,25 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     try { await sendPrepared(); }
     finally { lock(false); $('export-format').onchange(); }
   };
+  $('export-save-local').onclick = async () => {
+    if (busy || !prepared?.job || prepared.saved) return;
+    lock(true); $('export-progress').textContent = 'Saving prepared export...';
+    try {
+      const result = await call('matsugit_export_save', {...prepared.owner, job:prepared.job});
+      prepared.saved = result;
+      $('export-saved-path').value = result.path;
+      $('export-saved-path').hidden = false;
+      $('export-progress').textContent = [`Saved on ${result.host}: ${result.path}`, ...(prepared.warnings || [])].join('\n\n');
+    } catch (error) {
+      $('export-progress').textContent = `File not saved: ${error.message}\n\nThe prepared export is retained.`;
+    } finally { lock(false); $('export-format').onchange(); }
+  };
   $('export-run').onclick = async () => {
     if (busy) return;
     const format = $('export-format').value;
     const args = snapshot(), sync = $('export-destination').value === 'sync';
     prepared = null; $('export-ready').hidden = true;
+    $('export-saved-path').hidden = true;
     lock(true); $('export-progress').textContent = 'Preparing export...';
     try {
       if (format === 'source') {
@@ -172,7 +194,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
           $('export-progress').textContent = `Receiving export: ${Math.round(offset / 1024)} KiB`;
         }
         prepared = {name:args.name.replace(/\.[^.]+$/, '') + '.' + format,
-          blob:new Blob(chunks,{type:exportMime[format]}),warnings:job.result.warnings};
+          blob:new Blob(chunks,{type:exportMime[format]}),warnings:job.result.warnings,job:job.job,owner:job.owner};
         await sendPrepared();
       } else {
         $('export-progress').textContent = [job.result.path, job.result.sync, ...(job.result.warnings || [])].filter(Boolean).join('\n\n');

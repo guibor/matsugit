@@ -33,7 +33,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.27.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.27.1'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -57,6 +57,10 @@ serveStdio(() => {
   server.registerTool('matsugit_export_chunk', {description:'Download a bounded chunk of this workspace export.', ...appOnly,
     inputSchema:z.object({job:z.string(),session:z.string().optional(),offset:z.number().int().nonnegative()}),annotations:readOnly},
     guard(async ({job,session,offset},context) => {const {chunk,...data}=actions.chunk(job,offset,session,getResourcePath(context.mcpReq?._meta)); return appResult(data,{chunk});}));
+  server.registerTool('matsugit_export_save', {description:'On explicit Save to Downloads, save this workspace\'s already-prepared export in the plugin machine\'s Downloads folder. Returns the real path and machine. Never overwrites existing files, uploads or publishes.', ...appOnly,
+    inputSchema:z.object({job:z.string(),session:z.string().optional()}),
+    annotations:{readOnlyHint:false,destructiveHint:false,openWorldHint:false}},
+    guard(async ({job,session},context) => result(actions.saveExport(job,session,getResourcePath(context.mcpReq?._meta)))));
   server.registerResource('workspace', uri, {mimeType: 'text/html;profile=mcp-app'}, async () => ({contents: [{
     uri, mimeType: 'text/html;profile=mcp-app', text: runtime.app,
     _meta: {'openai/ui': {preferredDisplayMode: 'fullscreen', availableDisplayModes: ['fullscreen']},

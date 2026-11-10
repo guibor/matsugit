@@ -35,6 +35,7 @@ client = new Client({name: 'matsugit-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
   args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
   env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: process.env.MATSUGIT_TEST_CONFIG || path.join(temporary, 'absent.json'),
+    ...(downloadMode === 'blocked' ? {HOME:temporary} : {}),
     MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery'),
     MATSUGIT_PUBLICATION_STATE: path.join(temporary, 'publication')}, stderr: 'inherit'}));
 opened = await client.callTool({name: 'matsugit_open', arguments: {path: source, ...openOptions}});
@@ -66,7 +67,7 @@ if(message.method==='tools/call'&&message.params.name==='matsugit_action'&&messa
 if(message.method==='ui/download-file'){
   const reply=value=>e.source.postMessage({jsonrpc:'2.0',id:message.id,...value},'*');
   const mode=${JSON.stringify(downloadMode)},params=message.params;
-  if(mode==='browser'){reply({error:{code:-32601,message:'Method not found'}});return;}
+  if(mode==='browser'||mode==='blocked'){reply({error:{code:-32601,message:'Method not found'}});return;}
   let blob,name;
   if(mode==='legacy'){
     if(!(params.blob instanceof Blob)||!params.name){reply({error:{code:-32602,message:'Invalid MCP file download params'}});return;}
@@ -133,7 +134,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Content-Type', 'text/html'); res.end(host);
   } catch (error) { res.end(JSON.stringify({error: {code: -32603, message: error.message}})); }
 });
-server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({port: server.address().port, source,
+server.listen(0, '127.0.0.1', () => console.log(JSON.stringify({port: server.address().port, source, downloads:path.join(temporary,'Downloads'),
   recovery: path.join(temporary, 'recovery'), publication: path.join(temporary, 'publication')})));
 async function close() { server.close(); await client.close(); fs.rmSync(temporary, {recursive: true, force: true}); process.exit(); }
 process.once('SIGTERM', close); process.once('SIGINT', close);

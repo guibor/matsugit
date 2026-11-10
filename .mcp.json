@@ -1,5 +1,5 @@
 {
   "mcpServers": {"matsugit": {
-    "command": "node", "args": ["${PLUGIN_ROOT}/codex-plugin/bundle/server.mjs"], "cwd": "${PLUGIN_ROOT}"
+    "command": "node", "args": ["./codex-plugin/bundle/server.mjs"], "cwd": "."
   }}
 }
