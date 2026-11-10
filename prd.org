@@ -91,8 +91,10 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R25. The workspace is opened by an agent, on a file, inside a chat. Its
   first-time guidance says that in one line; there is no standalone start screen.
 - R26. The formatted view reads as a document, not as a code editor.
-- R27. The author can always see the whole deck, where they are in it, and
-  which slides need attention.
+- R27. The author can always see the whole deck as a storyline (titles in
+  order, not pictures of slides), where they are in it, and which slides need
+  attention. The product is about the argument; thumbnails would turn it back
+  into a slide sorter.
 - R28. Text on a slide leads back to the same text in the editor.
 - R29. The README lets a newcomer understand the product in a minute and start
   in two; reference detail lives in the guides.
@@ -110,8 +112,8 @@ Immediate, in priority order:
 3. Replace the YAML settings block in the formatted view with a small "Deck
    settings" form.
 4. Tell the author about colleagues' changes before they open Share.
-5. Real slide thumbnails in the slide strip and the layout picker, rendered with
-   the selected theme, in place of titles and neutral sketches.
+5. Keep the slide strip a storyline: titles in order, never thumbnails. Consider
+   showing each slide's claim on hover so the argument can be read from it.
 6. Bring the check to Org beyond unfinished blocks.
 7. Move file synchronisation (save, reload, reconcile, autosave) out of
    =app.js= into its own module.
