@@ -378,7 +378,8 @@ version originally read; the plugin does not offer force overwrite.
 When an agent or editor changes a file, a clean workspace reloads it. Plugin
 0.14.2 uses a three-way merge for independent edits in a dirty workspace, with
 the last shared file as the base. It retains a separate pre-merge recovery copy,
-merges into the draft, and leaves Save to you. Identical edits are not duplicated.
+merges into the draft, and leaves Save to you (or to autosave, from 0.28; see
+[[*Saving automatically (0.28)][Saving automatically]] for how the two writers are reconciled). Identical edits are not duplicated.
 It does not guess how to combine changes to the same lines.
 
 For overlapping changes press Save or =Review changes=. Each
@@ -572,6 +573,32 @@ read, nothing is written, the header says =Changed elsewhere= and the existing
 review compares the versions. Autosave waits while a table edit is open or a
 merge, review or share is running. It does not send anything to a project;
 sharing stays a separate, confirmed step.
+
+*Typing while an agent edits the same file.* This is the case autosave has to
+get right, and the reason saving was explicit before 0.28. The rules now are:
+
+- Your typing is never written over a newer file, and a newer file is never
+  written over your typing without being combined with it.
+- When the agent (or any other program) changes the file and you have typed in
+  this session, the workspace combines the two by itself if they touch different
+  lines. The change arrives in the editor as small edits: the cursor stays
+  where it is, you keep typing, and Undo takes back only your own changes.
+- A writer that read the file a while ago and writes the whole file back would
+  undo everything you typed and saved since. The workspace remembers the
+  versions it saved in the last ten minutes, recognises which one the incoming
+  file was made from, and merges from that one, so your typing comes back
+  together with the new change. A message says =Your recent typing was kept=.
+- When both changed the same lines nothing is guessed: the file is left as the
+  other writer wrote it, your version stays in the editor, the header says
+  =Changed elsewhere= and autosave stops until you have reviewed the two.
+
+Limits. If an agent deliberately removes something you typed in the last ten
+minutes and the result happens to match an older saved version, the workspace
+will treat that as a stale write and put your text back; =Review changes= can
+reverse it. A pending table edit or an active Redo branch still pauses
+combining. Two saves racing within the same instant are caught by the version
+check on all but a vanishingly small window. The agent skill tells agents to
+re-read before each edit and to make targeted edits, which avoids most of this.
 
 Turn it off with =More= (the =...= button) > =Save automatically=; the choice is
 remembered with the document's recovery state. Agents and scripts can open with

@@ -9,9 +9,10 @@ import {markdown} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
-import {EditorState, Compartment, Transaction} from '@codemirror/state';
+import {EditorState, Compartment, Transaction, ChangeSet} from '@codemirror/state';
 import {gallery} from './gallery.mjs';
 import {share} from './share.mjs';
+import {textChanges, closestAncestor} from './external-edits.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding} from './check.mjs';
 import {createElement, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
@@ -61,6 +62,10 @@ let incomingDocument = null;
 let noticeMessage = '';
 let lastModelContext = '', currentHostContext = {}, changingDisplayMode = false;
 let mergeAttempt = null;
+// Recent versions this workspace wrote, newest first: what another writer may have read.
+let savedVersions = [];
+// True once the undo history holds a change that replaced most of the document.
+let wholesaleHistory = false;
 const mergeReview = mergeDialog();
 const externalReview = changeReview();
 let externalChange = null;
@@ -137,6 +142,10 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
     }
     if (update.docChanged && !state.loading) { state.revision++; refreshControls(); scheduleRender(); }
     if (update.docChanged) check?.schedule();
+    // Undoing such a change would also take back whatever another writer put
+    // inside the replaced range, so external changes then rebase the history.
+    for (const tr of update.transactions) if (tr.docChanged && !state.loading && tr.annotation(Transaction.addToHistory) !== false)
+      tr.changes.iterChangedRanges((from, to) => { if (to - from > 40 && to - from >= tr.startState.doc.length / 2) wholesaleHistory = true; });
     if (update.docChanged && !state.loading) scheduleAutosave();
     if ((update.docChanged || update.selectionSet) && !state.loading) scheduleRecovery();
     if ((update.selectionSet || update.docChanged) && !state.loading && !followingPreview) {
@@ -173,7 +182,7 @@ function scheduleAutosave() {
   autosaveTimer = setTimeout(async () => {
     if (!state.autosave || state.conflict || !dirty()) return;
     if (state.loading || state.saving || state.merging || state.delivering || tables.pending()) { scheduleAutosave(); return; }
-    await save({review: false});
+    await save({review: false, auto: true});
   }, 1500);
 }
 $('autosave').onchange = () => { state.autosave = $('autosave').checked; refreshControls(); scheduleAutosave(); scheduleRecovery(); };
@@ -307,7 +316,7 @@ function replaceText(value, {baseline = false} = {}) {
   state.loading = true;
   // A new file baseline starts a new undo history. Never map old undo entries
   // through a whole-file disk replacement, or join it with the user's typing.
-  if (baseline) editor.dispatch({effects: setup.reconfigure([])});
+  if (baseline) { editor.dispatch({effects: setup.reconfigure([])}); wholesaleHistory = false; }
   editor.dispatch({changes: {from: 0, to: editor.state.doc.length, insert: value},
     annotations: [isolateHistory.of('full'), Transaction.addToHistory.of(!baseline)],
     selection: {anchor: Math.min(selection.anchor, value.length), head: Math.min(selection.head, value.length)}});
@@ -579,18 +588,37 @@ async function reload(force = false, manual = false, expectedEtag = null) {
       externalChange = {base:state.base, local:text(), incoming:data.text, data, appliedText:null};
     }
     if ((state.conflict || dirty() || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
-      state.conflict = true; notice();
+      // The author has typed here and another writer changed the file. Combine
+      // the two without asking whenever they do not touch the same lines.
       const key = `${state.revision}:${data.etag}`;
-      if (dirty() && !redoDepth(editor.state) && !tables.pending() && !incomingDocument
-          && !$('incoming-dialog').open && !mergeReview.isOpen() && !externalReview.isOpen() && mergeAttempt !== key) {
+      const settled = !redoDepth(editor.state) && !tables.pending() && !incomingDocument
+        && !$('incoming-dialog').open && !mergeReview.isOpen() && !externalReview.isOpen();
+      if (!settled || mergeAttempt === key) { state.conflict = true; notice(); }
+      else {
         mergeAttempt = key;
         const snapshot = mergeSnapshot();
+        // A writer working from an older read would silently undo what was typed
+        // and saved since. Merge from the version it actually started from.
+        const recent = savedVersions.filter(item => Date.now() - item.at < 10 * 60 * 1000).map(item => item.text);
+        const candidates = [...new Set([state.base, ...recent])];
+        const ancestor = candidates[closestAncestor(candidates, data.text)];
         state.merging = true; refreshControls();
+        let retry = false;
         try {
-          const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:data.text});
-          if (!merge.conflicts) await applyMerged(data, mergeResult(merge), snapshot, 'merged');
-        } catch(error) { if (sequence === loadSequence) notice(`Draft retained. ${error.message}`); }
+          let merged = data.text;
+          if (ancestor !== snapshot.text) {
+            const {merge} = await call('matsugit_merge', {base:ancestor, local:snapshot.text, incoming:data.text});
+            if (merge.conflicts) { state.ancestor = ancestor; state.conflict = true; notice(); merged = null; }
+            else merged = mergeResult(merge);
+          }
+          if (merged !== null) await applyExternal(data, merged, snapshot, ancestor !== state.base);
+        } catch(error) {
+          // Typing during the merge is not a conflict: try again in a moment.
+          if (sequence === loadSequence && state.revision !== snapshot.revision) { mergeAttempt = null; retry = true; }
+          else if (sequence === loadSequence) { state.conflict = true; notice(`Draft retained. ${error.message}`); }
+        }
         finally { state.merging = false; }
+        if (retry) setTimeout(() => reload(), 500);
       }
     } else {
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
@@ -606,7 +634,7 @@ async function reload(force = false, manual = false, expectedEtag = null) {
   } catch (error) { if (sequence === loadSequence && read === readSequence) notice(error.message); return false; }
 }
 function mergeSnapshot() {
-  return {sequence:loadSequence, revision:state.revision, text:text(), base:state.base, view:viewState()};
+  return {sequence:loadSequence, revision:state.revision, text:text(), base:state.base, mergeBase:state.ancestor ?? state.base, view:viewState()};
 }
 function checkMergeSnapshot(snapshot) {
   if (snapshot.sequence !== loadSequence || snapshot.revision !== state.revision || snapshot.base !== state.base
@@ -632,10 +660,50 @@ async function applyMerged(data, merged, snapshot, receipt = 'reviewed') {
   state.saveError = null; state.lastSavedAt = null;
   if (merged !== latest.text) replaceText(merged);
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
-  state.conflict = false;
+  state.conflict = false; state.ancestor = null; savedVersions = [];
   state.fileReceipt = receipt;
   notice();
   scheduleRecovery(); scheduleRender(); refreshControls();
+}
+// Bring another writer's change into the open editor as small edits, so the
+// cursor stays put, typing continues, and Undo still undoes only the author's
+// own changes. `merged` is the incoming file, plus the author's text when the
+// two were combined; a difference from the file is then saved as usual.
+async function applyExternal(data, merged, snapshot, restored) {
+  checkMergeSnapshot(snapshot);
+  if (!data.etag) throw Error('The host did not provide a file version; cannot safely combine the changes.');
+  if (new TextEncoder().encode(merged).length > 2 * 1024 * 1024) throw Error('Combined draft exceeds the 2 MiB editor limit.');
+  if (snapshot.text !== data.text && snapshot.text !== snapshot.base || restored) {
+    const copy = await call('matsugit_recovery_begin', {...recoveryScope(), name:state.name});
+    await call('matsugit_recovery_checkpoint', {...recoveryScope(), id:copy.id, generation:0,
+      text:snapshot.text, base:snapshot.base, view:snapshot.view});
+  }
+  const latest = await resourceRead();
+  checkMergeSnapshot(snapshot);
+  if (latest.etag !== data.etag || latest.text !== data.text) throw Error('The file changed again.');
+  const changes = textChanges(text(), merged);
+  if (changes.length && !wholesaleHistory) {
+    // Outside the undo history: Undo keeps taking back the author's own edits.
+    const wasLoading = state.loading;
+    state.loading = true;
+    editor.dispatch({changes, annotations: Transaction.addToHistory.of(false)});
+    state.loading = wasLoading; state.revision++;
+  } else if (changes.length) {
+    // Rebase undo onto the incoming file, as one step for the author's part,
+    // so Undo can never erase the other writer's change. Keep the cursor.
+    const moved = ChangeSet.of(changes, editor.state.doc.length), selection = editor.state.selection.main;
+    const anchor = moved.mapPos(selection.anchor), head = moved.mapPos(selection.head);
+    replaceText(latest.text, {baseline:true});
+    if (merged !== latest.text) replaceText(merged);
+    editor.dispatch({selection: {anchor: Math.min(anchor, merged.length), head: Math.min(head, merged.length)}});
+  }
+  state.base = latest.text; state.etag = latest.etag; state.writable = latest.writable;
+  state.saveError = null; state.lastSavedAt = null; state.conflict = false; state.ancestor = null;
+  savedVersions = [];
+  if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
+  state.fileReceipt = restored ? 'restored' : merged === latest.text ? 'updated' : 'merged';
+  notice();
+  scheduleRecovery(); scheduleRender(); refreshControls(); check?.schedule(); scheduleAutosave();
 }
 async function refresh(forceFull = false) {
   if ($('refresh').disabled) return;
@@ -655,7 +723,7 @@ async function refresh(forceFull = false) {
   refreshRequested = true;
   await render();
 }
-async function save({review = true} = {}) {
+async function save({review = true, auto = false} = {}) {
   if ($('save').disabled) return false;
   if (state.conflict) { if (review) await reviewForSave(); return false; }
   const value = text(), sequence = loadSequence;
@@ -666,11 +734,18 @@ async function save({review = true} = {}) {
       : await call('matsugit_save', {session: state.session, text: value, etag: state.etag});
     if (sequence !== loadSequence) return false;
     if (result.outcome === 'saved') {
+      if (state.base !== value) savedVersions = [{text:state.base, at:Date.now()}, ...savedVersions].slice(0, 20);
+      state.ancestor = null;
       state.base = value; state.etag = result.etag; state.conflict = false; state.saveError = null; state.lastSavedAt = Date.now();
-      state.fileReceipt = null;
+      // The explanation of a rescued draft stays until the author dismisses it.
+      if (!(auto && state.fileReceipt === 'restored')) state.fileReceipt = null;
       if (externalChange) externalChange.data = {text:value,etag:result.etag,writable:state.writable};
       notice();
       return true;
+    }
+    else if (result.outcome === 'conflict' && auto) {
+      // Another writer got there first. Nothing was written; combine and try again.
+      setTimeout(() => reload(), 0);
     }
     else if (result.outcome === 'conflict') {
       state.conflict = true; notice('The file changed before Save completed. Your draft is retained; review before saving.');
@@ -698,7 +773,7 @@ async function load(data, {acceptRevision = null} = {}) {
   if (previousLoad !== loadSequence) return;
   if (before !== state.revision || table !== JSON.stringify(tables.snapshot())) { offerIncoming(data); return; }
   incomingDocument = null;
-  mergeAttempt = null;
+  mergeAttempt = null; savedVersions = []; state.ancestor = null;
   externalChange = null;
   noticeMessage = '';
   story.reset();
@@ -1030,7 +1105,7 @@ async function reviewForSave() {
   state.merging = true; refreshControls();
   try {
     const data = await resourceRead();
-    const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:data.text});
+    const {merge} = await call('matsugit_merge', {base:snapshot.mergeBase, local:snapshot.text, incoming:data.text});
     checkMergeSnapshot(snapshot);
     if (!externalChange || externalChange.data.etag !== data.etag)
       externalChange = {base:snapshot.base, local:snapshot.text, incoming:data.text, data, appliedText:null};
@@ -1112,7 +1187,7 @@ $('incoming-merge').onclick = async () => {
   $('incoming-status').textContent = 'Comparing changes...';
   try {
     checkMergeSnapshot(snapshot);
-    const {merge} = await call('matsugit_merge', {base:snapshot.base, local:snapshot.text, incoming:choice.data.text});
+    const {merge} = await call('matsugit_merge', {base:snapshot.mergeBase, local:snapshot.text, incoming:choice.data.text});
     checkMergeSnapshot(snapshot);
     $('incoming-dialog').close();
     mergeReview.open(merge, async merged => {

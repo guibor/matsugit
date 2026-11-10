@@ -79,6 +79,11 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R22. Typing is saved to the file automatically after a short pause, with the
   same version check as Save; a newer file is never overwritten. One switch
   turns it off.
+- R22a. The author and an agent can edit the same file at the same time.
+  Changes on different lines combine without a prompt and without moving the
+  cursor; a write made from a stale read never erases recent typing; overlapping
+  changes are never guessed and never overwritten. This is the purpose of the
+  save design and must hold with autosave on or off.
 - R23. Share always shows its three steps and which one is next; the result of a
   site build reaches the author without reopening the dialog.
 - R24. The header shows only everyday actions; the rest is in one =More= menu.

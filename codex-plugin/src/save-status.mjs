@@ -16,6 +16,8 @@ export function saveStatus(state, dirty, tablePending = false) {
 export function changeNotice(state, dirty) {
   if (state.conflict) return {kind:'review', title:'File changed elsewhere',
     detail:'Your draft is retained. No file has been overwritten.'};
+  if (state.fileReceipt === 'restored') return {kind:'info', title:'Your recent typing was kept',
+    detail:'The file was rewritten from an older version of it, which left out what you had typed since. Your typing was put back together with the new changes. Use Review changes to see or reverse this.'};
   if (state.fileReceipt === 'merged') return {kind:'info', title:dirty ? 'Changes combined in your draft' : 'Draft matches the updated file',
     detail:dirty ? 'Your edits and the independent file edits are together. Not saved to the file yet.' : 'No file was written by the merge.'};
   if (state.fileReceipt === 'reviewed') return {kind:'info', title:dirty ? 'Reviewed draft ready' : 'Draft matches the reviewed file',

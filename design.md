@@ -146,6 +146,25 @@ review or share holds the document, and stops at a conflict so the existing
 review takes over. `state.autosave` comes from the `autosave` open option, the
 recovery view or the `More` menu.
 
+### Two writers, one file (`app.js`, `external-edits.mjs`)
+
+The workspace polls the file every three seconds. `reload()` handles a changed
+file in one of three ways. Untouched workspace: replace the text. Author has
+typed in this session: reconcile. Table edit or Redo branch pending: mark
+`Changed elsewhere` and wait.
+
+Reconciling picks the merge base with `closestAncestor()` from the current file
+version plus `savedVersions` (what this workspace wrote in the last ten
+minutes). An incoming file made from an older read is closest to that read, so
+merging from it restores what was typed since instead of deleting it. The
+three-way merge runs in the existing server worker. Without conflicts,
+`applyExternal()` re-reads the file to confirm its version, turns the result
+into line hunks with `textChanges()` and dispatches them outside the undo
+history, so selection and Undo survive; a result that differs from the file is
+then saved by autosave. With conflicts, `state.ancestor` keeps the chosen base
+for the review dialogs and nothing is written. An autosave refused by the
+version check calls `reload()` rather than stopping.
+
 ### How Share works (`share.mjs`, `matsugit/share.py`)
 
 Share adds no new Git operation; it sequences the reviewed ones. `share-status`
