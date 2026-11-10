@@ -27,6 +27,7 @@ export class WorkspaceStore {
   sessions = new Map();
   jobs = new Map();
   themeRequests = new Set();
+  relocations = new Map();
   constructor(root) { this.root = root; }
   open(file) {
     const target = checkedPath(file), text = read(target), id = randomUUID();
@@ -34,24 +35,39 @@ export class WorkspaceStore {
     this.sessions.set(id, target);
     return {session: id, name: path.basename(target), path: target, text, etag: hash(text), writable: true};
   }
+  // A reviewed publication may move the open file and leave a symlink while
+  // the workspace keeps polling. Follow exactly that reviewed move, never an
+  // arbitrary symlink swapped underneath an open workspace.
+  expectRelocation(previous, destination) { this.relocations.set(previous, destination); }
+  settleRelocation(previous) { this.relocations.delete(previous); }
+  followed(file) {
+    const destination = this.relocations.get(file);
+    if (!destination) return file;
+    let moved = false;
+    try { moved = fs.lstatSync(file).isSymbolicLink() && checkedPath(file) === destination; } catch { return file; }
+    if (!moved) return file;
+    for (const [id, item] of this.sessions) if (item === file) this.sessions.set(id, destination);
+    for (const job of this.jobs.values()) if (job.owner === file) job.owner = destination;
+    return destination;
+  }
   source(session) {
-    const file = this.sessions.get(session);
+    const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
     const text = read(file);
     return {text, etag: hash(text), writable: true};
   }
-  relocated(previous, destination, expectedText) {
+  relocated(previous, destination) {
     // Called only for the explicit reviewed relocation, never to follow an
     // arbitrary symlink swapped underneath an already-open workspace.
-    if (!fs.lstatSync(previous).isSymbolicLink() || checkedPath(previous) !== destination
-        || read(destination) !== expectedText) throw Error('Relocation changed unexpectedly; reopen the source.');
+    if (!fs.lstatSync(previous).isSymbolicLink() || checkedPath(previous) !== destination)
+      throw Error('Relocation changed unexpectedly; reopen the source.');
     for (const [id, file] of this.sessions) if (file === previous) this.sessions.set(id, destination);
     for (const job of this.jobs.values()) if (job.owner === previous) job.owner = destination;
     return this.open(destination);
   }
   save(session, text, etag) {
     checkedText(text);
-    const file = this.sessions.get(session);
+    const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
     const current = this.source(session);
     if (!etag || current.etag !== etag) return {outcome: 'conflict', etag: current.etag};
@@ -68,7 +84,7 @@ export class WorkspaceStore {
   }
   owner(session, hostPath) {
     if (session) {
-      const file = this.sessions.get(session);
+      const file = this.followed(this.sessions.get(session));
       if (!file) throw Error('Workspace expired; reopen the document.');
       if (checkedPath(file) !== file) throw Error('The document path changed; reopen it before continuing.');
       if (hostPath && checkedPath(hostPath) !== file) throw Error('Host file and workspace do not match; reopen the document.');

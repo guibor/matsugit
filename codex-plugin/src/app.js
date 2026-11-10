@@ -263,8 +263,10 @@ function refreshControls() {
   $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving || state.merging;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
   $('refresh').setAttribute('aria-label', $('refresh').title);
-  $('filename').textContent = state.name;
-  $('filename').title = state.name;
+  // A published source is always called source.md; its folder is its name.
+  const folder = /^source\.(md|org)$/.test(state.name) && state.path ? state.path.split(/[\\/]/).at(-2) + '/' : '';
+  $('filename').textContent = folder + state.name;
+  $('filename').title = state.path || state.name;
   paintNotice();
   if (!state.rendering && !state.saving) status(state.conflict ? 'External changes detected'
     : state.rendered && state.renderedRevision !== state.revision ? 'Preview out of date'
@@ -758,6 +760,21 @@ async function load(data, {acceptRevision = null} = {}) {
     }
   }
 }
+// The reviewed publication moved this file. Keep working on it at its new
+// path: same draft, undo history and view; only the file identity changes.
+async function follow(workspace) {
+  disposeUpdates?.(); disposeUpdates = null;
+  if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
+  await flushRecovery();
+  Object.assign(state, {uri: null, session: workspace.session, name: workspace.name, path: workspace.path,
+    base: workspace.text, etag: workspace.etag, writable: true, conflict: false, saveError: null, fileReceipt: null});
+  externalChange = null; mergeAttempt = null; readSequence++;
+  try {
+    recoveryId = (await call('matsugit_recovery_begin', {...recoveryScope(), name: state.name})).id;
+    recoveryGeneration = 0;
+  } catch (error) { recoveryFailure(error); }
+  refreshControls(); scheduleRecovery(); void refreshThemes();
+}
 async function download() {
   status('Sending download...');
   try { status(await downloadFile({name:state.name,blob:new Blob([text()],{type:'text/plain;charset=utf-8'})})); }
@@ -961,7 +978,7 @@ $('save').onclick = () => save();
 $('notice-save').onclick = () => save();
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
 publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
-delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load,
+delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
 $('insert').onclick = () => layouts.open();
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);

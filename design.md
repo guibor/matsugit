@@ -66,7 +66,7 @@ app with the recipe catalogue from `authoring.editor_templates()` baked in),
 | File | Role |
 | --- | --- |
 | `src/server.mjs` | Registers MCP tools. Model-visible: `matsugit_open`, `matsugit_workspace`, `matsugit_check`. App-only: save, preview, recovery, merge, export/publish actions |
-| `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs |
+| `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs; `expectRelocation()` / `followed()` let a session follow the one move a publication reviewed |
 | `src/runtime.mjs` | `PluginRuntime`: unpacks the embedded renderer for this server version |
 | `src/actions.mjs`, `actions.py`, `worker.py` | Export, publication and preview workers |
 | `src/recovery.mjs`, `src/merge-service.mjs` | Private draft recovery; three-way merge |

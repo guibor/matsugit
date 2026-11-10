@@ -58,9 +58,17 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R14. Local export to HTML, ZIP, PDF and editable PowerPoint.
 - R15. Reviewed Git publication and optional CI deployment; never automatic.
 
+** Publishing follows the document
+- R16. When a reviewed publication moves the source into the publishing
+  checkout, the open workspace follows it automatically: new path shown, Save
+  writes there, unsaved typing kept. No reopen step.
+
 * Next steps
 
 Immediate, in priority order:
+0. Simplify saving, syncing and deploying for people who barely use GitLab and
+   know no Git commands: one guided Share flow instead of separate Save, Git
+   sync and Publish dialogs. Proposal pending the owner's decisions.
 1. Try 0.26 with two or three non-technical authors in Cursor and record where
    they still get stuck (first-run, vocabulary, the settings block at the top).
 2. Hide the YAML settings block in Visual behind a small "Deck settings" form
