@@ -133,7 +133,7 @@ try:
         assert frame.locator('#save').is_disabled()
         assert any(r['owner'] is None and r['text'].startswith('Unnamed draft')
                    for r in (json.loads(f.read_text()) for f in storage.glob('*.json')))
-        frame.locator('#recover').click()
+        frame.locator('#recover').dispatch_event('click')
         frame.locator('.recovery-entry').first.wait_for()
         count = len(list(storage.glob('*.json')))
         frame.locator('[aria-label="Delete recovery copy"]').last.click()

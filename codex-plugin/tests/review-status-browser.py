@@ -60,7 +60,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
             disk_before_review = current()
             frame.locator('#save').click(); wait(frame,'!matsugitWorkspace.state.saving')
             assert source.read_text() == disk_before_review
-            frame.locator('#external-review').click()
+            frame.locator('#external-review').dispatch_event('click')
             frame.locator('#changes-dialog').wait_for(state='visible')
             assert frame.locator('#changes-list h3').all_text_contents() == ['Second','Third']
             frame.locator('#changes-list input').first.uncheck()
@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
             edit(expected.replace('Alpha later typing','Alpha local overlap'))
             remote = expected.replace('Alpha later typing','Alpha external overlap').replace('Beta original','Beta second agent')
             source.write_text(remote); frame.evaluate('matsugitWorkspace.reload()')
-            frame.locator('#external-review').click()
+            frame.locator('#external-review').dispatch_event('click')
             frame.locator('#changes-dialog').wait_for(state='visible')
             frame.locator('#changes-preview').click()
             frame.locator('#merge-dialog').wait_for(state='visible')

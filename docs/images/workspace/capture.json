@@ -1,0 +1,25 @@
+{
+  "plugin_version": "0.28.1",
+  "theme": "default",
+  "fixture": "examples/automotive-story.md",
+  "synthetic": true,
+  "fixture_sha256": "680f268f54a2f5ac96043b9b907c3dfdb6c0be9f93656dd03dce299cbc3a3b04",
+  "app_sha256": "ebb6e539c446d08ab6b4e3e9f14ec3d7c42922898eb1874fb128975b208c96b4",
+  "host": "isolated MCP host; real shared plugin UI, not Codex/Cursor desktop chrome",
+  "steps": [
+    "Visual Markdown alongside the slide",
+    "Story Overview: title, claim and takeaway",
+    "Edit title: Build ",
+    "Edit title: Build a better ",
+    "Edit title: Build a better Tuesday",
+    "The title changed in the source draft",
+    "Compact Walkthrough with section separators",
+    "The edited title in the rendered slide",
+    "Present",
+    "Return to Visual Markdown"
+  ],
+  "duration_ms": 15550,
+  "source_unchanged": true,
+  "rendering_waits_omitted": true,
+  "browser_errors": []
+}

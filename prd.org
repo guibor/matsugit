@@ -75,6 +75,18 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R20. The detailed Git sync, Publish and status views remain available.
 - R21. Everything above works identically in Cursor and Codex.
 
+** Clear state, no lost typing (0.28, branch =share-clarity-and-autosave=)
+- R22. Explicit Save is the default. Opt-in autosave writes after a short pause
+  with the same version check. Ambiguous external changes pause for review.
+- R22a. The author and an agent can edit the same file at the same time.
+  Changes on different lines combine without a prompt and without moving the
+  cursor; a write made from a stale read never erases recent typing; overlapping
+  changes are never guessed and never overwritten. This is the purpose of the
+  save design and must hold with autosave on or off.
+- R23. Share always shows its three steps and which one is next; the result of a
+  site build reaches the author without reopening the dialog.
+- R24. The header shows only everyday actions; the rest is in one =More= menu.
+
 * Next steps
 
 Immediate, in priority order:
@@ -113,5 +125,9 @@ Immediate, in priority order:
 - 2026-11-10, header delivery controls. Was: a =Not pushed= status button, a
   Git sync icon and a Publish icon, each with its own dialog. Now: one =Share=
   button; those dialogs open from =Share > More options=. Reason: R17.
+- 2026-11-10, saving. Was: nothing is written to the file until Save is
+  pressed (R5 "explicit Save"). The proposed default-on autosave failed two
+  stale-writer regressions. Keep explicit Save by default, offer opt-in autosave,
+  and require review whenever retained historical bases disagree (R22).
 - 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
   =Follow=. Behaviour unchanged.

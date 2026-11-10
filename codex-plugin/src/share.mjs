@@ -24,10 +24,11 @@ const safe = url => { try { const parsed = new URL(url); return parsed.protocol 
 
 export function share({call, state, text, dirty, save, run, lock, isBusy, snapshot, mergeReview, publication, reload, notice, demo}) {
   const dialog = $('share-dialog'), go = $('share-go'), progress = $('share-progress');
-  let step = null, context = null, visit = 0;
+  let step = null, context = null, visit = 0, showingOutcome = false, monitoring = false;
   $('share').append(createElement(Share2), document.createElement('span'));
   $('share-close').append(createElement(X)); $('share-copy').append(createElement(Copy), 'Copy link');
   $('share-close').onclick = () => dialog.close();
+  $('share-later').onclick = () => dialog.close();
   dialog.addEventListener('cancel', event => { if (isBusy()) event.preventDefault(); });
   dialog.addEventListener('close', () => { visit++; step = null; });
   for (const [id, target] of [['share-advanced-sync', 'git-sync'], ['share-advanced-publish', 'publish'], ['share-advanced-status', 'publication-state']])
@@ -37,9 +38,30 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     catch { progress.textContent = 'Could not copy. Select the link above instead.'; }
   };
   const view = () => state.session || state.uri;
-  function paint({title, detail = '', action = '', next = null, link = null, linkLabel = 'Open the shared deck', pick = false}) {
+  // The three things sharing does, always in the same order, so the reader can
+  // see what has happened and what the button will do next.
+  const STEP = {save: ['Saved on this computer', 'Save your changes'], send: ['Sent to the project', 'Send to the project'],
+    site: ['The site shows it', 'The site updates']};
+  function paintSteps(steps) {
+    const list = $('share-steps');
+    list.hidden = !steps;
+    if (!steps) return;
+    list.replaceChildren(...Object.entries(STEP).map(([name, [done, todo]]) => {
+      const value = steps[name] || 'todo', item = document.createElement('li'), mark = document.createElement('span');
+      item.dataset.state = value; mark.className = 'share-mark'; mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = {done: '\u2713', failed: '!', unknown: '?'}[value] || '';
+      const label = {done, busy: name === 'site' ? 'The site is rebuilding...' : name === 'send' ? 'Sending...' : 'Saving...',
+        failed: 'The site did not rebuild', unknown: 'Cannot see the site from here', next: todo, todo}[value];
+      item.append(mark, label + (name === 'send' && steps.project ? ` (${steps.project})` : ''));
+      item.setAttribute('aria-current', String(value === 'next' || value === 'busy'));
+      return item;
+    }));
+  }
+  function paint({title, detail = '', action = '', next = null, link = null, linkLabel = 'Open the shared deck', pick = false, steps = null, outcome = false}) {
     $('share-title').textContent = title; $('share-detail').textContent = detail;
     go.hidden = !action; go.textContent = action; step = next;
+    $('share-later').hidden = !action; showingOutcome = outcome;
+    paintSteps(steps);
     $('share-destination-row').hidden = !pick;
     const url = safe(link);
     $('share-link-row').hidden = !url;
@@ -55,39 +77,53 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   }
   const destination = info => info.label || info.target || 'your project';
 
-  // After sending: say honestly whether the site is live, building or unknown.
-  async function watch(current) {
-    const where = publication.receipt() || {};
-    const link = where.site_url || where.project_url || context?.project_url;
-    const label = where.site_url ? 'Open the shared deck' : 'Open the project';
-    if (!where.provider) {
-      paint({title: 'Sent', detail: 'Your changes are in the shared project. matsugit does not know whether this project has a website.', link, linkLabel: label});
-      return;
-    }
-    paint({title: 'Sent. Waiting for the site...', detail: 'The project is rebuilding the site. This usually takes a minute or two. You can close this; the Share button keeps the state.', link, linkLabel: label});
-    for (let attempt = 0; attempt < 40 && current === visit; attempt++) {
-      const receipt = await publication.check();
-      if (current !== visit) return;
-      const url = receipt?.site_url || link;
-      if (receipt?.stage === 'published') { paint({title: 'Live', detail: 'The site shows this version.', link: url, linkLabel: 'Open the shared deck'}); return; }
-      if (receipt?.stage === 'failed') {
-        paint({title: 'Sent, but the site did not rebuild', detail: 'Your changes are safe in the project. The project\'s site build reported a failure; whoever looks after the project can see why.',
-          link: receipt.pipeline_url || url, linkLabel: receipt.pipeline_url ? 'Open the failed build' : label}); return;
-      }
-      if (receipt?.check_error) {
-        paint({title: 'Sent', detail: 'Your changes are in the shared project. matsugit cannot see the site build from this computer, so check the site yourself before passing the link on.', link: url, linkLabel: label}); return;
-      }
-      if (attempt >= 6 && receipt?.stage !== 'building') {
-        paint({title: 'Sent', detail: 'Your changes are in the shared project. No site build was found for them, so the site may not update by itself.', link: url, linkLabel: label}); return;
-      }
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-    if (current === visit) paint({title: 'Sent. The site is still building', detail: 'It is taking longer than usual. Open Share again later to see whether it is live.', link, linkLabel: label});
+  const project = () => context?.label || (publication.receipt()?.project_url || '').split('/').slice(-2).join('/') || '';
+  const pending = receipt => !!receipt?.provider && ['pushed', 'building'].includes(receipt.stage) && !receipt.check_error && !receipt.gaveUp;
+  // What the last share led to, from the stored receipt. Honest about unknowns.
+  function outcome() {
+    const receipt = publication.receipt() || {};
+    const link = receipt.site_url || receipt.project_url || context?.site_url || context?.project_url;
+    const label = receipt.site_url || context?.site_url ? 'Open the shared deck' : 'Open the project';
+    const steps = {save: 'done', send: 'done', project: project()};
+    if (!receipt.provider) paint({title: 'Sent', outcome: true, link, linkLabel: label, steps: {...steps, site: 'unknown'},
+      detail: 'Your changes are in the shared project. matsugit does not know whether this project has a website.'});
+    else if (receipt.stage === 'published') paint({title: 'Live', outcome: true, link, linkLabel: 'Open the shared deck', steps: {...steps, site: 'done'},
+      detail: 'The site shows this version. You can pass the link on.'});
+    else if (receipt.stage === 'failed') paint({title: 'Sent, but the site did not rebuild', outcome: true, steps: {...steps, site: 'failed'},
+      link: receipt.pipeline_url || link, linkLabel: receipt.pipeline_url ? 'Open the failed build' : label,
+      detail: 'Your changes are safe in the project. Its site build reported a failure; whoever looks after the project can see why.'});
+    else if (receipt.check_error) paint({title: 'Sent', outcome: true, link, linkLabel: label, steps: {...steps, site: 'unknown'},
+      detail: 'Your changes are in the shared project. matsugit cannot see the site build from this computer, so check the site yourself before passing the link on.'});
+    else if (receipt.gaveUp) paint({title: 'Sent', outcome: true, link, linkLabel: label, steps: {...steps, site: 'unknown'},
+      detail: receipt.gaveUp});
+    else paint({title: 'Sent. The site is rebuilding...', outcome: true, link, linkLabel: label, steps: {...steps, site: 'busy'},
+      detail: 'This usually takes a minute or two. You can close this and keep working: the Share button changes to "Shared" when the site is live, and a message tells you.'});
   }
-  function startWatch(current) {
-    // Checking CI is read-only. Do not keep Save or Close locked until it ends.
-    void watch(current).catch(error => { if (current === visit) fail(error); });
+  // Keep asking the project until the site is live or failed, whether or not
+  // the dialog is open. Read-only; never holds the Save or Share lock.
+  async function monitor() {
+    if (monitoring || demo) return;
+    monitoring = true;
+    const owner = view(), started = publication.receipt()?.revision;
+    try {
+      for (let attempt = 0; attempt < 150; attempt++) {
+        const receipt = await publication.check();
+        if (owner !== view() || receipt?.revision !== started) return;
+        if (attempt >= 8 && receipt?.stage === 'pushed' && !receipt.check_error)
+          receipt.gaveUp = 'Your changes are in the shared project. No site build was found for them, so the site may not update by itself.';
+        if (attempt === 149 && pending(receipt)) receipt.gaveUp = 'Your changes are in the shared project. The site is taking unusually long; open Share later to look again.';
+        if (dialog.open && showingOutcome) outcome();
+        publication.update();
+        if (!pending(receipt)) {
+          if (!dialog.open && receipt?.stage === 'published') notice('Your deck is live. Open Share for the link.');
+          if (!dialog.open && receipt?.stage === 'failed') notice('Your changes were sent, but the project\'s site did not rebuild. Open Share for details.');
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, attempt < 30 ? 4000 : 10000));
+      }
+    } finally { monitoring = false; }
   }
+  function startWatch() { outcome(); void monitor(); }
 
   async function begin() {
     const current = ++visit;
@@ -106,10 +142,11 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
           paint({title: 'Not shared yet', detail: 'No project is connected on this computer. Connect your GitLab or GitHub project once; after that, sharing is one click.', action: 'Connect a project...', next: 'connect'});
           return;
         }
-        paint({title: 'Not shared yet', detail: 'Sharing puts this deck into your project, so others can open it and the project\'s site can show it.' + (dirty() ? '\n\nYour unsaved changes are saved first.' : ''),
-          action: 'Continue', next: 'plan-new', pick: true});
+        paint({title: 'Not shared yet', detail: 'Sharing puts this deck into your project, so others can open it and the project\'s site can show it. You will see exactly what is sent before anything leaves this computer.' + (dirty() ? '\n\nYour unsaved changes are saved first.' : ''),
+          action: 'Check what will be shared', next: 'plan-new', pick: true, steps: {save: dirty() ? 'next' : 'done', send: dirty() ? 'todo' : 'next'}});
       } else if (dirty()) {
-        paint({title: 'You have unsaved changes', detail: `Sharing saves them, then checks ${destination(info)} for changes from others.`, action: 'Save and continue', next: 'check'});
+        paint({title: 'You have unsaved changes', detail: `The next step saves them and looks in ${destination(info)} for changes from others. Nothing is sent yet.`, action: 'Save and check', next: 'check',
+          steps: {save: 'next', project: destination(info)}});
       } else await check(current);
     } catch (error) { if (current === visit) fail(error); }
     finally { lock(false); }
@@ -132,7 +169,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const files = data.paths.length > 1 ? ` ${data.paths.length - 1} attached file(s) go with it.` : '';
     if (data.local === data.incoming && !data.ahead && data.paths.length === 1) {
       if (data.behind) { context.pull = true; paint({title: 'Others changed the project', detail: 'Your deck is unchanged, but there are newer files in the project.', action: 'Get the latest', next: 'pull'}); return; }
-      await watchQuiet(current); return;
+      await watchQuiet(); return;
     }
     if (!mine && theirs && !data.ahead && data.paths.length === 1) {
       paint({title: 'Someone else changed this deck', detail: 'You have no changes of your own. Getting theirs replaces what you see with the newer version.', action: 'Get their changes', next: 'pull'});
@@ -143,20 +180,30 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     context.data = data; context.planId = job.job;
     const ready = result => {
       context.result = result;
-      paint({title: 'Ready to share', detail: `Your changes go to ${data.destination}.${files}` + (theirs ? '\nChanges someone else made are combined with yours.' : '')
-        + '\n\nThe project may rebuild its site. Anyone with access to the project will see this version.', action: 'Share now', next: 'send'});
+      paint({title: 'Ready to share', detail: `Your changes go to ${destination(context)}.${files}` + (theirs ? '\nChanges someone else made are combined with yours.' : '')
+        + '\n\nThe project then rebuilds its site. Anyone with access to the project will see this version.', action: 'Share now', next: 'send',
+        steps: {save: 'done', send: 'next', project: destination(context)}});
     };
     if (!merge.conflicts) { ready(mergeResult(merge)); return; }
     context.merge = merge; context.ready = ready;
     paint({title: 'You and someone else changed the same part', detail: `${merge.conflicts} place(s) need your choice between your version and theirs. Nothing is sent until you have chosen.`, action: 'Compare and choose', next: 'resolve'});
   }
   // Nothing to send: show what the last share led to.
-  async function watchQuiet(current) {
+  async function watchQuiet() {
     const receipt = publication.receipt() || {};
-    const link = receipt.site_url || receipt.project_url || context.site_url || context.project_url;
-    paint({title: 'Up to date', detail: 'Everything you saved has been shared, and nobody else has changed this deck.', link,
-      linkLabel: receipt.site_url || context.site_url ? 'Open the shared deck' : 'Open the project'});
-    if (receipt.provider && ['pushed', 'building', 'failed'].includes(receipt.stage)) startWatch(current);
+    if (receipt.revision && receipt.stage !== 'local') {
+      outcome();
+      // Opening Share is asking "where does it stand?": look once more, even
+      // when an earlier look could not see the site.
+      if (receipt.provider && receipt.stage !== 'published') void publication.check().then(latest => {
+        if (dialog.open && showingOutcome) outcome();
+        if (pending(latest)) void monitor();
+      }).catch(() => {});
+      return;
+    }
+    paint({title: 'Up to date', detail: 'Everything you saved is in the shared project, and nobody else has changed this deck.', outcome: false,
+      link: context.site_url || context.project_url, linkLabel: context.site_url ? 'Open the shared deck' : 'Open the project',
+      steps: {save: 'done', send: 'done', site: 'unknown', project: destination(context)}});
   }
 
   go.onclick = async () => {
@@ -181,6 +228,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       else if (doing === 'plan-new') {
         await saved();
         const args = {...snapshot(), target: $('share-destination').value, build: 'ci', move_source: true};
+        context.label = $('share-destination').selectedOptions[0]?.textContent || context.label;
         const job = await run('plan', args, progress);
         if (current !== visit) return;
         const data = job.result;
@@ -189,27 +237,27 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
         paint({title: 'Ready to share', detail: [`Your deck moves into ${data.project_url}, in the folder ${data.directory}.`,
           'A link stays where the file is now, so it still opens from there.',
           `${Object.keys(data.files || {}).length || 1} file(s) are sent. Anyone with access to the project will see them, including notes hidden from the slides.`,
-          'The project may rebuild its site.'].join('\n'), action: 'Share now', next: 'send-new'});
+          'The project then rebuilds its site.'].join('\n'), action: 'Share now', next: 'send-new', steps: {save: 'done', send: 'next', project: destination(context)}});
       } else if (doing === 'send-new') {
         const checked = context.plan;
         if (checked.args.text !== text() || dirty()) throw Error('The deck changed after the check. Open Share again.');
-        paint({title: 'Sharing...'});
+        paint({title: 'Sharing...', steps: {save: 'done', send: 'busy', project: destination(context)}});
         const job = await run('publish', {...checked.args, plan: checked.id, deploy: false}, progress);
         progress.textContent = '';
         if (job.result.publication) publication.pushed(job.result.publication);
         if (job.moved) notice(`Shared. This deck now lives at ${job.moved}; the old place is a link to it.`);
         context.project_url = job.result.project_url;
-        startWatch(current);
+        startWatch();
       } else if (doing === 'send') {
         const data = context.data, before = text();
         if (data.local !== before || dirty()) throw Error('The deck changed after the check. Open Share again.');
-        paint({title: 'Sharing...'});
+        paint({title: 'Sharing...', steps: {save: 'done', send: 'busy', project: destination(context)}});
         // The exchange is bound to the plan that produced the reviewed versions.
         const job = await run('exchange', {plan: context.planId, text: context.result, assets: data.paths.slice(1), message: `Update ${data.relative}`}, progress);
         progress.textContent = '';
         if (text() === before && !dirty()) await reload(true, true, job.result.etag); else await reload();
         if (job.result.publication) publication.pushed(job.result.publication);
-        startWatch(current);
+        startWatch();
       } else if (doing === 'pull') {
         const before = text();
         if (dirty() || state.conflict) throw Error('Your draft changed. Save or review it, then open Share again.');
@@ -236,6 +284,9 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     button.title = ({'Not pushed': 'Share this deck with others', 'Changes not pushed': 'You have saved changes that are not shared yet',
       Pushed: 'Sent to the project', Building: 'The project is rebuilding its site', Published: 'The site shows this version',
       'CI failed': 'The project\'s site build failed'})[label] || 'Share';
-    button.setAttribute('aria-busy', String(!!busy));
+    button.setAttribute('aria-busy', String(label === 'Building' || monitoring && label === 'Pushed'));
+    // A share made earlier may still be building: pick the watch up again.
+    const receipt = publication.receipt();
+    if (!monitoring && pending(receipt) && Date.now() - Date.parse(receipt.pushed_at || 0) < 30 * 60 * 1000) void monitor();
   }};
 }

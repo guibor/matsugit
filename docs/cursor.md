@@ -112,9 +112,8 @@ npx skills add guibor/matsugit --skill matsugit --agent cursor --global
 ```
 
 Review the installer prompt. This installs the skill for your local user, not
-the matsugit renderer or Quarto. While this repository is private, your Git
-account needs access; no token belongs in the command. An authenticated local
-checkout also works: replace `guibor/matsugit` with its path.
+the matsugit renderer or Quarto. The repository is public; no GitHub token is
+needed. A local checkout also works: replace `guibor/matsugit` with its path.
 
 Open a new Agent chat and type `/matsugit`, selecting the skill. For a first
 run, use this prompt:

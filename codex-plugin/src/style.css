@@ -320,3 +320,27 @@ header .actions #publication-state,header .actions #git-sync,header .actions #pu
 #share-advanced{margin-top:16px;border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--muted)}
 #share-advanced button{border:1px solid var(--border);font-size:12px;margin:0 6px 6px 0;padding:3px 9px}
 @media(prefers-color-scheme:dark){#share[data-state=live]{color:#6fcf9b}#share[data-state=failed]{color:#f08a83}}
+/* Share: three visible steps, a filled primary action, readable extra options. */
+#share-steps{list-style:none;margin:10px 0 12px;padding:0;display:grid;gap:6px}#share-steps[hidden]{display:none}
+#share-steps li{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted)}
+.share-mark{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border);display:grid;place-items:center;font-size:12px;font-weight:700;line-height:1}
+#share-steps li[data-state=done]{color:var(--fg)}#share-steps li[data-state=done] .share-mark{background:#23734e;border-color:#23734e;color:#fff}
+#share-steps li[data-state=next]{color:var(--fg);font-weight:600}#share-steps li[data-state=next] .share-mark{border-color:var(--accent)}
+#share-steps li[data-state=busy]{color:var(--fg)}#share-steps li[data-state=busy] .share-mark{border-color:var(--accent);border-top-color:transparent;animation:action-spin 1s linear infinite}
+#share-steps li[data-state=failed]{color:#b13c35}#share-steps li[data-state=failed] .share-mark{background:#b13c35;border-color:#b13c35;color:#fff}
+#share-steps li[data-state=unknown] .share-mark{border-style:dashed}
+.share-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.share-actions [hidden]{display:none}
+#share-go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:7px 16px;margin-top:0}#share-go:hover{filter:brightness(1.08)}
+#share-later{border:1px solid var(--border);padding:7px 12px}
+#share-advanced{color:var(--fg)}#share-advanced summary{color:var(--muted);cursor:pointer}#share-advanced p{color:var(--muted)}
+#share-advanced button{color:var(--fg)}
+#share[aria-busy=true] svg{animation:action-spin 1.2s linear infinite}
+@media(prefers-reduced-motion:reduce){#share[aria-busy=true] svg,#share-steps li[data-state=busy] .share-mark{animation:none}}
+/* Rarely used controls live in one menu instead of a row of icons. */
+#more-wrap{position:relative;flex:none}
+#more-panel{position:absolute;right:0;top:calc(100% + 4px);z-index:30;min-width:250px;display:grid;gap:2px;padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;box-shadow:0 6px 24px #0003}
+#more-panel[hidden]{display:none}
+#more-panel button{width:auto;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:6px 8px;font-size:13px;text-align:left}
+#more-panel button::after{content:attr(data-label)}#more-panel button svg{width:16px;height:16px;flex:none}
+#more-panel label{padding:6px 8px;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:2px}
+#more-panel #compact-markup[aria-pressed=true]{background:transparent;color:var(--accent)}

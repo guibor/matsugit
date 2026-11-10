@@ -23,7 +23,7 @@ const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
 const readOnly = {readOnlyHint: true, destructiveHint: false, openWorldHint: false};
-const viewOptions = {layout: z.enum(['source', 'render', 'split', 'story']).optional(), format: z.enum(['document', 'slides']).optional(), editor: z.enum(['raw', 'visual']).optional()};
+const viewOptions = {layout: z.enum(['source', 'render', 'split', 'story']).optional(), format: z.enum(['document', 'slides']).optional(), editor: z.enum(['raw', 'visual']).optional(), autosave: z.boolean().optional()};
 const appOnly = {_meta: {ui: {visibility: ['app']}}};
 const result = (data, meta) => ({content: [{type: 'text', text: JSON.stringify(data)}], structuredContent: data, ...(meta ? {_meta: meta} : {})});
 // App-only tools need ordinary MCP payloads too: not every host forwards _meta.
@@ -33,7 +33,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.27.1'});
+  const server = new McpServer({name: 'matsugit', version: '0.28.1'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));

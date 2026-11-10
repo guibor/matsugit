@@ -74,8 +74,12 @@ try:
         assert 'saved first' in detail() and frame.locator('#share-destination').input_value() == 'docs'
         assert frame.locator('#share-destination option').inner_text() == 'team/docs'
         page.screenshot(path=str(shots / 'share-first.png'))
+        assert frame.locator('#share-go').inner_text() == 'Check what will be shared'
+        assert frame.locator('#share-steps li[data-state="next"]').inner_text() == 'Save your changes'
         frame.locator('#share-go').click()
         settled('Ready to share')
+        assert frame.locator('#share-steps li[data-state="next"]').inner_text() == 'Send to the project (team/docs)'
+        assert frame.locator('#share-later').is_visible()
         assert 'https://git.example.invalid/team/docs' in detail() and 'A link stays' in detail()
         assert Path(info['source']).read_text().count('first version') == 1 and not Path(info['source']).is_symlink()
         assert not Path(info['destination']).exists()
@@ -101,7 +105,7 @@ try:
         settled('You have unsaved changes')
         frame.locator('#share-go').click()
         settled('Ready to share')
-        assert 'git.example.invalid' in detail()
+        assert 'team/docs' in detail()
         frame.locator('#share-go').click()
         settled('Sent')
         assert 'second version' in git(root / 'remotes/team/docs.git', 'show', 'main:matsugit-site/deck/source.md')
@@ -195,8 +199,19 @@ try:
 
         page.route('**/rpc', pending_ci)
         frame.locator('#share').click()
-        settled('Sent. Waiting for the site')
+        settled('Sent. The site is rebuilding')
+        assert frame.locator('#share-steps li[data-state="busy"]').inner_text() == 'The site is rebuilding...'
         assert frame.locator('#share-close').is_enabled()
+        frame.locator('#share-close').click()
+        # The watch outlives the dialog: the header button and a message report the result.
+        wait(frame, 'document.getElementById("share").textContent.trim() === "Building site" && document.getElementById("share").getAttribute("aria-busy") === "true"', 20)
+        building.update(stage='published', pipeline_status='success', site_url='https://team.example.invalid/docs')
+        wait(frame, 'document.getElementById("share").textContent.trim() === "Shared"', 30)
+        assert 'Your deck is live' in frame.locator('#notice-text').inner_text()
+        frame.locator('#share').click()
+        settled('Live')
+        assert [item.get_attribute('data-state') for item in frame.locator('#share-steps li').all()] == ['done', 'done', 'done']
+        assert frame.locator('#share-link').get_attribute('href') == 'https://team.example.invalid/docs'
         frame.locator('#share-close').click()
         edit('my wording', 'wording while CI runs')
         frame.locator('#save').click()

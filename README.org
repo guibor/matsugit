@@ -11,6 +11,13 @@ Turn working notes into a clear story and a consistently styled deck. Then keep
 thinking: rewrite a claim, move a slide, update the evidence, and preview the
 result. Spend your time improving the argument, not moving text boxes.
 
+[[file:docs/images/workspace/visual-story-demo.gif]]
+
+*Visual Markdown, Story, then Present.* Recorded from the real shared plugin UI
+with the public default theme. [[file:examples/automotive-story.md][Try the demo source]] or
+[[file:docs/images/workspace/visual-and-slides.png][view the still image]]. The isolated recording host is not
+Codex or Cursor desktop chrome.
+
 *You control the story. The theme handles the formatting.*
 
 Keep titles, claims, evidence and takeaways in one editable Markdown file.
@@ -23,6 +30,11 @@ edits directly. Changing a number, rewriting a title or moving a slide does not
 require another AI call; rendering itself uses no model tokens. Small iterations
 can refresh in seconds, while first builds and complex diagrams can take longer.
 Review the output before sharing. Org is also supported when that is your workflow.
+
+[[file:docs/images/workspace/story-overview.png]]
+
+*See the argument at a glance.* Edit titles, claims and takeaways together;
+move a slide with its content. Switch to [[file:docs/images/workspace/story-walkthrough.png][Walkthrough]] to read the narrative in order.
 
 * New to Markdown? Start here
 
@@ -48,6 +60,14 @@ You do not need to learn the syntax first (plugin 0.26).
   get a colleague's changes, choose when you both edited the same sentence, and
   then say whether the site is live. It saves first, asks once before sending,
   and never needs a Git command. The detailed views are under =More options=.
+
+- *Stay in control of your edits.* Save is explicit by default. Opt into
+  =More > Save automatically= to save after typing stops. Independent external
+  edits combine; overlaps and ambiguous rewrites pause for review.
+- *Sharing shows where it stands.* Share lists its three steps (saved, sent,
+  site updated) with a tick for each one done. If the site is still rebuilding
+  you can close it: the button changes to =Shared= and a message tells you when
+  it is live.
 
 It is still one ordinary Markdown file that you own; nothing above adds a
 hidden format. The check covers slide structure, not facts or appearance, so
@@ -127,7 +147,9 @@ Stale file versions still require conflict resolution, even for identical saves.
 The =Theme= dropdown lists installed packs automatically and preserves the
 project default; switching styles does not rewrite your source.
 Independent external edits merge into your draft; overlapping changes have a
-side-by-side review with per-conflict choices. Merging never saves automatically.
+side-by-side review with per-conflict choices. Save remains explicit by default;
+=More > Save automatically= opts into version-checked autosave. Ambiguous external
+rewrites pause for review, including changes that could replace saved typing.
 The header distinguishes =Saved to file= from =Unsaved draft=; =Draft backed up=
 only describes the separate recovery copy. File updates leave a persistent receipt.
 When edits overlap, Save opens =Review before saving= instead of becoming a dead
@@ -231,8 +253,8 @@ setup, PowerPoint fidelity limits, and the distinction between push and deployme
 
 Start a new Codex session and ask: "Open =/absolute/path/deck.md= in matsugit
 with a split slide preview." Supported desktop builds also offer matsugit as
-a file-opening action. The repository remains private; installation uses your
-existing Git access. No new account or hosted service is required.
+a file-opening action. The general repository is public under MIT. No new
+account or hosted service is required; private theme packs stay separate.
 
 See the [[file:docs/codex.org][Codex workspace guide]] for setup, saving, concurrent edits, local theme
 configuration, prerequisites and validation boundaries.
@@ -265,8 +287,8 @@ document and slides. Use the default theme. Do not publish.=
 
 The skill-only option needs no plugin or MCP server. It checks for the renderer and Quarto
 and guides their separate installation when needed. It works without Emacs or
-personal themes. While the repository is private, installation requires existing
-Git access. See the [[file:docs/cursor.md][Cursor quickstart]] for local, project and team setup.
+personal themes. The public package needs no private repository access.
+See the [[file:docs/cursor.md][Cursor quickstart]] for local, project and team setup.
 
 * A small language, not a thousand templates
 
@@ -460,7 +482,7 @@ your existing =.gitlab-ci.yml=. The runner must provide Quarto and Python.
 The template uses the modern =pages.publish= syntax. Review compatibility
 with your GitLab version; existing CI is never overwritten.
 
-CI contains a copy of the renderer and theme, so no access to this private
+CI contains a copy of the renderer and theme, so no runtime access to this
 package repository is needed. Rebuilding source runs only on an explicit
 workflow request; unrelated pushes do not deploy. GitHub uses =gh workflow run=;
 GitLab uses =glab ci run= with existing CLI authentication. Update the copied CI

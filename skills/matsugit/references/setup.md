@@ -41,9 +41,9 @@ python3 -m venv .venv
 On Windows use `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and
 `.venv\Scripts\matsugit.exe`. Use the explicit executable if Cursor's shell
 has a different PATH. Reuse a working environment; don't erase an existing one.
-An authenticated checkout can be installed with `uv tool install .` or that
-environment's `python -m pip install .`. Git installation requires existing
-repository access while the repository is private.
+A local checkout can be installed with `uv tool install .` or that
+environment's `python -m pip install .`. The general repository is public;
+no GitHub token is needed to read it. Private theme packs remain separate.
 
 Do not install optional tooling without need. For charts, the explicit
 `matsugit setup-charts` command provisions the isolated Altair/Vega-Lite

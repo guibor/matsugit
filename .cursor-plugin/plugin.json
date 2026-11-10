@@ -1,6 +1,6 @@
 {
   "name": "matsugit",
-  "version": "0.27.1",
+  "version": "0.28.1",
   "description": "Edit Markdown and Org in an interactive document/slide workspace, then present, export or explicitly publish.",
   "author": {"name": "matsugit"},
   "repository": "https://github.com/guibor/matsugit",

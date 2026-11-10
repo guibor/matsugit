@@ -8,18 +8,24 @@
     <div class="identity"><span id="brand-icon"></span><strong>matsugit</strong><span id="filename">Untitled.md</span><button id="copy-path" title="Copy document path" aria-label="Copy document path" disabled></button><span id="dirty" hidden aria-hidden="true">*</span><span id="save-state" role="status" aria-live="polite">Local copy</span></div>
     <div class="actions">
       <button id="share" title="Share this deck with others"></button>
-      <button id="publication-state" title="Publication status" aria-label="Publication status" disabled>Not pushed</button>
-      <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" disabled></button>
-      <button id="compact-markup" title="Use compact structural labels" aria-label="Use compact structural labels" aria-pressed="false"></button>
-      <button id="recover" title="Recover workspaces" aria-label="Recover workspaces"></button>
       <button id="insert" title="Add a slide or a layout" aria-label="Add a slide or a layout"></button>
-      <button id="open" title="Open Markdown file" aria-label="Open Markdown file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
-      <button id="git-sync" title="Git updates" aria-label="Git updates"></button>
       <button id="download" title="Download or export" aria-label="Download or export"></button>
-      <button id="publish" title="Publish document and slides" aria-label="Publish document and slides"></button>
       <button id="present" title="Present document" aria-label="Present document"></button>
+      <div id="more-wrap">
+        <button id="more" title="More" aria-label="More" aria-haspopup="true" aria-expanded="false" aria-controls="more-panel"></button>
+        <div id="more-panel" hidden>
+          <label class="auto" title="Opt in to saving after typing stops. External changes may pause saving for review."><input id="autosave" type="checkbox">Save automatically</label>
+          <button id="open" title="Open Markdown file" aria-label="Open Markdown file" data-label="Open another file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
+          <button id="recover" title="Recover workspaces" aria-label="Recover workspaces" data-label="Recover an earlier draft"></button>
+          <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" data-label="Review changes made elsewhere" disabled></button>
+          <button id="compact-markup" title="Use compact structural labels" aria-label="Use compact structural labels" aria-pressed="false" data-label="Show layout names instead of markup"></button>
+        </div>
+      </div>
+      <button id="publication-state" title="Publication status" aria-label="Publication status" disabled>Not pushed</button>
+      <button id="git-sync" title="Git updates" aria-label="Git updates"></button>
+      <button id="publish" title="Publish document and slides" aria-label="Publish document and slides"></button>
       <button id="expand-workspace" title="Expand workspace" aria-label="Expand workspace" hidden></button>
     </div>
   </header>
@@ -110,16 +116,17 @@
 <dialog id="share-dialog" class="delivery-dialog" aria-labelledby="share-heading">
   <div class="recovery-heading"><h2 id="share-heading">Share</h2><button id="share-close" title="Close" aria-label="Close"></button></div>
   <p id="share-title" role="status" aria-live="polite"></p>
+  <ol id="share-steps" aria-label="What sharing does" hidden></ol>
   <p id="share-detail"></p>
   <label id="share-destination-row" hidden>Project<select id="share-destination"></select></label>
   <p id="share-link-row" hidden><a id="share-link" target="_blank" rel="noopener noreferrer"></a><button id="share-copy" type="button"></button></p>
-  <button id="share-go" class="delivery-primary" hidden></button>
+  <div class="share-actions"><button id="share-go" class="delivery-primary" hidden></button><button id="share-later" type="button" hidden>Not now</button></div>
   <pre id="share-progress" role="status" aria-live="polite"></pre>
   <details id="share-advanced"><summary>More options</summary>
-    <p>For people who work with Git directly. Each opens the detailed, step-by-step view.</p>
-    <button id="share-advanced-sync" type="button">Git sync...</button>
-    <button id="share-advanced-publish" type="button">Publish to another project...</button>
-    <button id="share-advanced-status" type="button">Status details...</button>
+    <p>You do not need these. They open the detailed views for people who work with Git directly.</p>
+    <button id="share-advanced-sync" type="button">Get or send changes step by step</button>
+    <button id="share-advanced-publish" type="button">Share to a different project</button>
+    <button id="share-advanced-status" type="button">Technical status</button>
   </details>
 </dialog>
 <dialog id="story-move-dialog" class="delivery-dialog" aria-labelledby="story-move-title">

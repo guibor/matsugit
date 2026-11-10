@@ -52,6 +52,23 @@ one slide.
   Distinguish native support, composition from existing blocks, external-image
   fallback, and proposed features. Never invent supported options.
 
+## The author may be typing in the same file
+
+When a deck is open in the workspace, the author can be editing it while you
+work. Save is explicit by default; an author may opt into autosave. Never
+assume that the file contains all of their current typing.
+
+- Read the file again immediately before each edit. Never write a file back
+  from a copy you read earlier in the conversation.
+- Change only the lines you need with a targeted edit. Do not rewrite the whole
+  file to change one slide.
+- Keep each edit to the slide or passage you were asked about, so it does not
+  touch lines the author is likely to be typing in.
+- The workspace combines your change with theirs when they are on different
+  lines and the recorded versions agree. Overlaps or ambiguous stale rewrites
+  require review. If the author reports
+  a "Changed elsewhere" review, wait for them to finish it before editing again.
+
 ## Authors who do not read Markdown
 
 Many authors know PowerPoint, not Markdown. Unless they use syntax themselves:

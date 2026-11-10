@@ -137,6 +137,40 @@ existing claim or takeaway is selected instead of duplicated; nothing is added
 while a block is unclosed. The `/` completion in `authoring.mjs` uses the same
 catalogue for keyboard users.
 
+### Autosave (`app.js`)
+
+`scheduleAutosave()` runs after each document change and calls the ordinary
+`save({review: false})` 1.5 s after typing stops. It does nothing for files
+without a writable, versioned connection, backs off while a table edit, merge,
+review or share holds the document, and stops at a conflict so the existing
+review takes over. `state.autosave` comes from the `autosave` open option, the
+recovery view or the `More` menu. It defaults to false.
+
+### Two writers, one file (`app.js`, `external-edits.mjs`)
+
+The workspace polls the file every three seconds. `reload()` handles a changed
+file in one of three ways. Untouched workspace: replace the text. Author has
+typed in this session: reconcile. Table edit or Redo branch pending: mark
+`Changed elsewhere` and wait.
+
+`planExternalEdit()` checks the current base and retained pre-save versions.
+File contents cannot prove the other writer's parent revision. Automatic
+combining therefore requires every candidate to produce the same conflict-free
+result. Disagreement, including a possible deliberate deletion, requires an
+explicit review. A historical base is only a review proposal. The three-way
+merge runs in the existing server worker. Without ambiguity or conflicts,
+`applyExternal()` re-reads the file to confirm its version, turns the result
+into line hunks with `textChanges()` and dispatches them outside the undo
+history, so selection and Undo survive; a result that differs from the file is
+saved only when autosave is enabled. External updates do not clear saved
+history. History is bounded to 20 versions and 8 MiB without a time expiry;
+exceeding either bound requires full-version review on subsequent external
+changes. Opening another document or explicitly accepting a reviewed version
+starts a new history. This is session-local protection, not a revision protocol
+for external editors. With conflicts, `state.ancestor` supplies a review base,
+never an automatic write. An autosave refused by the version check calls
+`reload()` rather than overwriting the file.
+
 ### How Share works (`share.mjs`, `matsugit/share.py`)
 
 Share adds no new Git operation; it sequences the reviewed ones. `share-status`
@@ -149,6 +183,9 @@ pulls (`sync`), opens the existing conflict dialog, or sends with `exchange`.
 `receipt_plan()` attaches the project and provider to that push so
 `publication.status(check=True)` can report the site build afterwards. Share
 saves before taking the delivery lock, because Save is disabled while locked.
+`outcome()` paints the result from the stored receipt and `monitor()` polls the
+provider independently of the dialog, so the header button and a notice report
+the site build even when Share is closed.
 
 ## Agent surface
 
