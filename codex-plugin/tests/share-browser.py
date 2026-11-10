@@ -175,6 +175,35 @@ try:
         assert frame.locator('#git-sync-dialog').is_visible() and frame.locator('#share-dialog').is_hidden()
         wait(frame, IDLE)
         frame.locator('#close-git-sync').click()
+
+        # A long CI build is passive: the author can close Share and keep editing.
+        receipts = list(Path(ready['publication']).glob('*.json'))
+        building = json.loads(receipts[0].read_text())
+        building.update(stage='building', pipeline_status='running')
+        building.pop('check_error', None)
+
+        def pending_ci(route):
+            request = route.request.post_data_json
+            params = request.get('params', {})
+            args = params.get('arguments', {})
+            if (request.get('method') == 'tools/call' and params.get('name') == 'matsugit_action'
+                    and args.get('action') == 'publication-status' and args.get('check')):
+                route.fulfill(json={'result': {'content': [], 'structuredContent': {
+                    'job': 'synthetic-ci-check', 'state': 'ready', 'result': building}}})
+            else:
+                route.continue_()
+
+        page.route('**/rpc', pending_ci)
+        frame.locator('#share').click()
+        settled('Sent. Waiting for the site')
+        assert frame.locator('#share-close').is_enabled()
+        frame.locator('#share-close').click()
+        edit('my wording', 'wording while CI runs')
+        frame.locator('#save').click()
+        wait(frame, '!matsugitWorkspace.state.saving && ' + TEXT + ' === matsugitWorkspace.state.base')
+        assert 'wording while CI runs' in Path(info['destination']).read_text()
+        assert 'wording while CI runs' not in git(root / 'remotes/team/docs.git', 'show', 'main:matsugit-site/deck/source.md')
+        page.unroute('**/rpc', pending_ci)
         for width, height in [(390, 844), (760, 800)]:
             page.set_viewport_size({'width': width, 'height': height})
             frame.locator('#share').click()
@@ -183,7 +212,7 @@ try:
             assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth')
             frame.locator('#share-close').click()
         assert not errors, errors
-        print('PASS: first share with save and move, later changes, nothing new, colleague edits, combined and conflicting changes, advanced views', flush=True)
+        print('PASS: first share with save and move, later changes, colleague edits, conflicts, editing during CI, advanced views', flush=True)
         page.close(run_before_unload=False)
         browser.close()
 finally:

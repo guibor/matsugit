@@ -745,7 +745,7 @@ async function load(data, {acceptRevision = null} = {}) {
     if (state.conflict) notice('Recovered draft differs from the saved file. Both versions are retained for review.');
     else if (suppliedRecovery) notice(state.writable ? 'Recovered local draft. The source file was not changed.' : 'Recovered local copy. Download to keep it; the original file is unavailable here.');
     if (state.uri) {
-      disposeUpdates = extensions.resources.addUpdateHandler(({params}) => { if (params.uri === state.uri) reload(); });
+      disposeUpdates = extensions.resources.addUpdateHandler(({params}) => { if (params.uri === state.uri && !state.delivering) reload(); });
       extensions.resources.subscribe({uri: state.uri}).catch(() => {});
     }
     refreshControls();
@@ -1184,7 +1184,7 @@ if (demo) {
   app.addEventListener('hostcontextchanged', hostContext);
   try { await app.connect(); hostContext(app.getHostContext()); }
   catch (error) { notice(error.message); status('Host connection unavailable'); }
-  setInterval(() => { if (state.session || state.uri) reload(); }, 3000);
+  setInterval(() => { if ((state.session || state.uri) && !state.delivering) reload(); }, 3000);
 }
 }
 boot().catch(error => { notice(error.message); status('Workspace unavailable'); });

@@ -84,6 +84,10 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     }
     if (current === visit) paint({title: 'Sent. The site is still building', detail: 'It is taking longer than usual. Open Share again later to see whether it is live.', link, linkLabel: label});
   }
+  function startWatch(current) {
+    // Checking CI is read-only. Do not keep Save or Close locked until it ends.
+    void watch(current).catch(error => { if (current === visit) fail(error); });
+  }
 
   async function begin() {
     const current = ++visit;
@@ -152,7 +156,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const link = receipt.site_url || receipt.project_url || context.site_url || context.project_url;
     paint({title: 'Up to date', detail: 'Everything you saved has been shared, and nobody else has changed this deck.', link,
       linkLabel: receipt.site_url || context.site_url ? 'Open the shared deck' : 'Open the project'});
-    if (receipt.provider && ['pushed', 'building'].includes(receipt.stage)) await watch(current);
+    if (receipt.provider && ['pushed', 'building', 'failed'].includes(receipt.stage)) startWatch(current);
   }
 
   go.onclick = async () => {
@@ -195,7 +199,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
         if (job.result.publication) publication.pushed(job.result.publication);
         if (job.moved) notice(`Shared. This deck now lives at ${job.moved}; the old place is a link to it.`);
         context.project_url = job.result.project_url;
-        await watch(current);
+        startWatch(current);
       } else if (doing === 'send') {
         const data = context.data, before = text();
         if (data.local !== before || dirty()) throw Error('The deck changed after the check. Open Share again.');
@@ -205,17 +209,19 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
         progress.textContent = '';
         if (text() === before && !dirty()) await reload(true, true, job.result.etag); else await reload();
         if (job.result.publication) publication.pushed(job.result.publication);
-        await watch(current);
+        startWatch(current);
       } else if (doing === 'pull') {
+        const before = text();
+        if (dirty() || state.conflict) throw Error('Your draft changed. Save or review it, then open Share again.');
         paint({title: 'Getting the latest...'});
         const planned = await run('sync-plan', {}, progress);
         if (planned.result.status !== 'updates-available') throw Error(planned.result.status === 'up-to-date' ? 'There was nothing new after all.'
           : 'The newer version cannot be added automatically here. "More options" below has the detailed view.');
-        await run('sync', {text: text(), plan: planned.job}, progress);
-        // The deck had no changes of its own, so the newer file simply replaces it.
-        await reload(true, true);
+        await run('sync', {text: before, plan: planned.job}, progress);
+        const refreshed = text() === before && !dirty() ? await reload(true, true) : await reload();
         progress.textContent = '';
-        paint({title: 'Up to date', detail: 'You now have the latest version.'});
+        paint(refreshed ? {title: 'Up to date', detail: 'You now have the latest version.'}
+          : {title: 'Changes received', detail: 'The file was updated, but your open draft still needs review. Close Share and use Refresh; your draft is retained.'});
       }
     } catch (error) { if (current === visit) fail(error); }
     finally { lock(false); }
@@ -224,6 +230,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   if (demo) $('share').disabled = true;
   return {painted(label, busy) {
     const button = $('share');
+    button.disabled = demo || state.loading || state.delivering || !(state.session || state.uri);
     button.lastChild.textContent = shareLabel(label);
     button.dataset.state = label === 'Published' ? 'live' : label === 'CI failed' ? 'failed' : label === 'Changes not pushed' ? 'changes' : '';
     button.title = ({'Not pushed': 'Share this deck with others', 'Changes not pushed': 'You have saved changes that are not shared yet',

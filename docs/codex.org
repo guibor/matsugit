@@ -592,6 +592,9 @@ After sending, Share asks the project whether the site rebuilt and says =Live=
 only when the provider reports this version deployed. That uses your existing
 =glab= / =gh= login; without it Share says it cannot see the site and asks you
 to check before passing the link on. It never logs in for you.
+Waiting for CI is read-only and does not lock the editor: close Share to keep
+editing and saving while the site builds. Getting a colleague's changes reports
+success only after the open draft has refreshed, or asks you to review it.
 
 Boundaries. Share does not create a project, install its site build, switch on
 Pages or change who can see it; a project that is not prepared for matsugit is
