@@ -50,6 +50,7 @@ Three surfaces sit on top:
 | `publish.py`, `canonical.py`, `targets.py`, `repositories.py`, `publication.py` | Reviewed Git publication | `publish()`, `setup_ci()`, `plan()` |
 | `git_sync.py`, `git_exchange.py`, `adopt.py` | Pull, reviewed push, moving a source into a checkout | `sync()`, `plan()`, `exchange()` |
 | `cursor.py`, `skill_install.py` | Cursor setup | `install()` writes the MCP entry, links the skill, copies every file in `cursor-commands/` |
+| `share.py` | Local facts for the Share button | `status()`, `receipt_plan()`, `target_for()` |
 | `updates.py` | Versioned renderer bundles for CI checkouts | `manage()` |
 | `table_editor.py` | Standalone visual table editor | `serve()` |
 
@@ -66,7 +67,7 @@ app with the recipe catalogue from `authoring.editor_templates()` baked in),
 | File | Role |
 | --- | --- |
 | `src/server.mjs` | Registers MCP tools. Model-visible: `matsugit_open`, `matsugit_workspace`, `matsugit_check`. App-only: save, preview, recovery, merge, export/publish actions |
-| `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs |
+| `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs; `expectRelocation()` / `followed()` let a session follow the one move a publication reviewed |
 | `src/runtime.mjs` | `PluginRuntime`: unpacks the embedded renderer for this server version |
 | `src/actions.mjs`, `actions.py`, `worker.py` | Export, publication and preview workers |
 | `src/recovery.mjs`, `src/merge-service.mjs` | Private draft recovery; three-way merge |
@@ -90,7 +91,8 @@ view switching. It wires together focused modules:
 | `outline.mjs` | Folding by heading depth | `setOutlineDepth()`, `outlineKeys()` |
 | `preview.js` | Preview iframe, position sync, in-place patches | `previewHtml()`, `patchedHtml()` |
 | `slide-agent.mjs`, `slide-agent-request.mjs` | "Edit slide with AI" request to the current chat | `slideAgent()`, `slideAgentRequest()` |
-| `delivery.js`, `download.mjs`, `git-exchange.js`, `publication-status.mjs` | Export, publish, Git sync dialogs | |
+| `share.mjs` | **One Share button**: first share, later changes, colleagues' changes, site state | `share()`; `plainBlocked()` restates Git refusals |
+| `delivery.js`, `download.mjs`, `git-exchange.js`, `publication-status.mjs` | Export and the detailed publish, Git sync and status dialogs; `delivery()` returns the job runner Share reuses | |
 | `merge-dialog.mjs`, `change-review.mjs`, `save-status.mjs` | External-change review and save state | |
 | `host-view.mjs`, `host-results.mjs` | Differences between Codex and Cursor hosts | |
 
@@ -134,6 +136,19 @@ current paragraph or block; foot-of-slide parts go to the end of the slide; an
 existing claim or takeaway is selected instead of duplicated; nothing is added
 while a block is unclosed. The `/` completion in `authoring.mjs` uses the same
 catalogue for keyboard users.
+
+### How Share works (`share.mjs`, `matsugit/share.py`)
+
+Share adds no new Git operation; it sequences the reviewed ones. `share-status`
+(`share.status()`, local only) says whether the open file is tracked in a
+checkout with an upstream. If not (`mode: new`), Share runs the existing
+publish `plan` and `publish` with move-and-link into a chosen CI target, and the
+store follows the move. If so (`mode: sync`), it runs `exchange-plan`, merges
+base, local and incoming text with the existing three-way merge, and then either
+pulls (`sync`), opens the existing conflict dialog, or sends with `exchange`.
+`receipt_plan()` attaches the project and provider to that push so
+`publication.status(check=True)` can report the site build afterwards. Share
+saves before taking the delivery lock, because Save is disabled while locked.
 
 ## Agent surface
 

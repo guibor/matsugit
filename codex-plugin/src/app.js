@@ -11,6 +11,7 @@ import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
 import {EditorState, Compartment, Transaction} from '@codemirror/state';
 import {gallery} from './gallery.mjs';
+import {share} from './share.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding} from './check.mjs';
 import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
@@ -263,8 +264,10 @@ function refreshControls() {
   $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving || state.merging;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
   $('refresh').setAttribute('aria-label', $('refresh').title);
-  $('filename').textContent = state.name;
-  $('filename').title = state.name;
+  // A published source is always called source.md; its folder is its name.
+  const folder = /^source\.(md|org)$/.test(state.name) && state.path ? state.path.split(/[\\/]/).at(-2) + '/' : '';
+  $('filename').textContent = folder + state.name;
+  $('filename').title = state.path || state.name;
   paintNotice();
   if (!state.rendering && !state.saving) status(state.conflict ? 'External changes detected'
     : state.rendered && state.renderedRevision !== state.revision ? 'Preview out of date'
@@ -742,7 +745,7 @@ async function load(data, {acceptRevision = null} = {}) {
     if (state.conflict) notice('Recovered draft differs from the saved file. Both versions are retained for review.');
     else if (suppliedRecovery) notice(state.writable ? 'Recovered local draft. The source file was not changed.' : 'Recovered local copy. Download to keep it; the original file is unavailable here.');
     if (state.uri) {
-      disposeUpdates = extensions.resources.addUpdateHandler(({params}) => { if (params.uri === state.uri) reload(); });
+      disposeUpdates = extensions.resources.addUpdateHandler(({params}) => { if (params.uri === state.uri && !state.delivering) reload(); });
       extensions.resources.subscribe({uri: state.uri}).catch(() => {});
     }
     refreshControls();
@@ -757,6 +760,21 @@ async function load(data, {acceptRevision = null} = {}) {
       notice(error.message); refreshControls(); status('Cannot open document');
     }
   }
+}
+// The reviewed publication moved this file. Keep working on it at its new
+// path: same draft, undo history and view; only the file identity changes.
+async function follow(workspace) {
+  disposeUpdates?.(); disposeUpdates = null;
+  if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
+  await flushRecovery();
+  Object.assign(state, {uri: null, session: workspace.session, name: workspace.name, path: workspace.path,
+    base: workspace.text, etag: workspace.etag, writable: true, conflict: false, saveError: null, fileReceipt: null});
+  externalChange = null; mergeAttempt = null; readSequence++;
+  try {
+    recoveryId = (await call('matsugit_recovery_begin', {...recoveryScope(), name: state.name})).id;
+    recoveryGeneration = 0;
+  } catch (error) { recoveryFailure(error); }
+  refreshControls(); scheduleRecovery(); void refreshThemes();
 }
 async function download() {
   status('Sending download...');
@@ -960,9 +978,13 @@ $('expand-workspace').onclick = async () => {
 $('save').onclick = () => save();
 $('notice-save').onclick = () => save();
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
-publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
-delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load,
+let sharing;
+publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo,painted:(label,busy)=>sharing?.painted(label,busy)});
+const delivering = delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
+sharing = share({call, state, text, dirty: () => dirty() || tables.pending(), save: () => save({review: false}), ...delivering,
+  mergeReview, publication, reload, notice, demo});
+publication.update();
 $('insert').onclick = () => layouts.open();
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
@@ -1162,7 +1184,7 @@ if (demo) {
   app.addEventListener('hostcontextchanged', hostContext);
   try { await app.connect(); hostContext(app.getHostContext()); }
   catch (error) { notice(error.message); status('Host connection unavailable'); }
-  setInterval(() => { if (state.session || state.uri) reload(); }, 3000);
+  setInterval(() => { if ((state.session || state.uri) && !state.delivering) reload(); }, 3000);
 }
 }
 boot().catch(error => { notice(error.message); status('Workspace unavailable'); });

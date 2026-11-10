@@ -7,6 +7,7 @@
   <header>
     <div class="identity"><span id="brand-icon"></span><strong>matsugit</strong><span id="filename">Untitled.md</span><button id="copy-path" title="Copy document path" aria-label="Copy document path" disabled></button><span id="dirty" hidden aria-hidden="true">*</span><span id="save-state" role="status" aria-live="polite">Local copy</span></div>
     <div class="actions">
+      <button id="share" title="Share this deck with others"></button>
       <button id="publication-state" title="Publication status" aria-label="Publication status" disabled>Not pushed</button>
       <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" disabled></button>
       <button id="compact-markup" title="Use compact structural labels" aria-label="Use compact structural labels" aria-pressed="false"></button>
@@ -105,6 +106,21 @@
   <p id="gallery-status" role="status" aria-live="polite"></p>
   <div id="gallery-groups"></div>
   <p class="gallery-hint">The text is added to your draft with placeholders to replace. Press Tab to move between them. Typing / on an empty line opens the same list.</p>
+</dialog>
+<dialog id="share-dialog" class="delivery-dialog" aria-labelledby="share-heading">
+  <div class="recovery-heading"><h2 id="share-heading">Share</h2><button id="share-close" title="Close" aria-label="Close"></button></div>
+  <p id="share-title" role="status" aria-live="polite"></p>
+  <p id="share-detail"></p>
+  <label id="share-destination-row" hidden>Project<select id="share-destination"></select></label>
+  <p id="share-link-row" hidden><a id="share-link" target="_blank" rel="noopener noreferrer"></a><button id="share-copy" type="button"></button></p>
+  <button id="share-go" class="delivery-primary" hidden></button>
+  <pre id="share-progress" role="status" aria-live="polite"></pre>
+  <details id="share-advanced"><summary>More options</summary>
+    <p>For people who work with Git directly. Each opens the detailed, step-by-step view.</p>
+    <button id="share-advanced-sync" type="button">Git sync...</button>
+    <button id="share-advanced-publish" type="button">Publish to another project...</button>
+    <button id="share-advanced-status" type="button">Status details...</button>
+  </details>
 </dialog>
 <dialog id="story-move-dialog" class="delivery-dialog" aria-labelledby="story-move-title">
   <form id="story-move-form">

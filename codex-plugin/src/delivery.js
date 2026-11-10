@@ -2,7 +2,7 @@ import {createElement, X, Upload, Plus, GitPullRequestArrow, Download} from 'luc
 import {exportMime} from './download.mjs';
 import {gitExchange} from './git-exchange.js';
 
-export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, hasUnsaved, refreshControls, publication, mergeReview}) {
+export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, follow, hasUnsaved, refreshControls, publication, mergeReview}) {
   const $ = id => document.getElementById(id);
   let busy = false, plan = null, options = {}, syncPlan = null;
   let prepared = null;
@@ -24,8 +24,10 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
       progress.textContent = job.log || 'Working...';
     }
     if (job.workspace && view === (state.session || state.uri)) {
-      if (text() === args.text && !state.saving && !hasUnsaved()) await load({...job.workspace, layout:state.layout, format:state.format});
-      else { state.conflict = true; notice('Source relocated. Keep/download your draft, then reopen the canonical file before saving.'); }
+      // Publishing moved the document. Follow it; typing done meanwhile stays
+      // an ordinary unsaved draft of the file at its new path.
+      await follow(job.workspace);
+      job.moved = job.workspace.path;
     }
     if (job.state !== 'ready') throw Error(job.error || 'Operation failed');
     return {...job, owner, view};
@@ -39,7 +41,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     $('git-sync-check').disabled = value;
     $('git-sync-publish').disabled = value;
     $('git-sync-apply').disabled = value || !syncPlan?.canApply;
-    for (const id of ['git-exchange-start','git-exchange-confirm','git-exchange-message','close-git-sync']) $(id).disabled = value;
+    for (const id of ['git-exchange-start','git-exchange-confirm','git-exchange-message','close-git-sync','share-go','share-destination','share-close']) $(id).disabled = value;
     for (const input of $('git-exchange-assets').querySelectorAll('input')) input.disabled = value;
     $('git-sync-progress').setAttribute('aria-busy', String(value));
   }
@@ -262,10 +264,12 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     try {
       const job = await run('publish', {...checked.args, plan:checked.id, deploy:$('publish-deploy').checked}, $('publish-progress'));
       if (job.result.publication && job.view === (state.session || state.uri)) publication?.pushed(job.result.publication);
-      $('publish-progress').textContent = `${job.result.status}\n${job.result.revision}`;
-      notice(job.result.status);
+      const moved = job.moved ? `\nThis document now lives at ${job.moved}. The workspace follows it; the old location is a link to it.` : '';
+      $('publish-progress').textContent = `${job.result.status}\n${job.result.revision}${moved}`;
+      notice(job.result.status + moved);
     } catch (error) { $('publish-progress').textContent = error.message; }
     finally { invalidate(); lock(false); }
   };
   if (demo) { $('publish').disabled = true; $('git-sync').disabled = true; }
+  return {run, lock, isBusy: () => busy, snapshot};
 }

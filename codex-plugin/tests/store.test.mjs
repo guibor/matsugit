@@ -113,7 +113,7 @@ test('explicit relocation rebinds source without replacing its symlink on save',
     const opened = store.open(original);
     fs.renameSync(original, target); fs.symlinkSync(target, original);
     assert.throws(() => store.source(opened.session), /path changed/);
-    const rebound = store.relocated(original, target, '# Original\n');
+    const rebound = store.relocated(original, target);
     assert.equal(store.owner(opened.session, original), target);
     assert.equal(store.save(rebound.session, '# Updated\n', rebound.etag).outcome, 'saved');
     assert.ok(fs.lstatSync(original).isSymbolicLink());

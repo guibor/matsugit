@@ -1,5 +1,9 @@
 #+title: One canonical source, with safe Git sync
 
+Most people should use the workspace's =Share= button (plugin 0.27), which
+drives the operations below one plain step at a time. This page documents those
+operations and the detailed views behind =Share > More options=.
+
 * Move and leave a link
 
 Core 0.15 / plugin 0.11 add explicit move-and-link for Source to CI publication.
@@ -13,6 +17,14 @@ Referenced local assets move with matching symlinks, retaining relative URLs.
 Source comments are therefore present in Git: renderer hiding is not secrecy.
 Only the destination checkout is committed; any original repository's symlink
 changes are left unstaged for you to review separately.
+
+After the push, the open workspace follows the document to its new path by
+itself: the header shows the new location (=deck/source.md=), Save writes there,
+and a notice states where the document now lives. Anything typed while the
+publication ran stays as an ordinary unsaved draft of the moved file. Only the
+move that was reviewed is followed; an unrelated symlink swap still requires
+reopening. (Before this fix a status check during the move could stop the
+workspace with =The document path changed; reopen it=.)
 
 The source and assets must be self-contained in the source folder or children.
 Existing destinations, hidden files, symlinked attachments, parent-directory

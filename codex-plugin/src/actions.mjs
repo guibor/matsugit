@@ -12,8 +12,9 @@ export class WorkspaceActions {
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
     if (['export','plan','publish','sync','exchange'].includes(args.action)) checkedText(args.text);
-    if (['plan', 'publish', 'sync-plan', 'sync', 'exchange-plan', 'exchange', 'publication-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
-    if (args.action !== 'publication-status' && [...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner && j.action !== 'publication-status')) throw Error('An export or publication is already running for this document');
+    if (['plan', 'publish', 'sync-plan', 'sync', 'exchange-plan', 'exchange', 'publication-status', 'share-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
+    const passive = ['publication-status', 'share-status'];
+    if (!passive.includes(args.action) && [...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner && !passive.includes(j.action))) throw Error('An export or publication is already running for this document');
     // A new review replaces this document's previous review, not its downloads
     // or another document's confirmation. Otherwise repeated checks exhaust jobs.
     if (['plan', 'sync-plan', 'exchange-plan'].includes(args.action)) {
@@ -49,7 +50,8 @@ export class WorkspaceActions {
     const id = randomUUID();
     const extension = ['.md','.markdown','.qmd','.org'].includes(path.extname(args.name || '').toLowerCase()) ? path.extname(args.name) : '.md';
     const output = args.action === 'export' && !args.sync_folder ? path.join(directory, 'export.' + args.format) : undefined;
-    const job = {owner, directory, state:'running', action:args.action, log:''};
+    const job = {owner, directory, state:'running', action:args.action, log:'', destination:relocation?.destination};
+    if (relocation) this.store.expectRelocation(owner, relocation.destination);
     this.jobs.set(id, job);
     const child = spawn(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
       [path.join(this.runtime.root(), 'codex-plugin/actions.py')], {cwd:directory, stdio:['pipe','pipe','pipe']});
@@ -63,13 +65,14 @@ export class WorkspaceActions {
       if (stdout.length > 48 * 1024 * 1024) { job.state='error'; job.error='Git review is too large; use Git for this repository'; child.kill(); }
     });
     child.stderr.on('data', data => { job.log = (job.log + data).slice(-8000); });
-    child.on('error', error => { job.state='error'; job.error=error.message; });
+    child.on('error', error => { job.state='error'; job.error=error.message; if (relocation) this.store.settleRelocation(owner); });
     child.on('close', code => {
+      if (relocation) this.store.settleRelocation(owner);
       if (job.state === 'error') return;
       if (relocation && fs.existsSync(owner) && fs.lstatSync(owner).isSymbolicLink()
           && fs.realpathSync(owner) === relocation.destination) {
         try {
-          job.workspace = this.store.relocated(owner, relocation.destination, args.text);
+          job.workspace = this.store.relocated(owner, relocation.destination);
           for (const item of this.jobs.values()) if (item.owner === owner) item.owner = relocation.destination;
         } catch (error) { job.state='error'; job.error=error.message; return; }
       }
@@ -88,7 +91,9 @@ export class WorkspaceActions {
   }
   status(id, session, hostPath) {
     const job = this.jobs.get(id);
-    if (!job || job.owner !== this.store.owner(session, hostPath)) throw Error('Unknown operation for this document');
+    const owner = job && this.store.owner(session, hostPath);
+    // While a reviewed move is in flight the document answers at its new path.
+    if (!job || (job.owner !== owner && job.destination !== owner)) throw Error('Unknown operation for this document');
     return {job:id, state:job.state, error:job.error, log:job.log, result:job.result, workspace:job.workspace, size:job.size};
   }
   chunk(id, offset, session, hostPath) {

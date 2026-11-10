@@ -14,7 +14,8 @@ Cover, in this order:
   type on the left and watch the slide on the right; `Add` picks a slide or
   layout by picture; `Check` lists problems by slide with Show, a one-click fix
   and Ask AI; Story rearranges slides (`/matsugit-story`); the screen icon
-  presents; the download icon exports PowerPoint or PDF.
+  presents; `Share` sends the deck to their GitLab or GitHub project, gets
+  colleagues' changes and says when the site is live; the download icon exports PowerPoint or PDF.
 - The layouts by name: blank slide, cover, section heading, big statement,
   answer first, table and what it means, evidence beside its meaning, chart,
   key numbers, compare options, timeline, decision request, flow diagram,

@@ -23,16 +23,18 @@ function hostResult(result) {
 }
 const messages = [];
 let failChat = false;
-const source = path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
+// A test may supply its own real file and publishing configuration.
+const inPlace = process.env.MATSUGIT_TEST_SOURCE;
+const source = inPlace || path.join(temporary, fixture ? path.basename(fixture) : 'pilot.md');
 const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
-fs.copyFileSync(fixture || new URL('./workspace.md', import.meta.url), source);
+if (!inPlace) fs.copyFileSync(fixture || new URL('./workspace.md', import.meta.url), source);
 let client, opened, session, app;
 async function start() {
 client = new Client({name: 'matsugit-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
   args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
-  env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: path.join(temporary, 'absent.json'),
+  env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: process.env.MATSUGIT_TEST_CONFIG || path.join(temporary, 'absent.json'),
     MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery'),
     MATSUGIT_PUBLICATION_STATE: path.join(temporary, 'publication')}, stderr: 'inherit'}));
 opened = await client.callTool({name: 'matsugit_open', arguments: {path: source, ...openOptions}});

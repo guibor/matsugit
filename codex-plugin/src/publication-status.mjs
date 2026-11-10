@@ -6,7 +6,7 @@ export function publicationLabel(receipt, dirty, matches) {
   return ({published:'Published', building:'Building', failed:'CI failed'})[receipt.stage] || 'Pushed';
 }
 
-export function publicationStatus({call, state, hasUnsaved, demo}) {
+export function publicationStatus({call, state, hasUnsaved, demo, painted = () => {}}) {
   const $ = id => document.getElementById(id);
   let owner, receipt, loaded = false, busy = false, base, digest, sequence = 0;
   $('publication-check').replaceChildren(createElement(RefreshCw));
@@ -30,6 +30,7 @@ export function publicationStatus({call, state, hasUnsaved, demo}) {
       receipt.pushed_at && `Pushed: ${receipt.pushed_at}`, receipt.checked_at && `Checked: ${receipt.checked_at}`,
       receipt.pipeline_status && `Pipeline: ${receipt.pipeline_status}`, receipt.check_error,
     ].filter(Boolean).join('\n') : 'Reading local publication history...';
+    painted(label, busy);
     for (const [id, url] of [['publication-pipeline',receipt?.pipeline_url], ['publication-site',receipt?.site_url]]) {
       let valid = false;
       try { const parsed = new URL(url); valid = parsed.protocol === 'https:' && !parsed.username && !parsed.password; } catch {}
@@ -73,5 +74,8 @@ export function publicationStatus({call, state, hasUnsaved, demo}) {
       if (owner && !loaded && !busy && !state.loading && !state.delivering) { loaded = true; void read(); }
     },
     pushed(value) { sequence++; receipt = value; loaded = true; paint(); },
+    // Ask the provider once; resolves with the latest receipt either way.
+    async check() { await read(true); return receipt; },
+    receipt: () => receipt,
   };
 }

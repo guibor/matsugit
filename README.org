@@ -42,6 +42,13 @@ You do not need to learn the syntax first (plugin 0.26).
   preview, a banner says why and the preview is marked as the last version that
   worked. =/matsugit-check= gives the same findings in chat.
 
+- *Share with one button.* =Share= (plugin 0.27) replaces the separate status,
+  Git sync and Publish controls. It shows one state and one next step: put the
+  deck into your GitLab or GitHub project the first time, send later changes,
+  get a colleague's changes, choose when you both edited the same sentence, and
+  then say whether the site is live. It saves first, asks once before sending,
+  and never needs a Git command. The detailed views are under =More options=.
+
 It is still one ordinary Markdown file that you own; nothing above adds a
 hidden format. The check covers slide structure, not facts or appearance, so
 look at the slides before sharing. See [[file:docs/codex.org::*Check: what is working and what is not (0.26)][Check]] and
@@ -97,7 +104,8 @@ not a native editor tab; see [[file:docs/cursor.md][Cursor sizing and compatibil
 *One canonical file, including web edits.* With Source to CI publishing, choose
 =Move source and assets into target; leave local symlinks= to avoid a second
 editable copy. This is explicit opt-in, with a reviewed file list. Existing
-copy publication remains available. The Git sync icon offers =Pull updates= or
+copy publication remains available under =Share > More options=. The detailed
+Git sync view offers =Pull updates= or
 =Review and push...=. The latter compares your saved document with incoming Git
 edits, lets you resolve overlapping passages here, then shows the destination,
 optional referenced assets and commit message. Only =Commit and push= writes the

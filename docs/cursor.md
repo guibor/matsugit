@@ -65,6 +65,14 @@ one-click fix and Ask AI. Agents read the same findings through the
 `matsugit_check` tool, so `/matsugit-check` and the panel agree. See the
 [workspace guide](codex.org) for what is and is not checked.
 
+### Share
+
+`Share` (0.27) is the one button for syncing and deploying: first share, later
+changes, a colleague's changes and the site's state, each as one plain step.
+It runs in Cursor through the standard MCP path, with no Cursor-specific
+feature, and is covered by the same browser test in the inline Cursor host.
+See the [workspace guide](codex.org) for its states and limits.
+
 ### Panel size and typing
 
 Cursor 3.26.16 advertises only inline MCP App views, capped at 800 pixels tall;
