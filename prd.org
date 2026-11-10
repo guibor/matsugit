@@ -102,6 +102,17 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R30. The plain-language check is available from the command line.
 - R31. Both test suites pass on macOS and Linux.
 
+** Robustness first (0.30, branch =robustness-and-finish=)
+- R32. No sequence of typing, undo, saving and another writer's edits may
+  remove another writer's lines from the file or lose the author's typing
+  without a review the author resolves. Covered by a seeded stress test.
+- R33. Every visible, enabled control does something; a control that cannot act
+  is disabled and says why.
+- R34. The workspace survives a plugin restart, a read-only, deleted or moved
+  file, and a second window on the same file, without losing text or writing
+  anywhere unexpected.
+- R35. The chrome is neutral; the deck's theme is the only colour.
+
 * Next steps
 
 Immediate, in priority order:
@@ -142,6 +153,12 @@ Immediate, in priority order:
   pressed (R5 "explicit Save"). The proposed default-on autosave failed two
   stale-writer regressions. Keep explicit Save by default, offer opt-in autosave,
   and require review whenever retained historical bases disagree (R22).
+- 2026-11-11, Undo after a merge. Was: Undo after a merge returned to the
+  incoming file, with Redo restoring the merge. Now: Undo stops at a merge or a
+  resolved review. Reason: R32 (one Undo plus Save erased lines the author had
+  chosen to keep, including another writer's).
+- 2026-11-11, read-only files. Was: Save replaced them. Now: refused until
+  writable. Reason: R34.
 - 2026-11-10, view names. Was: =Markdown= / =Render= / =Split= and =Raw= /
   =Visual=. Now: =Write= / =Preview= / =Side by side= and =Markdown= /
   =Formatted=. Tool option values are unchanged. Reason: R26.

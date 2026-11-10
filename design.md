@@ -182,6 +182,20 @@ therefore rebases the author's contribution as one Undo step in this case,
 with a recovery checkpoint of the pre-merge text. This protects the accepted
 external edit, but does not preserve every earlier Undo step.
 
+### When the file or the plugin goes away (`app.js`, `store.mjs`)
+
+`call()` wraps every tool call. A `Workspace expired` error means the plugin
+process restarted and its sessions are gone; `reconnect()` reopens the same
+absolute path once (shared by concurrent callers), swaps in the new session,
+restarts the draft backup and retries. Base text and version stay as they were,
+so the usual version checks decide what happens next. `store.read()` raises
+`MissingFile` with a plain message when the file is gone; the notice then offers
+`matsugit_save` with `recreate: true`, which writes only if nothing exists at
+the path. `store.save()` returns `read-only` instead of renaming over a file
+without write permission, and `source()` reports `readOnly` so the workspace can
+resume saving when it changes. A merge or resolved review becomes the undo
+baseline in `applyMerged()`.
+
 ### How Share works (`share.mjs`, `matsugit/share.py`)
 
 Share adds no new Git operation; it sequences the reviewed ones. `share-status`

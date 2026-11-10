@@ -1,5 +1,27 @@
 #+title: Renderer and workspace regression checks
 
+* Robustness tests (0.30)
+#+begin_src sh
+python3 codex-plugin/tests/concurrency-fuzz-browser.py
+python3 codex-plugin/tests/controls-audit-browser.py
+python3 codex-plugin/tests/file-trouble-browser.py
+#+end_src
+- =concurrency-fuzz-browser.py= is a seeded stress test: the author types,
+  amends, undoes and saves (autosave on and off) while another writer makes
+  targeted edits, rewrites from an older read and changes the same lines. Every
+  line carries a marker; the test fails if the workspace ever removes another
+  writer's line from the file, loses the author's typing, raises a page error or
+  stays busy. Reviews are resolved with "Keep both". Choose runs with
+  =MATSUGIT_FUZZ_SEEDS=1,2,3= and =MATSUGIT_FUZZ_STEPS=30=.
+- =controls-audit-browser.py= clicks every visible, enabled control in five
+  states (saved file, unsaved draft, Story, untitled workspace, Cursor panel)
+  and fails on one that does nothing, a disabled one without a reason, a page
+  error, or a file write without Save.
+- =file-trouble-browser.py= covers a plugin restart, a read-only file, a
+  deleted file, a moved file and two windows on one file.
+Each also runs in the Cursor-style host with =MATSUGIT_TEST_HOST=cursor
+MATSUGIT_STANDARD_MCP=1=.
+
 * Fast checks
 The suites support macOS and Linux. macOS keeps temporary files behind a
 symlink (=/var= to =/private/var=); =tests/realtmp.py= and the Node tests

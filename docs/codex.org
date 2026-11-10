@@ -565,6 +565,21 @@ per render and 20 MiB of embedded HTML per output. A failed render retains the
 last successful preview and the editor text. Preview links switch between
 document and slides; external navigation is disabled inside the preview frame.
 
+* What changed in 0.30: quieter chrome
+
+- The workspace is neutral grey and ink, so the deck's own theme is the only
+  colour on screen. Focus rings stay blue for keyboard users.
+- In the formatted view the settings at the top of the file appear as one
+  =Deck settings= line (title, layout, slide shape); click it to edit them as
+  text. Quote marks are hidden outside the passage being edited, and the fold
+  arrows are gone (the outline buttons behind the sliders icon still fold).
+- The slide preview no longer shows its own counter, menu, progress bar or
+  =Document= link: the storyline strip is the one place that counts and moves
+  between slides. Exported and published decks keep them.
+- =Present= has a label. =Check= opens as a floating panel over the preview on
+  wide screens instead of pushing the text down.
+- The footer no longer repeats the save state shown in the header.
+
 * What changed in 0.29: names, layout and small helpers
 
 The words on the controls are plainer. Older text in this guide and in the
@@ -612,6 +627,30 @@ agree on a conflict-free result before changes combine automatically. Otherwise
 review preserves your draft and lets you choose, including when a short line
 you deleted reappears. Version checks cover workspace writes, not unrelated
 external editors.
+
+* When the file or the plugin misbehaves (0.30)
+
+- *The plugin restarts* (an update, or the host reloads its servers) while a
+  deck is open. The workspace reconnects to the same file by itself on its next
+  read or save. Your draft, its version check and the draft backup continue; you
+  do not need to reopen anything.
+- *The file is deleted, moved or renamed.* The banner says the file is no longer
+  there and that your text is safe in the window, with two buttons: =Save it
+  there again= puts the document back at its old place (never replacing a file
+  that has since appeared there), and =Download a copy=. If you moved the file
+  yourself, ask the agent to open it at its new place instead.
+- *The file is read-only on disk.* It is not overwritten. The header says
+  =Read-only file=, your text stays in the window, and saving (or autosave)
+  resumes once the file is writable again.
+- *Two windows on the same file* (two chats, or Codex and Cursor) behave like
+  the author and an agent: edits in different places combine; edits in the same
+  place ask you to choose.
+- *Undo after a merge or a review.* Undo does not go back past it. Going back to
+  either side would drop what the other side contributed, including passages you
+  chose to keep. Edits made afterwards undo as usual; the pre-merge draft is in
+  the recovery copies.
+- *Buttons that cannot act are disabled and say why* (Undo with nothing to undo,
+  Save with nothing to save).
 
 * Saving automatically (0.28)
 

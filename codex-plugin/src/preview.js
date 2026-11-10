@@ -220,6 +220,15 @@ export function previewHtml(html, format, position, token = '', base = null) {
   const storage = parsed.createElement('script');
   storage.textContent = `(${ephemeralStorage.toString()})();`;
   parsed.head.prepend(storage);
+  // Inside the workspace the storyline strip is the one place that counts and
+  // navigates slides; the deck's own counter (which also counts the cover and
+  // section slides), menu, progress bar and Document link would disagree with it.
+  // Exports and publication keep them.
+  if (format === 'slides') {
+    const quiet = parsed.createElement('style');
+    quiet.textContent = '.reveal .slide-number,.reveal .slide-menu-button,.reveal .progress,.reveal .footer .matsugit-document-link,.reveal .footer .folioforge-document-link{display:none!important}';
+    parsed.head.append(quiet);
+  }
   const bridge = parsed.createElement('script');
   bridge.textContent = `(${navigation.toString()})(${JSON.stringify(format)},${JSON.stringify(position).replaceAll('<', '\\u003c')},${JSON.stringify(token)},${headingKey.toString()},${JSON.stringify(base)},${applyChanges.toString()});`;
   parsed.body.append(bridge);

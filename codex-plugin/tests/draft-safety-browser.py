@@ -26,8 +26,8 @@ try:
             frame.locator('#merge-options summary').click()
             frame.locator('#merge-versions').click()
         # An initial file read must never be an undoable insertion of the whole file.
-        frame.locator('#undo').click()
-        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==original, 'Undo erased the initial file'
+        assert frame.locator('#undo').is_disabled(), 'Undo offered for the initial file read'
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==original
         draft=original+'\nLocal draft\n'
         frame.evaluate('(s)=>matsugitWorkspace.editor.dispatch({changes:{from:0,to:matsugitWorkspace.editor.state.doc.length,insert:s},userEvent:"input.type"})',draft)
         frame.evaluate('registeredTools.matsugit_replace_source.execute({revision:matsugitWorkspace.state.revision,text:matsugitWorkspace.editor.state.doc.toString()+"\\nAgent workspace patch\\n"})')
@@ -45,8 +45,9 @@ try:
         frame.locator('#incoming-use').click()
         frame.wait_for_function('()=>!document.getElementById("incoming-dialog").open')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==incoming
-        frame.locator('#undo').click()
-        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==incoming, 'Undo crossed the external baseline'
+        # Nothing before the accepted file can be undone, so Undo is not offered.
+        assert frame.locator('#undo').is_disabled(), 'Undo offered across the external baseline'
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==incoming
         frame.evaluate('matsugitWorkspace.editor.dispatch({changes:{from:0,insert:"My unsaved text\\n"},userEvent:"input.type"})')
         edited=frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         # Both versions insert at the same location, so this is a real conflict.
@@ -117,8 +118,7 @@ try:
         frame.locator('#incoming-use').click()
         frame.wait_for_function('()=>!document.getElementById("incoming-dialog").open')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==original
-        frame.locator('#undo').click()
-        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==original
+        assert frame.locator('#undo').is_disabled(), 'Undo offered across a newly chosen source'
         frame.evaluate('matsugitWorkspace.flushRecovery()')
         records=[json.loads(f.read_text()) for f in Path(ready['recovery']).glob('*.json')]
         assert any(r['text']==edited for r in records), 'Safety copy was overwritten after accepting incoming source'

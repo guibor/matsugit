@@ -429,3 +429,39 @@ body.presenting #slide-rail{display:none}
 #source-pane[data-mode=visual] .cm-lineNumbers .cm-gutterElement{padding:0!important;min-width:0!important;width:0}
 #app:has(#source-pane[data-mode=visual]) #location{display:none}
 .cm-line:has(> .ff-block-end){padding-top:0!important;padding-bottom:0!important;background:transparent!important;border-left-color:transparent!important;line-height:8px}
+
+/* ===== 0.30: neutral chrome so the deck's theme is the only colour ========= */
+:root{--accent:#1f2329;--accent-soft:#eef0f3;--focus:#3b5bdb}
+@media(prefers-color-scheme:dark){:root{--accent:#e8eaee;--accent-soft:#2b2e33;--focus:#8aa2ff}}
+button:focus-visible,input:focus-visible,select:focus-visible,#divider:focus-visible{outline-color:var(--focus)}
+#share,#share:hover{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+#share[data-state=changes]{color:var(--bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 25%,transparent)}
+#brand-icon{background:var(--accent);color:var(--bg)!important}
+#save-state[data-kind=dirty]{color:var(--fg);background:var(--accent-soft)}
+#welcome b{color:var(--fg)}
+.check-actions .check-fix,#share-go,.delivery-primary.check-fix{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.rail-slide[aria-current=true]{border-color:var(--accent);box-shadow:none}.rail-slide[aria-current=true] .rail-number{background:var(--accent);color:var(--bg)}
+.gallery-card:hover,.gallery-card:focus-visible{border-color:var(--accent)}.sk-a{fill:#3c4048}.sk-s{fill:#d7dbe1}
+.cm-selectionBackground{background:color-mix(in srgb,var(--focus) 22%,transparent)!important}
+.segmented button[aria-pressed=true]{color:var(--fg)}
+/* Story: the argument, not chrome. Takeaways in a quiet grey. */
+.story-takeaway,[class*=story-takeaway]{background:var(--muted-bg)!important;border-left-color:color-mix(in srgb,var(--fg) 35%,transparent)!important}
+/* Present is a primary action for a deck tool, so it says its name. */
+#present{width:auto;display:flex;align-items:center;gap:5px;padding:0 10px 0 8px;font-size:12px;border:1px solid var(--border)}
+/* Formatted view: one line for the settings, no fold arrows, quotes as quotes. */
+.ff-deck-settings{display:flex;align-items:center;gap:10px;width:calc(100% - 28px);margin:6px 14px 10px;padding:7px 12px;border:1px dashed var(--border);border-radius:8px;background:var(--muted-bg);font:12.5px var(--font-sans,system-ui,sans-serif);color:var(--muted);text-align:left;cursor:pointer}
+.ff-deck-settings strong{color:var(--fg);font-weight:650}.ff-deck-settings span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ff-deck-settings .ff-deck-settings-edit{flex:none;color:var(--fg);text-decoration:underline;text-underline-offset:3px}
+.ff-deck-settings:hover{border-style:solid;color:var(--fg)}
+#source-pane[data-mode=visual] .cm-foldGutter{display:none}
+.ff-visual .ff-visual-quote{border-left:3px solid var(--border);padding-left:14px!important;color:var(--fg)}
+/* Status appears once, in the header; the footer copy stays for screen readers. */
+#status[data-duplicate=true]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+footer{justify-content:flex-end}
+/* Check floats over the preview on wide screens instead of pushing the text down. */
+@media(min-width:1000px){
+  #app:has(#workspace:is([data-layout=split],[data-layout=render])) #check-panel{position:fixed;z-index:25;right:16px;top:104px;width:min(480px,40vw);max-height:min(70vh,640px);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 50px #00000030;padding:10px 14px}
+  #app:has(#workspace:is([data-layout=split],[data-layout=render])) .check-item{grid-template-columns:minmax(0,1fr)}
+  #app:has(#workspace:is([data-layout=split],[data-layout=render])) .check-actions{grid-column:1;grid-row:auto;justify-content:flex-start;margin-top:4px}
+}
+#source-pane[data-mode=visual] .cm-activeLineGutter{background:transparent!important}

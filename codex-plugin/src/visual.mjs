@@ -55,6 +55,27 @@ export function tableRanges(source, tree = md.parse(source)) {
   return tables.sort((a,b)=>a.from-b.from);
 }
 
+// The YAML settings at the top, shown as one line. Clicking it opens the text.
+class DeckSettings extends WidgetType {
+  constructor(source) { super(); this.source = source; }
+  eq(other) { return other.source === this.source; }
+  toDOM(view) {
+    const values = Object.fromEntries([...this.source.matchAll(/^([A-Za-z][\w-]*):[ \t]*(.*?)[ \t]*$/gm)].map(m => [m[1], m[2].replace(/^(['"])(.*)\1$/, '$2')]));
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'ff-deck-settings';
+    const label = document.createElement('strong'); label.textContent = 'Deck settings';
+    const summary = document.createElement('span');
+    summary.textContent = [values.title && `"${values.title}"`, values['slide-layout'] && `${values['slide-layout']} layout`,
+      values['slide-aspect-ratio'], values['slide-section-dividers'] === 'false' && 'no section slides'].filter(Boolean).join(' · ') || 'Title and slide options';
+    const edit = document.createElement('span'); edit.className = 'ff-deck-settings-edit'; edit.textContent = 'Edit';
+    el.append(label, summary, edit);
+    el.title = 'Title and slide options from the top of the file. Click to edit them as text.';
+    el.onmousedown = event => { event.preventDefault(); view.dispatch({selection:{anchor:4}, scrollIntoView:true}); view.focus(); };
+    return el;
+  }
+  ignoreEvent() { return false; }
+}
+
 export function safeTableDOM(html) {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const allowed = new Set(['TABLE','THEAD','TBODY','TFOOT','TR','TH','TD','P','STRONG','B','EM','I','S','DEL','CODE','A','BR','UL','OL','LI']);
@@ -143,9 +164,13 @@ export function visualExtensions(actions) {
   const build = state => {
     if (actions.isOrg()) return {decorations:Decoration.none,atomic:Decoration.none};
     const {tree,tables,frontmatter}=model(state), decorations=[];
-    for(let line=1;line<=state.doc.lines && state.doc.line(line).from<frontmatter;line++)
-      decorations.push(Decoration.line({class:'ff-visual-metadata'}).range(state.doc.line(line).from));
     const active = node => state.selection.ranges.some(s=>s.from<=node.to && s.to>=node.from);
+    // The settings block reads as one quiet line until the cursor goes into it.
+    const settingsEnd = frontmatter ? state.doc.lineAt(Math.max(0, frontmatter - 1)).to : 0;
+    if (frontmatter && !active({from:0,to:settingsEnd}))
+      decorations.push(Decoration.replace({widget:new DeckSettings(state.doc.sliceString(0,frontmatter)),block:true}).range(0,settingsEnd));
+    else for(let line=1;line<=state.doc.lines && state.doc.line(line).from<frontmatter;line++)
+      decorations.push(Decoration.line({class:'ff-visual-metadata'}).range(state.doc.line(line).from));
     tree.iterate({enter(node) {
       if (node.name==='Document') return;
       if (node.from<frontmatter || ['FencedCode','CodeBlock','HTMLBlock','Image'].includes(node.name)) return false;
@@ -159,6 +184,13 @@ export function visualExtensions(actions) {
         // Reveal syntax only in the inline construct currently being edited.
         if (!active(parent) && (node.name!=='URL' || parent.name==='Link'))
           decorations.push(Decoration.replace({}).range(node.from,node.to));
+      }
+      if (node.name==='Blockquote') for (let at=state.doc.lineAt(node.from).number; at<=state.doc.lineAt(node.to).number; at++)
+        decorations.push(Decoration.line({class:'ff-visual-quote'}).range(state.doc.line(at).from));
+      // Hide the quote marks of a passage that is not being edited.
+      if (node.name==='QuoteMark' && !active(node.node.parent)) {
+        const after=state.doc.sliceString(node.to,node.to+1)===' '?1:0;
+        decorations.push(Decoration.replace({}).range(node.from,node.to+after));
       }
       if (node.name==='ListMark' && !active(node.node.parent) && /^[-+*]$/.test(state.doc.sliceString(node.from,node.to)))
         decorations.push(Decoration.replace({widget:new Bullet()}).range(node.from,node.to));

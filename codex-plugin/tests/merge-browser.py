@@ -72,9 +72,11 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             assert frame.locator('#save-state').inner_text() == 'Unsaved draft'
             records = [json.loads(f.read_text()) for f in Path(ready['recovery']).glob('*.json')]
             assert any(r['text'] == mine for r in records)
-            # Undo never crosses the merge: neither the incoming edit nor the author's is dropped.
+            # An automatic combine stays outside the history: Undo takes back the author's own edit only.
             frame.locator('#undo').click()
-            assert current() == merged, 'Undo must not cross a merge'
+            assert current() == incoming, 'Undo must not erase the incoming edit'
+            frame.locator('#redo').click()
+            assert current() == merged
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving')
             assert source.read_text() == merged
@@ -159,9 +161,8 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             result = local.replace('Beta local choice\n','Beta local choice\nBeta agent choice\n') + '\nAnother external edit\n'
             assert current() == result
             assert source.read_text() == newer
-            frame.locator('#undo').click()
-            assert current() == newer
-            frame.locator('#redo').click()
+            # A reviewed merge is the person's decision: Undo does not cross it (0.30).
+            assert frame.locator('#undo').is_disabled()
             assert current() == result
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving')

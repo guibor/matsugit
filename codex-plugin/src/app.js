@@ -127,7 +127,8 @@ function paintNotice() {
   $('notice-dismiss').hidden = !state.fileReceipt || state.conflict || !!incomingDocument;
 }
 const notice = (message = '') => { noticeMessage = message; paintNotice(); };
-const status = message => { $('status').textContent = message; };
+// The header already shows the file state; the footer keeps it for screen readers only.
+const status = message => { $('status').textContent = message; $('status').dataset.duplicate = String(['Saved to file', 'Unsaved draft', 'Local draft'].includes(message)); };
 const editability = new Compartment();
 const setup = new Compartment();
 const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.of(value)];
@@ -170,6 +171,7 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
 $('insert').append('Add');
+$('present').append('Present');
 $('more').append(createElement(Ellipsis));
 $('view-options').append(createElement(SlidersHorizontal));
 $('view-options').onclick = () => {
