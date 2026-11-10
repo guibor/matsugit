@@ -43,6 +43,7 @@ Three surfaces sit on top:
 | `charts.py`, `vega.py` | Table-backed and Vega-Lite charts | `dataset()` validates a chart block; `setup()` installs the optional backend |
 | `diagrams.py` | D2 diagrams | `setup()`, render with a sanitised SVG result |
 | `canvas.py` | Embedded local HTML | validation of `canvas` blocks |
+| `check.py` | Plain-language check on the command line | `check()` runs the workspace's check through the bundled Node helper; `report()` |
 | `lint.py` | CLI density checks | `inspect()` (long titles, dense slides, large tables); `rendered()` optional browser pass |
 | `authoring.py` | The recipe catalogue | `TEMPLATES`, `ELEMENTS` (recipe text); `CATALOG` (plain name, when to use, group, sketch); `editor_templates()` feeds the workspace; `template()` feeds the CLI |
 | `preview.py` | Fast preview patches | `render()` returns a full render or a small text patch |
@@ -84,6 +85,7 @@ view switching. It wires together focused modules:
 | `story.mjs` | Story view (Overview, Walkthrough) | `storyView()` |
 | `check.mjs` | **Plain-language slide check** | `checkDeck()` returns findings; `applyFix()`; `checkSummary()`; `rendererFinding()` restates renderer errors |
 | `check-panel.mjs` | The Check chip and list | `checkPanel()` (Show, fix, Ask AI) |
+| `slide-rail.mjs` | Slide strip under the workspace | `slideRail()`: current slide, jump, Check markers |
 | `gallery.mjs` | **Layout picker** behind `Add` | `gallery()` draws thumbnails and inserts the chosen recipe |
 | `insertions.mjs` | Pure source edits | `placeInsertion()` decides where a recipe goes; `wrapElement()` wraps a selection; `snippetTemplate()` marks placeholders |
 | `authoring.mjs` | Gutter roles, block labels, `/` completion | `authoringExtensions()` |
@@ -157,7 +159,13 @@ typed in this session: reconcile. Table edit or Redo branch pending: mark
 File contents cannot prove the other writer's parent revision. Automatic
 combining therefore requires every candidate to produce the same conflict-free
 result. Disagreement, including a possible deliberate deletion, requires an
-explicit review. A historical base is only a review proposal. The three-way
+explicit review. A historical base is only a review proposal. One exception
+rests on evidence instead of agreement: `sawSavedEdits()` drops an older
+candidate when the incoming text still holds a distinctive line the author
+saved after it, in place, wherever the two overlap. A writer working from that
+candidate could not have produced those lines, so it is not a plausible parent.
+Same-line replacements, removals and re-added deletions carry no such evidence
+and still go to review. The three-way
 merge runs in the existing server worker. Without ambiguity or conflicts,
 `applyExternal()` re-reads the file to confirm its version, turns the result
 into line hunks with `textChanges()` and dispatches them outside the undo

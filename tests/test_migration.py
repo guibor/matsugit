@@ -1,4 +1,5 @@
 """Renaming never discards settings, managed outputs, or legacy integrations."""
+import realtmp  # noqa: F401  (resolve the temporary directory before any test creates one)
 import hashlib
 import importlib
 import json

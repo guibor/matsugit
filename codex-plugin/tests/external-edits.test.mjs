@@ -107,3 +107,31 @@ test('very large replacement still produces exact text', () => {
   const before = 'before\n'.repeat(2100), after = 'after\n'.repeat(2100);
   assert.equal(apply(before, textChanges(before, after)), after);
 });
+
+test('an edit inside text the author saved earlier is accepted only with proof it saw that text', async () => {
+  const {sawSavedEdits} = await import('../src/external-edits.mjs');
+  const before = 'intro\n\n## Old slide\n\nfinal line\n';
+  // The author wrote and saved a new slide; an agent then tightens one of its lines.
+  const saved = before + '\n## New slide from the author\n\nFirst point the author wrote.\nSecond point the author wrote.\n';
+  const targeted = saved.replace('Second point the author wrote.', 'Second point, tightened by the agent.');
+  assert.equal(sawSavedEdits(before, saved, targeted), true);
+  const history = savedEditHistory(); history.remember(before);
+  const accepted = await decide(saved, saved, targeted, history);
+  assert.equal(accepted.review, false);
+  assert.equal(accepted.text, targeted);
+  // The same holds when the author moved a block and the agent edits a line in it.
+  const moved = '## B\n\nBlock B has a distinctive first line.\nBlock B has a second line.\n\n## A\n\nBlock A text.\n';
+  const original = '## A\n\nBlock A text.\n\n## B\n\nBlock B has a distinctive first line.\nBlock B has a second line.\n';
+  assert.equal(sawSavedEdits(original, moved, moved.replace('a second line', 'an edited second line')), true);
+  // No proof: the whole saved edit is gone, replaced, or only trivial lines remain.
+  assert.equal(sawSavedEdits(before, saved, before), false);
+  assert.equal(sawSavedEdits(before, saved, before.replace('final line', 'final line, edited from the old version')), false);
+  assert.equal(sawSavedEdits('Budget: 10\n', 'Budget: 20\n', 'Budget: 30\n'), false);
+  assert.equal(sawSavedEdits('a\n\nz\n', 'a\n\n:::\nx\n:::\n\nz\n', 'a\n\n:::\ny\n:::\n\nz\n'), false);
+  // The author deleted a paragraph; text re-inserted at that spot proves nothing.
+  const deleted = 'keep\n\nend\n';
+  assert.equal(sawSavedEdits('keep\n\nRemoved paragraph of the author.\n\nend\n', deleted, 'keep\n\nRemoved paragraph of the author.\n\nend\n'), false);
+  assert.equal(sawSavedEdits('keep\n\nRemoved paragraph of the author.\n\nend\n', deleted, deleted.replace('end', 'end, edited elsewhere')), true);
+  const stale = await decide(saved, saved, before.replace('final line', 'final line, edited from the old version'), history);
+  assert.equal(stale.review, true);
+});

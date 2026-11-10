@@ -1,10 +1,10 @@
 {
-  "plugin_version": "0.28.1",
+  "plugin_version": "0.29.0",
   "theme": "default",
   "fixture": "examples/automotive-story.md",
   "synthetic": true,
   "fixture_sha256": "680f268f54a2f5ac96043b9b907c3dfdb6c0be9f93656dd03dce299cbc3a3b04",
-  "app_sha256": "ebb6e539c446d08ab6b4e3e9f14ec3d7c42922898eb1874fb128975b208c96b4",
+  "app_sha256": "a19c31131fc7ae813d6f0fdbde5816979eeea0d6641047aee13fb1706713b909",
   "host": "isolated MCP host; real shared plugin UI, not Codex/Cursor desktop chrome",
   "steps": [
     "Visual Markdown alongside the slide",

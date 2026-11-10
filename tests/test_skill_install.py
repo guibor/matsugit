@@ -1,3 +1,4 @@
+import realtmp  # noqa: F401  (resolve the temporary directory before any test creates one)
 import json
 from pathlib import Path
 import shutil

@@ -1,4 +1,5 @@
 """Exercise portable skill examples through the real parser and theme installer."""
+import realtmp  # noqa: F401  (resolve the temporary directory before any test creates one)
 import json
 import os
 from pathlib import Path

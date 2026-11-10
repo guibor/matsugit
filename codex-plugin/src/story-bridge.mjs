@@ -1,9 +1,15 @@
+import {checkDeck, checkSummary} from './check.mjs';
 import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim, moveDestinations} from './story-model.mjs';
 
 // Emacs uses Unicode characters, while browser editors use UTF-16 offsets.
 export function storyRequest(request) {
   const {source, org = false, action = 'model'} = request;
   if (typeof source !== 'string' || Buffer.byteLength(source) > 2 * 1024 * 1024 || source.includes('\0')) throw Error('Invalid or oversized source');
+  // The plain-language slide check, for the command line and editors without the workspace.
+  if (action === 'check') {
+    const findings = checkDeck(source, org).map(({from, fix, ...finding}) => ({...finding, ...(fix ? {suggestedFix: fix.label} : {})}));
+    return {...checkSummary(findings), findings};
+  }
   const utf = [0], chars = new Uint32Array(source.length + 1);
   let at = 0, count = 0;
   for (const char of source) { at += char.length; utf.push(at); count++; chars[at] = count; }

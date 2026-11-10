@@ -137,13 +137,18 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       context = info; progress.textContent = '';
       if (info.mode === 'new') {
         const select = $('share-destination'); select.replaceChildren();
-        for (const target of info.targets) select.add(new Option(target.label, target.name, false, target.name === info.default));
+        for (const target of info.targets) {
+          // The name alone means little to a newcomer; say where the project lives.
+          let host = ''; try { host = new URL(target.project_url).hostname; } catch {}
+          const option = new Option(host ? `${target.label} (${host})` : target.label, target.name, false, target.name === info.default);
+          option.dataset.label = target.label; select.add(option);
+        }
         if (!info.targets.length) {
           paint({title: 'Not shared yet', detail: 'No project is connected on this computer. Connect your GitLab or GitHub project once; after that, sharing is one click.', action: 'Connect a project...', next: 'connect'});
           return;
         }
         paint({title: 'Not shared yet', detail: 'Sharing puts this deck into your project, so others can open it and the project\'s site can show it. You will see exactly what is sent before anything leaves this computer.' + (dirty() ? '\n\nYour unsaved changes are saved first.' : ''),
-          action: 'Check what will be shared', next: 'plan-new', pick: true, steps: {save: dirty() ? 'next' : 'done', send: dirty() ? 'todo' : 'next'}});
+          action: 'See what will be shared', next: 'plan-new', pick: true, steps: {save: dirty() ? 'next' : 'done', send: dirty() ? 'todo' : 'next'}});
       } else if (dirty()) {
         paint({title: 'You have unsaved changes', detail: `The next step saves them and looks in ${destination(info)} for changes from others. Nothing is sent yet.`, action: 'Save and check', next: 'check',
           steps: {save: 'next', project: destination(info)}});
@@ -228,7 +233,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       else if (doing === 'plan-new') {
         await saved();
         const args = {...snapshot(), target: $('share-destination').value, build: 'ci', move_source: true};
-        context.label = $('share-destination').selectedOptions[0]?.textContent || context.label;
+        context.label = $('share-destination').selectedOptions[0]?.dataset.label || context.label;
         const job = await run('plan', args, progress);
         if (current !== visit) return;
         const data = job.result;

@@ -14,7 +14,7 @@ const chatMode = process.env.MATSUGIT_TEST_CHAT || '';
 const downloadMode = process.env.MATSUGIT_TEST_DOWNLOAD || 'browser';
 const resultMode = process.env.MATSUGIT_TEST_RESULT || 'full';
 // Most tests assert exactly when the file is written, so they opt out of autosave.
-const openOptions = {...(process.env.MATSUGIT_TEST_DEFAULT_SAVE === '1' ? {} : {autosave: false}),
+const openOptions = {tips: false, ...(process.env.MATSUGIT_TEST_DEFAULT_SAVE === '1' ? {} : {autosave: false}),
   ...JSON.parse(process.env.MATSUGIT_TEST_OPEN_OPTIONS || '{}')};
 const cursorHost = process.env.MATSUGIT_TEST_HOST === 'cursor';
 function hostResult(result) {
@@ -105,7 +105,7 @@ const server = http.createServer(async (req, res) => {
       await client.close(); fs.mkdirSync(inherited); await start(); fs.rmdirSync(inherited);
       return res.end('{}');
     }
-    if (req.url === '/file-result') return res.end(JSON.stringify({structuredContent: {file: {name: 'pilot.md', resourceUri: 'host://selected/pilot'}, autosave: openOptions.autosave}, content: []}));
+    if (req.url === '/file-result') return res.end(JSON.stringify({structuredContent: {file: {name: 'pilot.md', resourceUri: 'host://selected/pilot'}, autosave: openOptions.autosave, tips: openOptions.tips}, content: []}));
     if (req.url === '/rpc') {
       let raw = ''; for await (const chunk of req) raw += chunk;
       const message = JSON.parse(raw), params = message.params;

@@ -28,6 +28,7 @@ try:
             heading = frame.locator(f'.ff-heading-{level}').first
             assert heading.evaluate('(e)=>parseFloat(getComputedStyle(e).fontSize)') == size
             assert heading.evaluate('(e)=>[...e.children].every(c=>getComputedStyle(c).fontSize===getComputedStyle(e).fontSize)')
+        frame.locator('#view-options').click()  # outline tools sit behind this button in Formatted
         frame.locator('#slide-separators').check()
         assert frame.locator('.ff-slide-boundary').count() >= 2
         marker = frame.locator('.ff-gutter-marker[title="Slide"]').first

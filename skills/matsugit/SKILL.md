@@ -81,7 +81,8 @@ Many authors know PowerPoint, not Markdown. Unless they use syntax themselves:
   beside its meaning, chart, key numbers, compare options, timeline, decision
   request, flow diagram, quote, cause and effect, insight to action.
 - After every edit, and whenever asked what is wrong, run the `matsugit_check`
-  tool when it is available (otherwise `matsugit lint`). Report by slide number
+  tool when it is available (otherwise `matsugit check FILE`, or `matsugit lint`
+  where Node is missing). Report by slide number
   and title, problems before tips, each with what you would change. Fix problems
   you introduced before replying; never leave a deck that the check rejects.
 - Point to the workspace for what is easier by hand: `Add` to pick a layout by

@@ -17,7 +17,7 @@ function prose(text) {
   return fragment;
 }
 
-export function checkPanel({editor, isOrg, enabled, renderError, show, askAgent, toggled = () => {}}) {
+export function checkPanel({editor, isOrg, enabled, renderError, show, askAgent, toggled = () => {}, changed = () => {}}) {
   const chip = $('check-status'), panel = $('check-panel'), list = $('check-list'), feedback = $('check-feedback');
   let findings = [], timer, revision = null;
   $('check-close').append(createElement(X));
@@ -78,6 +78,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, show, askAgent,
     $('check-summary').textContent = !findings.length ? 'No problems found. This checks structure; still look at the slides.'
       : [summary.problems && `${summary.problems} to fix`, summary.tips && `${summary.tips} ${summary.tips === 1 ? 'tip' : 'tips'}`].filter(Boolean).join(', ');
     if (!panel.hidden) list.replaceChildren(...findings.map(item));
+    changed(findings);
     return findings;
   }
   function toggle(open = panel.hidden) {

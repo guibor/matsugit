@@ -32,9 +32,9 @@
   <nav aria-label="Workspace views">
     <div class="segmented" aria-label="Layout">
       <button data-layout="story" aria-pressed="false" title="Arrange slide titles and claims">Story</button>
-      <button data-layout="source" aria-pressed="false" title="Write and edit the content">Markdown</button>
-      <button data-layout="render" aria-pressed="false" title="See the result only">Render</button>
-      <button data-layout="split" aria-pressed="true" title="Write on the left, see the result on the right">Split</button>
+      <button data-layout="source" aria-pressed="false" title="Write and edit the content">Write</button>
+      <button data-layout="render" aria-pressed="false" title="See the result only">Preview</button>
+      <button data-layout="split" aria-pressed="true" title="Write on the left, see the result on the right">Side by side</button>
     </div>
     <div class="segmented" aria-label="Preview format">
       <button data-format="document" aria-pressed="true" title="Preview as a reading document">Document</button>
@@ -49,6 +49,7 @@
     </div>
   </nav>
   <div id="notice" role="status" hidden><div class="notice-copy"><strong id="notice-title" hidden></strong><span id="notice-text"></span></div><div class="notice-actions"><button id="notice-check" hidden>Show problems</button><button id="reload" hidden>Review changes</button><button id="notice-save" hidden>Save file</button><button id="notice-dismiss" title="Dismiss update receipt" aria-label="Dismiss update receipt" hidden></button></div></div>
+  <div id="welcome" hidden><span><strong>Your deck, open beside the chat.</strong> Type here, or ask the agent. <b>Add</b> a layout, <b>Check</b> what needs fixing, <b>Story</b> to reorder, <b>Share</b> to send it. Double-click a slide to edit that spot.</span><button id="welcome-dismiss" title="Got it" aria-label="Dismiss this tip">Got it</button></div>
   <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
   <section id="check-panel" aria-label="Slide check" hidden>
     <div class="check-heading"><strong>Check</strong><span id="check-summary"></span><button id="check-close" title="Close check" aria-label="Close check"></button></div>
@@ -58,7 +59,8 @@
   <div id="workspace" data-layout="split">
     <section id="source-pane" aria-label="Source">
       <div class="source-tools">
-        <div class="segmented" aria-label="Editor appearance"><button data-editor="raw" aria-pressed="true">Raw</button><button data-editor="visual" aria-pressed="false">Visual</button></div>
+        <div class="segmented" aria-label="Editor appearance"><button data-editor="visual" aria-pressed="false" title="Edit as formatted text">Formatted</button><button data-editor="raw" aria-pressed="true" title="Edit the Markdown source">Markdown</button></div>
+        <button id="view-options" title="Outline and slide separators" aria-label="Outline and slide separators" aria-pressed="false"></button>
         <div class="segmented outline-depth" role="group" aria-label="Outline depth">
           <button data-depth="0" aria-pressed="true" title="Show all headings and content">All</button>
           <button data-depth="1" aria-pressed="false" title="Show headings through level 1">1</button>
@@ -104,6 +106,7 @@
       <div id="empty" aria-live="polite"><span id="empty-icon"></span><span id="empty-label">Waiting for preview</span></div>
     </section>
   </div>
+  <div id="slide-rail" role="toolbar" aria-label="Slides" hidden></div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span><span id="workspace-version"></span></footer>
 </main>
 <dialog id="gallery-dialog" aria-labelledby="gallery-title">

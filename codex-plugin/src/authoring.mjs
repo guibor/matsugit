@@ -39,7 +39,7 @@ class BlockLabel extends WidgetType {
     this.from === other.from && this.line === other.line && this.count === other.count && this.adjustable === other.adjustable; }
   toDOM(view) {
     const el = document.createElement('span');
-    el.className = 'ff-block-label';
+    el.className = 'ff-block-label' + (this.item.closing ? ' ff-block-end' : '');
     const label = this.item.role.replaceAll('-', ' ');
     el.textContent = (this.item.closing ? 'End ' : '') + label[0].toUpperCase() + label.slice(1);
     if (this.item.role === 'chart' && !this.item.closing) {

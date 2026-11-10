@@ -47,6 +47,34 @@ export function savedEditHistory({limit = 20, maxBytes = 8 * 1024 * 1024} = {}) 
   };
 }
 
+// Evidence, not a guess: wherever the incoming text touches something the
+// author saved after `candidate`, it still contains a distinctive line of that
+// saved edit in place. A writer working from `candidate` could not have typed
+// the author's later lines, so the incoming text was made from a newer version.
+// A plain same-line replacement or a removal keeps nothing and proves nothing.
+export function sawSavedEdits(candidate, base, incoming) {
+  const baseLines = lines(base), oldLines = lines(candidate), distinctive = line => line.trim().length >= 12;
+  const changes = hunks(baseLines, lines(incoming));
+  let shift = 0;
+  for (const saved of hunks(oldLines, baseLines)) {
+    const start = saved.at + shift, end = start + saved.add.length;
+    shift += saved.add.length - saved.remove;
+    if (start === end) {
+      // The author only removed lines here. Bringing one of them back is what a
+      // writer working from the old version would do.
+      const removed = oldLines.slice(saved.at, saved.at + saved.remove).filter(distinctive);
+      if (changes.some(change => change.at <= start && start <= change.at + change.remove && change.add.some(line => removed.includes(line)))) return false;
+      continue;
+    }
+    const touching = changes.filter(change => change.at < end && change.at + change.remove > start);
+    if (!touching.length) continue;
+    const kept = baseLines.slice(start, end).filter((line, index) =>
+      distinctive(line) && !touching.some(change => start + index >= change.at && start + index < change.at + change.remove));
+    if (!kept.length) return false;
+  }
+  return true;
+}
+
 export function wholeFileReview(plan, base, local, incoming) {
   return {...plan, conflicts: 1, segments: [{base, local, incoming, line: 1}]};
 }
@@ -66,8 +94,13 @@ export async function planExternalEdit({base, local, incoming, history, merge}) 
     // Compare saved text separately from the still-unsaved keystrokes. Otherwise
     // extending a saved sentence looks like two competing historical insertions.
     const protectedText = await merge(candidate, base, incoming);
-    if (protectedText.conflicts || mergeResult(protectedText) !== incoming)
-      return {review: true, ambiguous: true, base: candidate, plan: await merge(candidate, local, incoming)};
+    if (protectedText.conflicts || mergeResult(protectedText) !== incoming) {
+      if (!sawSavedEdits(candidate, base, incoming))
+        return {review: true, ambiguous: true, base: candidate, plan: await merge(candidate, local, incoming)};
+      // The incoming text carries lines the author saved after this version, so
+      // it was not made from it. It is no longer a plausible base.
+      continue;
+    }
     // Carry accepted external changes into the pre-save bases, without carrying
     // the author's saved edits. Later targeted edits then stay independent.
     const rebased = await merge(base, candidate, incoming);

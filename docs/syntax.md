@@ -340,6 +340,7 @@ common ones. The mistakes it catches most often:
 | The preview stops updating | The renderer refused a slide, for example four columns or two claims | Read `Check`; the preview shows the last version that worked |
 | A slide is missing | It has only a title | Add content, or set `slide-empty-slides: true` |
 
+From a terminal, `matsugit check deck.md` prints the same findings.
 Agents can run the same check with the `matsugit_check` tool. It checks
 structure only; still look at the slides.
 

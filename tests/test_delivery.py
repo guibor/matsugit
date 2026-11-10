@@ -1,3 +1,4 @@
+import realtmp  # noqa: F401  (resolve the temporary directory before any test creates one)
 import importlib.util
 import json
 import os

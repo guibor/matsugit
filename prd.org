@@ -87,26 +87,36 @@ the formatting. Rendering uses no model tokens; an agent is optional.
   site build reaches the author without reopening the dialog.
 - R24. The header shows only everyday actions; the rest is in one =More= menu.
 
+** A workspace that feels finished (0.29, branch =polish-ux-and-readme=)
+- R25. The workspace is opened by an agent, on a file, inside a chat. Its
+  first-time guidance says that in one line; there is no standalone start screen.
+- R26. The formatted view reads as a document, not as a code editor.
+- R27. The author can always see the whole deck, where they are in it, and
+  which slides need attention.
+- R28. Text on a slide leads back to the same text in the editor.
+- R29. The README lets a newcomer understand the product in a minute and start
+  in two; reference detail lives in the guides.
+- R30. The plain-language check is available from the command line.
+- R31. Both test suites pass on macOS and Linux.
+
 * Next steps
 
 Immediate, in priority order:
-0. Share, remaining gaps: first-time setup of a project that has no matsugit
-   site build (today reported, not fixed); checking for colleagues' changes
-   before the button is clicked; a per-deck site link instead of the site or
-   project link.
-1. Try 0.26 with two or three non-technical authors in Cursor and record where
-   they still get stuck (first-run, vocabulary, the settings block at the top).
-2. Hide the YAML settings block in Visual behind a small "Deck settings" form
-   (layout, section dividers, slide shape, title page).
-3. Run the plain-language check from the command line (=matsugit lint= or a new
-   =matsugit check=) so skill-only and CI users get the same findings. Today it
-   runs in the workspace and through the =matsugit_check= tool only.
-4. Bring the check to Org beyond unfinished blocks (part counts, claims).
-5. Decide whether to rename the view tabs (Markdown/Render/Split) to plainer
-   words; kept in 0.26 because every guide and command uses them.
-6. Per-slide thumbnails in the picker rendered with the selected theme, instead
-   of neutral sketches.
-7. A first-run tour of the four things a newcomer needs: edit, Add, Check, Story.
+1. Try it for real: one session in the Cursor app with a real GitLab project and
+   a real agent editing the open file. Everything so far is verified in the
+   repository's isolated host with a local test remote and simulated builds.
+2. First share into a project with no matsugit site build: guide the author
+   through adding it (changes the project's CI, so it needs explicit consent).
+3. Replace the YAML settings block in the formatted view with a small "Deck
+   settings" form.
+4. Tell the author about colleagues' changes before they open Share.
+5. Real slide thumbnails in the slide strip and the layout picker, rendered with
+   the selected theme, in place of titles and neutral sketches.
+6. Bring the check to Org beyond unfinished blocks.
+7. Move file synchronisation (save, reload, reconcile, autosave) out of
+   =app.js= into its own module.
+8. A per-deck share link in place of the site or project link.
+9. Install =ci/checks.yml= as a workflow so the suites run on every push.
 
 * Requirements that changed
 
@@ -129,5 +139,13 @@ Immediate, in priority order:
   pressed (R5 "explicit Save"). The proposed default-on autosave failed two
   stale-writer regressions. Keep explicit Save by default, offer opt-in autosave,
   and require review whenever retained historical bases disagree (R22).
+- 2026-11-10, view names. Was: =Markdown= / =Render= / =Split= and =Raw= /
+  =Visual=. Now: =Write= / =Preview= / =Side by side= and =Markdown= /
+  =Formatted=. Tool option values are unchanged. Reason: R26.
+- 2026-11-10, external edits inside saved text. Was: any incoming change that
+  touched text saved earlier in the session required review. Now: accepted
+  automatically when the incoming text still contains a distinctive line of
+  that saved text in place; otherwise review as before. Reason: R22a (an agent
+  editing the slide you just wrote is the common case).
 - 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
   =Follow=. Behaviour unchanged.

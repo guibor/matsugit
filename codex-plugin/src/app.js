@@ -12,10 +12,11 @@ import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/comm
 import {EditorState, Compartment, Transaction, ChangeSet} from '@codemirror/state';
 import {gallery} from './gallery.mjs';
 import {share} from './share.mjs';
+import {slideRail} from './slide-rail.mjs';
 import {textChanges, savedEditHistory, planExternalEdit, wholeFileReview} from './external-edits.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding} from './check.mjs';
-import {createElement, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
+import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} from './authoring.mjs';
@@ -56,6 +57,7 @@ let presentation = null;
 let tables;
 let story;
 let check;
+let railMoved;
 let publication;
 let refreshRequested = false, copying = false, feedbackTimer;
 let incomingDocument = null;
@@ -154,6 +156,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
     const line = update.state.doc.lineAt(update.state.selection.main.head);
     $('location').textContent = `Ln ${line.number}, Col ${update.state.selection.main.head - line.from + 1}`;
     story?.update(update);
+    if (update.selectionSet && !update.docChanged) railMoved?.();
   }),
 ]});
 installRoleHelp($('editor'), $('role-help'));
@@ -164,6 +167,21 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
 $('insert').append('Add');
 $('more').append(createElement(Ellipsis));
+$('view-options').append(createElement(SlidersHorizontal));
+$('view-options').onclick = () => {
+  const open = $('source-pane').dataset.options !== 'true';
+  $('source-pane').dataset.options = String(open); $('view-options').setAttribute('aria-pressed', String(open));
+};
+// One short orientation, once. The workspace is opened from a chat about a
+// file, so it says what this is and what the four main controls do.
+let tipsSeen = false;
+try { tipsSeen = localStorage.getItem('matsugit-tips') === 'seen'; } catch {}
+function showTips(wanted) { $('welcome').hidden = !wanted || tipsSeen || !!demo; }
+$('welcome-dismiss').onclick = () => {
+  tipsSeen = true; $('welcome').hidden = true;
+  try { localStorage.setItem('matsugit-tips', 'seen'); } catch {}
+  editor.requestMeasure();
+};
 function moreMenu(open) {
   $('more-panel').hidden = !open; $('more').setAttribute('aria-expanded', String(open));
 }
@@ -217,7 +235,15 @@ function showSource(from) {
 }
 const isOrg = () => state.name.toLowerCase().endsWith('.org');
 const editing = () => !demo && !state.loading && !state.merging && !state.saving && !tables.pending();
-check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.renderError, show: showSource, toggled: paintNotice,
+const rail = slideRail({root: $('slide-rail'), text: () => editor.state.doc.toString(), isOrg,
+  position: () => editor.state.selection.main.head,
+  jump: from => {
+    if (state.layout === 'story') changeLayout('split');
+    editor.dispatch({selection: {anchor: from}, effects: EditorView.scrollIntoView(from, {y: 'start', yMargin: 8})});
+    if (state.layout !== 'render') editor.focus();
+  }});
+railMoved = rail.moved;
+check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.renderError, show: showSource, toggled: paintNotice, changed: list => rail.findings(list),
   askAgent: (slide, suggestion) => agentSlide.open(slide, suggestion)});
 const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editing, notice,
   reveal: () => { if (state.layout === 'story' || state.layout === 'render') changeLayout('split'); }});
@@ -235,6 +261,7 @@ function changeEditorMode(mode) {
     button.title=button.disabled?'Visual prose editing is available for Markdown; Org source is preserved':'';
   }
   const visual=state.editorMode==='visual';
+  $('source-pane').dataset.mode=state.editorMode;
   $('compact-markup').setAttribute('aria-pressed',String(visual));
   editor.dispatch({effects:[visualMode.of(visual),compactMarkup.of(visual)]});scheduleRecovery();
 }
@@ -423,6 +450,20 @@ for (const button of document.querySelectorAll('button[data-format]')) button.on
 window.addEventListener('message', event => {
   if (event.source !== $('preview').contentWindow || event.data?.matsugitPreview !== previewToken) return;
   if (event.data.presentExit) { exitPresentation(); return; }
+  const wanted = event.data.matsugitEdit;
+  if (wanted && !presentation && wanted.heading && typeof wanted.text === 'string') {
+    // Find the double-clicked words inside the slide they were shown on.
+    const outline = sourceOutline(), matches = outline.filter(h => h.key === wanted.heading.key && h.level === wanted.heading.level);
+    const heading = matches[wanted.heading.occurrence] || matches[0];
+    if (heading) {
+      const next = outline.find(h => h.from > heading.from && h.level <= Math.min(2, heading.level));
+      const body = text().slice(heading.from, next ? next.from : undefined), words = wanted.text.split(' ').filter(Boolean);
+      let at = -1;
+      for (const count of [8, 5, 3, 2, 1]) if (at < 0 && words.length >= Math.min(count, 1)) at = body.indexOf(words.slice(0, count).join(' '));
+      showSource(heading.from + Math.max(0, at));
+    }
+    return;
+  }
   if (event.data.patched && pendingPatch?.id === event.data.patched) {
     pendingPatch.finish(event.data.patchError); pendingPatch = null;
   }
@@ -762,6 +803,7 @@ function applyOpenView(data) {
   if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
   if (['raw', 'visual'].includes(data.editor)) changeEditorMode(data.editor);
+  if (data.tips === false) showTips(false);
   if (typeof data.autosave === 'boolean') { state.autosave = data.autosave; $('autosave').checked = data.autosave; }
 }
 async function load(data, {acceptRevision = null} = {}) {
@@ -802,7 +844,6 @@ async function load(data, {acceptRevision = null} = {}) {
   changeEditorMode('visual');
   if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
-  document.querySelector('button[data-layout="source"]').textContent = state.name.toLowerCase().endsWith('.org') ? 'Org' : 'Markdown';
   $('empty').hidden = false; $('empty-label').textContent = 'Preparing preview'; $('preview').src = 'about:blank';
   if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
   try {
@@ -835,6 +876,7 @@ async function load(data, {acceptRevision = null} = {}) {
       } catch (error) { recoveryFailure(error); }
     }
     // Restoring an existing copy must not depend on creating another backup.
+    showTips(!!(state.session || state.uri));
     if (suppliedRecovery) applyRecovery(suppliedRecovery);
     else applyOpenView(requestedView);
     state.loading = false;

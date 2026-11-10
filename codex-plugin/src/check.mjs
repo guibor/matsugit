@@ -253,7 +253,7 @@ export function checkDeck(source, org = false) {
     if (!inside || inside.opaque || inside.close === null || heading.level > 3) continue;
     if (heading.level === 3 && structured) add('heading-inside', 'problem', heading.from,
       `Headings inside a ${title(inside.role)} block must use \`####\`.`, 'Change `###` to `####`.',
-      {label: 'Make it ####', changes: [{from: heading.from, to: heading.from + 3, insert: '####'}]});
+      {label: 'Make it a sub-heading', changes: [{from: heading.from, to: heading.from + 3, insert: '####'}]});
     else if (heading.level <= 2 && arranged) add('heading-inside', 'problem', heading.from,
       `This ${heading.level === 2 ? 'slide title' : 'section title'} sits inside the ${title(inside.role)} block that starts on line ${inside.open + 1}.`,
       `Move the closing \`${fenceText(inside)}\` line above this title.`);
@@ -283,7 +283,7 @@ export function checkDeck(source, org = false) {
             ? 'A slide has one claim, directly under its title. This is a second one.'
             : 'The claim must come directly under the slide title, before any other content.',
             heading ? 'Use `####` for a heading inside the slide, or start a new slide with `##`.' : 'Keep one claim for this slide.',
-            heading ? {label: 'Make it ####', changes: [{from: claim.from, to: claim.from + 3, insert: '####'}]} : undefined);
+            heading ? {label: 'Make it a sub-heading', changes: [{from: claim.from, to: claim.from + 3, insert: '####'}]} : undefined);
         });
       }
       if (arranged) {

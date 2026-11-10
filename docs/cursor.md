@@ -65,6 +65,14 @@ one-click fix and Ask AI. Agents read the same findings through the
 `matsugit_check` tool, so `/matsugit-check` and the panel agree. See the
 [workspace guide](codex.org) for what is and is not checked.
 
+### Names and layout in 0.29
+
+The view tabs are `Write`, `Preview` and `Side by side`; the editor modes are
+`Formatted` and `Markdown`. A slide strip under the workspace shows where you
+are and which slides `Check` flags; double-click a slide to edit that spot. The
+workspace is opened by the agent on a file, inside the chat: its one-time hint
+says so. `matsugit check FILE` gives the same findings in a terminal.
+
 ### Share
 
 `Share` (0.27) is the one button for syncing and deploying: first share, later

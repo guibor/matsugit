@@ -29,6 +29,7 @@ try:
         original = frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         for mode in ('raw', 'visual'):
             frame.locator(f'[data-editor="{mode}"]').click()
+            frame.evaluate('document.getElementById("source-pane").dataset.options = "true"')  # outline tools sit behind the view-options button in Formatted
             for depth in (2, 3):
                 frame.locator(f'[data-depth="{depth}"]').click()
                 assert frame.locator('.cm-foldPlaceholder').count() > 0

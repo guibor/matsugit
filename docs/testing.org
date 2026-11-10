@@ -1,6 +1,10 @@
 #+title: Renderer and workspace regression checks
 
 * Fast checks
+Both suites pass on macOS as well as Linux. macOS keeps temporary files behind a
+symlink (=/var= to =/private/var=); =tests/realtmp.py= and the Node tests
+resolve the temporary directory first, because the code under test resolves
+paths and compares them.
 #+begin_src sh
 npm ci --prefix codex-plugin
 npm run build --prefix codex-plugin

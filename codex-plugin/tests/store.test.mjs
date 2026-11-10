@@ -6,7 +6,7 @@ import path from 'node:path';
 import {WorkspaceStore, checkedPath, checkedText, MAX_SOURCE} from '../src/store.mjs';
 
 test('opening and saving only the selected file, with conflicts and permissions preserved', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-store-test-'));
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-store-test-'));
   const file = path.join(directory, 'note.md');
   const store = new WorkspaceStore(directory);
   try {
@@ -40,7 +40,7 @@ test('paths, document size, source text and theme options are constrained', () =
 });
 
 test('saving identical source does not rewrite the file or bypass conflicts', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-unchanged-test-'));
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-unchanged-test-'));
   const file = path.join(directory, 'note.md'), store = new WorkspaceStore(directory);
   try {
     fs.writeFileSync(file, '# Same text\r\n', {mode: 0o600});
@@ -77,7 +77,7 @@ test('large preview transfers are bounded and preserve Unicode across chunks', (
   assert.throws(() => store.chunk('preview', 'other', 0));
 });
 test('a removed plugin cache asks for a reload before allocating a render job', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-missing-plugin-'));
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-missing-plugin-'));
   fs.rmdirSync(directory);
   const store = new WorkspaceStore(directory);
   assert.throws(() => store.start({text: '# Draft'}), /plugin files.*Save or download.*reload/);
@@ -85,7 +85,7 @@ test('a removed plugin cache asks for a reload before allocating a render job', 
 });
 
 test('cancel is scoped to its document and cannot cancel a completed render', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-cancel-test-'));
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-cancel-test-'));
   const store = new WorkspaceStore(directory);
   try {
     const file = path.join(directory, 'a.md'), other = path.join(directory, 'b.md');
@@ -105,7 +105,7 @@ test('cancel is scoped to its document and cannot cancel a completed render', ()
   } finally { store.jobs.clear(); store.close(); fs.rmSync(directory, {recursive: true, force: true}); }
 });
 test('explicit relocation rebinds source without replacing its symlink on save', () => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'matsugit-link-test-'));
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-link-test-'));
   const original = path.join(directory, 'note.md'), target = path.join(directory, 'canonical.md');
   fs.writeFileSync(original, '# Original\n');
   const store = new WorkspaceStore(directory);

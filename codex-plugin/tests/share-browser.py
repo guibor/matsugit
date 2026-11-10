@@ -72,9 +72,9 @@ try:
         frame.locator('#share').click()
         settled('Not shared yet')
         assert 'saved first' in detail() and frame.locator('#share-destination').input_value() == 'docs'
-        assert frame.locator('#share-destination option').inner_text() == 'team/docs'
+        assert frame.locator('#share-destination option').inner_text() == 'team/docs (git.example.invalid)'
         page.screenshot(path=str(shots / 'share-first.png'))
-        assert frame.locator('#share-go').inner_text() == 'Check what will be shared'
+        assert frame.locator('#share-go').inner_text() == 'See what will be shared'
         assert frame.locator('#share-steps li[data-state="next"]').inner_text() == 'Save your changes'
         frame.locator('#share-go').click()
         settled('Ready to share')

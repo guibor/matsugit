@@ -1,0 +1,712 @@
+#+title: matsugit reference
+
+Everything the short [[file:../README.org][README]] leaves out: the workspace in detail, the
+slide language, themes, publishing from the command line, tables, Org and
+renderer updates. This text was the body of the README before plugin 0.29.
+The view tabs it calls =Markdown=, =Render= and =Split= are now =Write=,
+=Preview= and =Side by side=; =Raw= and =Visual= are =Markdown= and =Formatted=.
+
+* Edit and preview inside Codex
+
+*Shape the argument before polishing the slides.* In =Story=, use =Overview=
+for a dense, indented map of sections and their title/claim pairs, or =Walkthrough=
+to scroll through slide-shaped surfaces containing those editable messages and takeaways.
+Walkthrough includes contrasting section-transition slides. Keep the original
+large view, or choose the grid icon for smaller editable slides side by side,
+grouped beneath full-width section dividers. The choice does not change exports.
+Switch without losing your place. Read the argument in sequence, rewrite either
+field, or drag a whole slide or section. For long-distance moves, the two-way
+arrow opens =Move to...=: search by slide number, title, claim or section, then
+choose before/after a slide or the start/end of a section. =Alt-M= opens it on
+a focused row. Each move is one Undo step; dragging also scrolls at the list edges.
+Evidence, notes, tables and hidden
+comments travel with the slide, but stay out of these narrative views.
+Arrow keys and =j= / =k= scroll without selecting; with a row selected, they
+move the selection. =h= / =l= jump between sections. Escape or a background
+click clears selection. Scrolling with a mouse or trackpad never changes it.
+=Add slide= accepts a title and optional claim, leaving the body empty for you
+or your agent to develop. Bring the preview alongside only when needed.
+Each slide's sparkles icon opens *Edit slide with AI*: write your request and
+send it to the current chat, with that slide's source attached. Unsaved work
+requires an explicit *Save and send*. No separate agent, model or AI account.
+The Markdown/Org file remains the single draft, with Undo, recovery,
+concurrent-edit review and explicit Save.
+See [[file:codex.org][Story controls and source boundaries]].
+
+*The same narrative operations in Emacs and Cursor.*
+[[file:emacs-story.org][Native Emacs Story]] projects the source buffer into Overview or Walkthrough,
+with title/claim/takeaway edits, empty slides, section folding, searchable moves,
+and ordinary source Undo/Save. Parsing runs asynchronously using the same Story
+engine. [[file:cursor.md][Cursor]] uses the identical interactive workspace bundle through MCP Apps;
+=/matsugit-story= opens it directly. Host-dependent downloads and agent messaging
+are feature-detected, not silently replaced with claims of success.
+
+Plugin 0.25.3 accepts structured and JSON-text MCP results. Hosts that omit
+extra result metadata retrieve source through the opened session instead of
+leaving a blank editor. Missing source is reported, never treated as an empty
+file. Narrow embedded panels wrap their toolbar without overlapping save status.
+The open tool accepts =editor="visual"= alongside =layout="split"= and
+=format="slides"=, so an agent can open the requested view directly.
+
+Plugin 0.25.5 avoids Cursor's focus-stealing chat-context updates while typing and
+requests a taller inline editor within the host's limits. The footer identifies
+the running workspace version. This is still a chat panel in inline-only hosts,
+not a native editor tab; see [[file:cursor.md][Cursor sizing and compatibility]].
+
+*One canonical file, including web edits.* With Source to CI publishing, choose
+=Move source and assets into target; leave local symlinks= to avoid a second
+editable copy. This is explicit opt-in, with a reviewed file list. Existing
+copy publication remains available under =Share > More options=. The detailed
+Git sync view offers =Pull updates= or
+=Review and push...=. The latter compares your saved document with incoming Git
+edits, lets you resolve overlapping passages here, then shows the destination,
+optional referenced assets and commit message. Only =Commit and push= writes the
+reviewed result and sends it. Unrelated local files are not committed; there is
+no automatic stash, reset or force push. Source-to-CI publication also leaves
+unrelated unstaged and untracked files untouched; staged work still requires
+separate review. =Check again= stays available after failure. =Review publish...=
+remains the separate flow for a different target.
+See [[file:canonical-source.org][canonical source and Git synchronization]] for limits and CLI use.
+
+The local Codex plugin puts the source and both outputs in one workspace:
+=Markdown=, =Render= or =Split=, with =Document= and =Slides= previews. Edit with
+CodeMirror, preview an unsaved draft, and save explicitly with file-version
+checks. The same matsugit renderer handles themes, tables, Mermaid and
+semantic slide blocks; previewing never publishes.
+Identical-content saves leave the file and timestamp untouched (plugin 0.14.1+),
+so other editors are not told the file changed when no text changed.
+Stale file versions still require conflict resolution, even for identical saves.
+The =Theme= dropdown lists installed packs automatically and preserves the
+project default; switching styles does not rewrite your source.
+Independent external edits merge into your draft; overlapping changes have a
+side-by-side review with per-conflict choices. Save remains explicit by default;
+=More > Save automatically= opts into version-checked autosave. Ambiguous external
+rewrites pause for review, including changes that could replace saved typing.
+The header distinguishes =Saved to file= from =Unsaved draft=; =Draft backed up=
+only describes the separate recovery copy. File updates leave a persistent receipt.
+When edits overlap, Save opens =Review before saving= instead of becoming a dead
+button. Compare the passages, then explicitly =Save reviewed file= or =Keep editing=.
+A failed write retains the reviewed draft; a newer file requires another review.
+Plugin 0.15 adds a review of *all* external changes, grouped by heading, with
+selective acceptance and a resulting-draft preview. The comparison icon labelled
+=Review latest external changes= also reviews a clean auto-merge; later independent
+typing is retained when rejecting a change. Publication status is separate from
+Save: =Pushed= is not =Published=. Check the recorded revision and pipeline from
+the status button, using your existing provider login only.
+Semantic =source= blocks are omitted unless =publish-sources: true= is set in
+the document's YAML, consistently in local previews and rendered outputs.
+Presenter notes stay out of reading documents unless =include-notes: true=;
+slide HTML and presenter handouts can still contain those notes.
+
+Source and preview can follow the same heading in both directions. Semantic
+gutter hints distinguish titles, claims and takeaways; type =/= on a blank line
+or use =Add= to insert a slide recipe, columns, notes or a hidden agent comment.
+The source stays ordinary Markdown or Org, with explicit saving and undo.
+
+The Markdown pane has independent =Raw= and =Visual= editing modes. Visual
+also supports the same outline-depth buttons as Raw: =All= reveals the complete
+source; =1=, =2=, =3= and deeper levels keep headings through that depth visible.
+These are local folds, not document edits or export options. Individual folds can
+still be opened with the editor's gutter controls. On a heading, =Tab= cycles
+folded / children / expanded; =Shift-Tab= cycles top-level / all headings / all
+content. =Cmd-Enter= (Mac) or =Ctrl-Enter= (Linux/Windows) cycles the containing
+section from its body. =Alt-j= / =Alt-k= visit the next / previous visible heading;
+=Alt-h= visits the parent. These shortcuts also work in Org source. Ordinary
+letters are never speed keys, and Tab outside headings retains editor behavior.
+
+Visual keeps headings, links and tables readable while preserving the original source.
+Headings stay compact; slide titles and claims have distinct emphasis. Hover,
+focus or click the S/T/C gutter markers for their meaning. =Slide separators=
+optionally marks H2 and manual-break boundaries without editing the source.
+
+Use =/quote= for a centered quotation slide with a large opening quotation mark
+and a visible author line. Optional =.hide-title= / =.hide-claim= classes keep
+headings in the storyline and document while hiding them on projected slides.
+See [[file:../examples/quotes.md][quote examples]] and [[file:syntax.md][syntax]].
+Click a table's pencil to edit cells, format text, add rows or merge cells in the
+workspace; =Apply= updates the draft and =Save= writes the file. The copy icon
+beside the filename copies the actual source path, not a temporary preview URL.
+See [[file:codex.org][the workspace guide]] for recovery and format boundaries.
+
+Exports use the host's download handler, including older Codex hosts. The
+dialog retains the prepared file and offers =Download again= without rendering
+it twice. A cancelled or failed transfer is not reported as a completed download.
+When an embedded host blocks downloads, =Save to Downloads= (plugin 0.27.1)
+explicitly saves the already-prepared PDF, PowerPoint, HTML or ZIP on the machine
+running the local plugin. The dialog shows that machine and folder before the
+click, then the verified saved path. Existing files are never overwritten.
+On a remote plugin server this is the server's Downloads, not the laptop's.
+Source and table-draft downloads use the same delivery path; no public upload is
+needed. A browser-only fallback cannot confirm receipt.
+
+Short forms reduce layout boilerplate: =:::: columns 2:1= groups H4 regions,
+and a quoted =[!TAKEAWAY]= marks the conclusion. The braces icon can show quiet
+structural labels instead of delimiters; column ratios remain directly editable.
+Select a table and use =Add > Chart from the selected table= to turn it into a
+chart without copying its data. Inserted placeholders use Tab/Shift-Tab. Long-form source still works;
+see the [[file:../skills/matsugit/references/authoring.md][authoring contract]] for native Org equivalents and examples.
+
+Smart refresh renders only the selected output. Warm text, link, list-item and
+table-cell edits update in place without reloading the deck or its unchanged
+diagrams. Structural and theme changes safely rebuild; export and CI keep the
+same full renderer. See the Codex guide for the incremental-preview boundaries.
+
+Equations use bundled MathJax with SVG output in documents, slides and handouts.
+No CDN or font downloads are needed to view them. Inline symbols, table math and
+aligned calculations remain TeX in the source; ordinary currency and code stay text.
+
+Running workspaces retain their version-matched renderer across plugin-cache
+updates. Save drafts and reload to adopt a new version; updating the installed
+files no longer removes the renderer from an already-open workspace (0.3.1+).
+
+Version 0.4.0 adds private local draft recovery, separate from Save. Reopen a
+document to restore its theme, selected slide and split view, with an explicit
+offer to recover unsaved text. The history icon lists recovery copies, including
+unnamed drafts. A newer file on disk is never silently replaced by recovered text.
+
+Requires Codex Desktop with MCP Apps, Node 22+, Python 3.10+, Git and Quarto.
+Tables, Org conversion and source-to-CI operations also need Pandoc >=3.7.0.2;
+Quarto alone may bundle an older version. See the
+[[file:codex.org::*Install][one-time converter setup]] before using those features.
+#+begin_src sh
+codex plugin marketplace add guibor/matsugit
+codex plugin add matsugit@matsugit
+#+end_src
+
+Present the selected Document or Slides tab with the screen icon; Escape returns
+to editing. Local HTML [[file:canvas.org][canvases]] fit either output and expand without losing their
+state. Scripts are opt-in; the frame cannot access the editor, and resource
+fetches are blocked. Use only trusted local HTML (see the canvas limitations).
+The download picker
+offers source, HTML, ZIP, PDF and editable PowerPoint. Export into a configured
+OneDrive folder without an API, or review and explicitly push both outputs to
+a named GitHub/GitLab target. See the [[file:delivery.org][presentation and delivery guide]] for
+setup, PowerPoint fidelity limits, and the distinction between push and deployment.
+
+Start a new Codex session and ask: "Open =/absolute/path/deck.md= in matsugit
+with a split slide preview." Supported desktop builds also offer matsugit as
+a file-opening action. The general repository is public under MIT. No new
+account or hosted service is required; private theme packs stay separate.
+
+See the [[file:codex.org][Codex workspace guide]] for setup, saving, concurrent edits, local theme
+configuration, prerequisites and validation boundaries.
+
+[[file:images/codex/02-evidence-and-takeaway.png]]
+
+The actual workspace, using an illustrative product review and the bundled
+theme. See the [[file:codex-workflows.org][workflow gallery]] for documents, comparisons, diagrams and
+agent review. Captures use an isolated MCP host, not simulated Codex chrome.
+
+* Use it in Cursor
+
+Use the same interactive workspace, skill and slash commands with Cursor MCP Apps:
+#+begin_src sh
+matsugit setup-cursor
+#+end_src
+Enable the matsugit MCP server, start a new chat and ask =/matsugit-slides= to open
+your document, =/matsugit-new= to make a deck from notes, =/matsugit-check= to
+hear what is wrong with one, or =/matsugit-help= for what to ask. The installer needs a matsugit checkout with its bundled workspace;
+existing launchers already point there. Other MCP settings and custom commands
+are preserved. See the [[file:cursor.md][Cursor quickstart]] for prerequisites and plugin packaging.
+
+Or install only the native skill, then ask Agent to set up a local preview:
+#+begin_src sh
+npx skills add guibor/matsugit --skill matsugit --agent cursor --global
+#+end_src
+
+In Cursor chat: =/matsugit Set up a small demo deck and preview both the
+document and slides. Use the default theme. Do not publish.=
+
+The skill-only option needs no plugin or MCP server. It checks for the renderer and Quarto
+and guides their separate installation when needed. It works without Emacs or
+personal themes. The public package needs no private repository access.
+See the [[file:cursor.md][Cursor quickstart]] for local, project and team setup.
+
+* A small language, not a thousand templates
+
+Use a bounded set of [[file:../skills/matsugit/references/slide-types.md][twelve slide recipes]]: cover, statement, answer summary,
+scorecard, decisive exhibit, evidence plus interpretation, table plus implication,
+comparison, process, roadmap, documentary evidence and decision request.
+
+They compose ordinary Markdown and a few semantic blocks. A theme supplies the
+visual treatment; it does not decide what your headings mean or which features
+you are allowed to use. Consulting-style analysis, an investment case and a
+technical review can use the same building blocks without becoming the same deck.
+
+#+begin_src markdown
+---
+title: Pilot decision
+slide-layout: structured
+slide-section-dividers: false
+---
+
+# Recommendation
+## Prove the process before expanding
+### Speed must improve without increasing rework
+
+:::: rows
+#### Evidence
+| Measure | Baseline | Gate |
+| :--- | ---: | ---: |
+| Cycle time | 12 days | 8 days |
+| Rework | 18% | At most 18% |
+
+#### Implication
+Expand only when both conditions are met.
+::::
+
+::: takeaway
+Approve a bounded pilot, not a full rollout.
+:::
+#+end_src
+
+The title and smaller claim have distinct roles. The table and its interpretation
+remain separate regions. The takeaway is authored, never invented. YAML controls
+the rendering but does not appear as text in the reading document. The values
+above are illustrative, not observed results.
+
+| What you need | What matsugit provides |
+|---------------+-------------------------|
+| A clear slide structure | Titles, claims, section dividers, manual breaks, takeaways |
+| Evidence-led layouts | Columns, rows, metrics, comparisons, timelines, decisions, whole-panel implications and paired actions |
+| Saved evidence pointers | Named targets, callout rail, responsive arrows and numbered reading fallback |
+| Editable exhibits | Table-backed charts, Mermaid, ordinary and merged tables |
+| Useful media | Aspect-preserving slide/column fitting; cropping only by choice |
+| Your visual identity | Local theme packs, inheritance, document/slide styles, chart palettes |
+| A reviewable source | Markdown, Org or Quarto Markdown; source stays with the export |
+| A safer delivery path | Local previews, lint, Git publication, explicit CI deployment |
+| An assistant that knows the language | A portable authoring and theme-building [[file:../skills/matsugit/SKILL.md][agent skill]] |
+
+This is not a PowerPoint clone or an automatic fact-checker. Charts use Altair and
+Vega-Lite: ordinary Markdown tables cover bars, lines, scatter and stacked bars;
+inline Vega-Lite specs cover richer exhibits without inventing a chart language.
+matsugit prepares self-contained SVGs and retains editable specs beside them.
+External SVG/PNG is also supported. See the
+[[file:../skills/matsugit/references/research-and-gaps.md][capability audit and prioritized gaps]] for the boundaries.
+
+* Install and render
+Requires Python 3.10+, Git and [[https://quarto.org/docs/get-started/][Quarto]]. The core has no Python runtime
+dependencies; chart generation and browser lint are optional extras.
+
+From an authenticated checkout of this repository:
+#+begin_src sh
+python3 -m pip install .
+matsugit template section --output deck.md
+matsugit lint deck.md
+matsugit render deck.md --output /tmp/deck-preview
+#+end_src
+
+Alternatively run =bin/matsugit= directly from this checkout. Supported sources
+are Markdown, Org and Quarto Markdown. HTML renders first, then slides. No
+document code is executed; executable YAML metadata is not propagated.
+
+Open =index.html= or =slides.html= in the output directory locally. When working
+on a remote host, use your own authenticated preview mechanism instead of
+exposing an unauthenticated web server. Render never pushes anything.
+
+** Try the twelve-slide example
+The [[file:../skills/matsugit/assets/slide-types.md][editable demonstration]] is an original synthetic deck, not a proprietary
+consulting template. It doubles as a starting theme acceptance fixture.
+The =template= command also provides individual recipes, including relationships,
+saved callouts, full-width tables and table/evidence combinations. Run
+=matsugit template --help= for the current names; each supports =--format org=.
+#+begin_src sh
+matsugit setup-charts
+matsugit render skills/matsugit/assets/slide-types.md \
+  --theme starter --themes-dir skills/matsugit/assets/themes \
+  --output /tmp/matsugit-recipes
+#+end_src
+Use a new/empty output directory for another render. =setup-charts= explicitly
+installs an isolated Altair/Vega-Lite environment, with Matplotlib for legacy
+charts; ordinary documents do not need it. Existing chart tables are unchanged.
+Use =backend="matplotlib"= to retain the old backend explicitly. See the
+[[file:charts.md][chart preparation guide]] for native Vega-Lite, sizing and offline boundaries.
+
+** Give your agent the same language
+The repository includes one self-contained skill with deck-authoring and
+theme-building workflows, supported syntax, bounded recipes and a tested theme
+starter. Install it from this checkout with the [[https://skills.sh/docs/cli][Skills CLI]]:
+#+begin_src sh
+DISABLE_TELEMETRY=1 npx skills add . --skill matsugit --agent codex --global
+#+end_src
+Choose another supported agent instead of =codex= when appropriate. A private
+remote installation requires your existing Git access; no credentials are bundled.
+The skill is distributed from =skills/matsugit/= in the Git repository, not
+automatically installed by pip. It does not authorize publication or change defaults.
+matsugit owns the Markdown/layout/theme contract. Optional content skills,
+such as BCG or Ackman storylining, own the argument and evidence structure;
+they do not redefine syntax or choose a theme automatically.
+
+Example requests:
+- "Use $matsugit to turn this evidence into a six-slide decision brief."
+- "Use $matsugit to create a theme from my approved design reference, then
+  test all twelve recipes without changing their Markdown."
+
+** Find the right guide
+- [[file:syntax.md][Syntax cookbook]]: headings, blocks, tables, charts, media and explicit breaks.
+- [[file:relationships.md][From evidence to action]]: whole-panel relationships, insight/action rows and saved callouts.
+- [[file:../skills/matsugit/references/slide-types.md][Slide recipes]]: choose a composition by the argument it needs to make.
+- [[file:../skills/matsugit/references/themes.md][Theme authoring]]: manifests, CSS hooks, assets, inheritance and acceptance.
+- [[file:../skills/matsugit/references/research-and-gaps.md][Public McKinsey references and capability gaps]]: what we learned, what exists,
+  and what should become a shared primitive next. Not an official McKinsey product.
+
+* Theme packs and project defaults
+Themes default to =~/.config/matsugit/themes=; override with
+=MATSUGIT_THEMES_DIR= or =--themes-dir=. Each pack has =theme.json=:
+#+begin_src json
+{"document": "document.css", "slides": "slides.scss", "assets": []}
+#+end_src
+Only named files are copied, not an entire theme repository. Themes are trusted
+CSS/SCSS; do not select an untrusted theme. A neutral =default= theme is bundled.
+External themes and organization configuration do not belong in this package.
+Copy the original neutral [[file:../skills/matsugit/assets/themes/starter/theme.json][starter pack]] into a new local theme directory to
+begin. Optional =charts= selects a chart-palette JSON file; =extends= inherits
+another local pack. Inheritance resolves files, not an automatic CSS cascade:
+explicitly import a parent stylesheet when needed. Follow the
+[[file:../skills/matsugit/references/themes.md][theme guide]] before changing geometry or fonts.
+=MATSUGIT_DEFAULT_THEME= supplies a fallback without overriding project or
+CLI theme choices; personal launchers can use it without modifying this package.
+
+Settings resolve from =~/.config/matsugit/config.json=, then =matsugit.json=
+in the source Git root, then explicit CLI flags. =MATSUGIT_CONFIG= overrides
+the global file. Relative paths in JSON are relative to the source Git root.
+For example:
+#+begin_src json
+{"repo": "../published-docs", "theme": "partner", "themes_dir": "~/themes"}
+#+end_src
+The target defaults to the current source repository, branch =main=, remote
+=origin=, directory =matsugit-site=, and a slug derived from the filename.
+All can be overridden explicitly. External images retain their source URLs;
+local referenced images/attachments are copied only from inside the source
+project, never hidden files or outside paths. Rendering may need network access
+for external media. Unsupported links/resources fail with a useful error.
+
+* Publish, edit and deploy
+#+begin_src sh
+matsugit publish report.md --repo ../published-docs --theme partner
+#+end_src
+This renders both versions, asks for confirmation, commits only its artifacts
+and pushes. =--yes= supplies explicit noninteractive confirmation. Target must
+be clean and on the chosen branch. Updates are fast-forward-only; existing
+unpublished commits, user changes, unrelated destination directories and
+unexpected files are never reset or stashed.
+
+Each artifact contains =index.html=, =slides.html=, editable =source.md=, assets,
+its copied theme and a reproducible Quarto configuration. Documents link to
+slides and editable source; slides have a subtle =Document= footer link.
+Org publications retain editable =source.org=; =source.md= is its normalized
+rendering representation. Source/edit links and new CI builds choose the native
+source. Existing Markdown publications keep their original behavior.
+Edit source on GitHub/GitLab, then request CI to rebuild both outputs. This is
+not a two-way note-sync service: publishing over remote-edited source refuses
+until you reconcile it, or explicitly publish that edited =source.md= itself.
+
+Hosting setup is separate and explicit:
+#+begin_src sh
+matsugit setup-ci --repo ../published-docs --provider github
+# Review and commit the generated workflow and .matsugit-ci/ files.
+# In GitHub: Settings > Pages > Source > GitHub Actions.
+matsugit publish report.md --repo ../published-docs --deploy
+#+end_src
+
+For GitLab use =--provider gitlab= and include =matsugit.gitlab-ci.yml= from
+your existing =.gitlab-ci.yml=. The runner must provide Quarto and Python.
+The template uses the modern =pages.publish= syntax. Review compatibility
+with your GitLab version; existing CI is never overwritten.
+
+CI contains a copy of the renderer and theme, so no runtime access to this
+package repository is needed. Rebuilding source runs only on an explicit
+workflow request; unrelated pushes do not deploy. GitHub uses =gh workflow run=;
+GitLab uses =glab ci run= with existing CLI authentication. Update the copied CI
+renderer deliberately when upgrading; setup-ci refuses existing files.
+
+Pushed does not mean deployed. Check Actions/Pipelines for success before
+sharing a URL. The command never enables hosting, changes visibility or grants
+permissions. A private GitHub repository does NOT guarantee private Pages.
+GitLab Pages access control must also be reviewed before publishing private data.
+
+* Tables and slides
+** Diagrams, still editable text
+Use =d2= fences for relationship maps, nested systems and branching processes.
+The shared renderer uses upstream D2 with automatic layout, theme-owned colors
+and a cache for unchanged diagrams. Mermaid remains supported; semantic
+comparison/implication blocks remain the simplest choice for those slide types.
+Run =matsugit setup-diagrams= once (Node.js 22+ and npm), then insert =/d2= in
+the workspace or =matsugit template d2 --fragment=. Org uses =#+begin_src d2=.
+See [[file:diagrams.md][D2 authoring, theme tokens, CI setup and security boundaries]].
+
+** Tables
+Plain pipe tables cannot encode merged cells. Use HTML =rowspan=/=colspan=
+inside Markdown, or merged grid tables when your Quarto/Pandoc supports them.
+Spans are retained as HTML, not flattened into pipe tables. Example:
+#+begin_src html
+<table>
+  <tr><th colspan="2">Group</th><th>Total</th></tr>
+  <tr><td rowspan="2">North</td><td>Alpha</td><td>12</td></tr>
+  <tr><td>Beta</td><td>18</td></tr>
+</table>
+#+end_src
+Use level-two headings for slide boundaries and =---= for explicit breaks.
+Long slides are scrollable; matsugit does not silently split merged tables,
+shrink text or rewrite content into a different structure. HTML-only merged
+tables are not an in-editor merged-cell widget. Arbitrary scripts, inline styles
+and active HTML embeds in the document source are rejected.
+
+* Structured slides
+The document keeps its complete outline while slides can use an explicit layout:
+#+begin_src yaml
+title: My presentation
+slide-layout: structured
+slide-section-dividers: false
+slide-empty-slides: false
+#+end_src
+Put this YAML in frontmatter delimited by =---=. It is retained in =source.md=
+for CI rebuilds but is not displayed as document text. Only =title=, =subtitle=
+and these slide options are retained; executable metadata is never propagated.
+
+In =structured= layout, H1 groups sections, H2 starts a slide, the immediately
+following H3 is a smaller claim, and H4 divides slide content. =::: takeaway=
+creates a distinct conclusion. =:::: columns= accepts two/three H4-delimited
+columns or explicit =::: column= blocks, including untitled columns. =---=
+starts a continuation with the same title and claim; takeaways stay on their
+own segment. Body headings do not accidentally become nested Reveal slides.
+Takeaways use a high-contrast conclusion band across themes, not footnote styling.
+Keep them to a short, authored implication; citations belong in =::: source=.
+
+Heading-only placeholders are omitted unless =slide-empty-slides: true=.
+Section introductions are never discarded when dividers are disabled. Legacy
+=title-claim= uses a parent heading as the title and its child as the claim.
+Without layout options, ordinary Quarto slide behavior is preserved. Dense
+content stays scrollable; the converter does not invent diagrams from ASCII
+art, crop tables, shrink text, or remove repeated substantive content.
+
+Both preview and publication call the same converter. =render.qmd= contains
+the reading input and =slides.qmd= the generated slide structure. The copied
+CI bundle must include =layout.py= and =runtime/layout.css= as well as =core.py=.
+
+** Stacked sections
+Use =rows= for two or three explicit, vertically stacked regions. Each region
+is sized to its content, not forced into half the slide or shrunk to fit.
+Use H4 headings inside the outer block, or explicit =row= blocks for untitled
+regions. Columns can be nested inside a row. Keep the claim and takeaway outside
+the rows. This requires =structured= or =title-claim= layout.
+#+begin_src markdown
+:::: rows
+::: row
+| Input | Value |
+| :--- | ---: |
+| Sample | 30 |
+:::
+
+::: row
+#### Worked example
+
+Explain what follows from the table.
+:::
+::::
+#+end_src
+The renderer adds semantic boundaries; themes control the separator style.
+It does not infer sections from the wording, numbers or subject of a table.
+
+* Diagrams and image layout
+Both ordinary =mermaid= fences and native Quarto ={mermaid}= cells render in
+the reading page and slides. Mermaid uses Quarto's bundled browser renderer,
+not an external diagram service. Theme packs can set Quarto's =--mermaid-*= CSS
+variables. Programming-language blocks remain displayed code, never executed.
+Diagram cell options support captions, labels, dimensions and alignment; file
+includes and executable options are refused.
+
+Standalone images and diagrams automatically fit the remaining slide height,
+after headings, prose, captions and takeaways. In Quarto =.columns= / =.column=
+blocks each visual fits its column. Aspect ratio is retained; diagrams are
+never cropped. Dense slides scroll rather than shrinking text.
+The runtime cancels Reveal's scale only while Mermaid measures its temporary
+HTML labels, preventing undersized nodes on small screens. The final diagram
+retains normal slide scaling; no source labels are changed.
+
+#+begin_src markdown
+## Process and evidence
+:::: {.columns}
+::: {.column width="50%"}
+```mermaid
+flowchart TD
+  A[Draft] --> B[Review] --> C[Share]
+```
+:::
+::: {.column width="50%"}
+![Evidence](chart.png)
+:::
+::::
+#+end_src
+
+Optional image attributes: ={.media-half}= for half width, ={.media-natural}=
+to keep authored/natural dimensions instead of slide fitting, ={.media-cover}=
+to allow cropping explicitly, and =.media-left= / =.media-right= for alignment.
+For diagrams apply these classes to a surrounding fenced div. Reading pages
+keep normal document flow. The synthetic =tests/fixtures/media.md= illustrates
+full-width diagrams, side-by-side media, portraits, captions and takeaways.
+
+The published =source.md= remains editable. =render.qmd= is generated solely
+because Quarto requires that extension for diagram cells. The markdown engine,
+disabled execution and =--no-execute= remain in use; only Mermaid's browser
+display is enabled. CI copies the bundled =runtime/= alongside =core.py=.
+
+* Visual table editing
+#+begin_src sh
+matsugit setup-editor
+matsugit edit-table table.md --output edited-table.md
+#+end_src
+The input must contain exactly one Markdown or Org table; output must not already
+exist. A local browser window opens with a Tiptap/ProseMirror table editor.
+Save writes the selected output and exits; Cancel exits 2 without creating it.
+Edits checkpoint locally after a short pause and on leaving the tab; checkpoints
+do not modify the source or create the output. Reopen the same URL to recover
+the latest acknowledged draft. The new tab owns the session; old tabs become
+read-only and cannot overwrite it. Save/Cancel ends the session, even if the
+browser refuses to close its tab automatically.
+
+If the process exits before Save, restart with the same input/output paths to
+recover =OUTPUT.draft.json=. The source hash and recovered table are validated.
+This private recovery file is retained after Save until the calling editor has
+successfully applied the output; standalone CLI users may remove it afterward.
+Cancel discards it. After 15 minutes without browser contact, a session with a
+draft exits 3, preserving recovery; without a draft it exits 2. Closing/crashing
+a browser is not a Save: very recent typing that has not checkpointed can still
+be lost. Wait for =Draft saved= or use Save when it matters.
+
+=--no-open= reports the authenticated localhost URL as a JSON event for editor
+integrations (protocol 2). The authenticated =/api/control= endpoint accepts
+=save= (asks the active browser to submit current content), =save-draft= (explicitly
+commits the last checkpoint), or =cancel=. There is no automatic stale-draft
+commit when a browser is unresponsive. Only 127.0.0.1 is bound. Remote use needs an explicit SSH tunnel;
+do not expose this server publicly.
+
+Ordinary tables return as pipe Markdown. Merged or multiline cells use readable
+Pandoc ASCII grid tables: no HTML source, no independent sidecar. Grid tables
+render through Pandoc/Quarto, not GitHub's normal GFM README preview. The existing
+document renderer still accepts HTML-table source as well.
+
+The editor provides row/column operations, cell merge/split, wrapping, semantic
+formatting, links, lists, header rows, source preview and undo/redo. Column
+alignment and row/column selection are available in the toolbar. Paste a
+spreadsheet's tab-separated cells, including quoted multiline values; formulas
+remain literal text. In the Codex/Cursor Visual pane, click a cell to edit in
+place, or expand the editor. Raw offers the table icon and =Alt-.=.
+Apply updates the source draft; Save writes it. Rendered output remains read-only.
+Column resizing affects the editor view; source widths are normalized on export.
+Import and output are checked for lossy conversion before saving. Unsupported
+content (including images, math, nested tables, raw HTML and captions inside the
+selection) is refused rather than silently discarded. Maximum: 1 MiB, 500 rows,
+4000 cells. All browser assets are bundled, without runtime npm or a CDN.
+
+Native Org tables remain native when their structure permits it. Merged or
+multiline tables use readable grids inside =#+begin_export markdown= blocks,
+not HTML or sidecars. Reopen that whole block with =edit-table= to edit it again.
+Org formula tables must use Org's native editing commands; this visual editor
+does not rewrite formula references.
+
+* Org authoring
+
+All slide recipes, relationships, media and themes share the same Pandoc AST
+pipeline. Use =matsugit template mapping --format org= for a native starter.
+See [[file:org.org][Org syntax and parity]] for semantic blocks, merged tables,
+settings, safe conversion and deployment compatibility.
+
+=matsugit convert --from org --to markdown= reads stdin and preserves the
+slide settings and blocks for existing Markdown CI pipelines. The reverse
+conversion uses =--from markdown --to org=. Neither runs Babel/document code.
+The converter provisioned by =setup-editor= supplies the required Pandoc.
+
+* Review with an agent
+
+Place an =agent-comment= block at the end of a slide, then ask your agent to
+address open comments. The [[file:../skills/matsugit/references/agent-comments.md][review protocol]] preserves your request and has
+the agent respond in place with the change and actual verification. You decide
+when it is resolved. The matsugit skill carries the protocol into Cursor and
+Codex; no background agent, model call or new account is required.
+
+#+begin_src markdown
+:::: {.agent-comment #review-chart status="open"}
+Request:
+Make the comparison easier to scan, without removing the quality measure.
+
+Response:
+Pending.
+::::
+#+end_src
+
+Org uses =#+begin_agent-comment :id "review-chart" :status "open"= and
+=#+end_agent-comment=. Comments are stripped from every generated artifact,
+including published source copies, but remain in your local file and Git.
+Old copied CI renderers need updating before processing the new syntax.
+
+=setup-editor= reuses Pandoc >=3.7.0.2 or downloads an official release binary
+verified against its published SHA-256 digest. The isolated install lives in
+=~/.local/share/matsugit/tools=; system Pandoc is never replaced. Override
+with =MATSUGIT_TOOLS_DIR= or =MATSUGIT_PANDOC=. Older writers have silently
+flattened merged cells, so the version floor is intentional. Suitable installed
+Quarto's bundled Pandoc can also be used. Linux and macOS x86_64/arm64 installs
+are supported; other platforms need a manually installed converter.
+
+* Renderer updates
+
+=matsugit update --all= installs and pushes the latest approved renderer
+release to configured projects. =status= is offline; =--dry-run= fetches and
+validates releases without installing, committing or pushing them.
+
+#+begin_src sh
+matsugit status --all
+matsugit update --all --dry-run
+matsugit update --all
+matsugit rollback --all
+# Or select a single registered checkout:
+matsugit update --repo /path/to/project
+#+end_src
+
+This is separate from document publication and from upgrading the matsugit
+executable. The updater never enables hosting, edits CI deployment rules or
+publishes source documents. It commits and pushes renderer updates only. Existing
+CI manual gates still apply; a successful push is not a verified deployment.
+
+One-time configuration lives in =~/.config/matsugit/updates.json=, or the
+=MATSUGIT_UPDATE_CONFIG= environment variable / =--config= override:
+
+#+begin_src json
+{
+  "schema": 1,
+  "repository": "git@github.com:your-org/private-renderers.git",
+  "ref": "main",
+  "catalog": "releases/catalog.json",
+  "projects": [
+    {"name": "docs", "repo": "~/code/docs", "bundle": "partner",
+     "branch": "main", "remote": "origin"}
+  ]
+}
+#+end_src
+
+This local configuration explicitly trusts executable renderer releases from
+that repository. Authentication uses existing Git configuration, with no stored
+credentials added by matsugit. Brand-specific releases and account/project
+configuration belong in that separate private repository, not this package.
+
+Each catalog maps a bundle's =latest= and numbered =versions= to manifest paths
+and SHA-256 digests. A manifest contains =schema: 1=, =bundle=, =version=,
+=files= (relative path to SHA-256), =entrypoints= (legacy scripts to runtime
+scripts), =adopt= (approved SHA-256 values for initial migration), and an optional
+=check= Python script contained in the verified files. Release versions are
+immutable: publish a new version rather than replacing an existing manifest.
+
+The installed runtime lives in =.matsugit-renderer/= with generated small
+launchers under =scripts/=. =matsugit-renderer.lock.json= records the version,
+source revision, file hashes and previous releases. Everything needed by CI is
+committed in the target repository; CI needs no release-repository credentials.
+
+Initial adoption accepts only reviewed file hashes. Later updates reject edited
+or unexpected renderer files. Unrelated unstaged document edits are preserved;
+staged work and unrelated unpublished commits block the operation. All selected
+projects pass validation before renderer changes start. Updates across separate
+Git remotes are not atomic; rerun after a partial push/network failure. An owned
+renderer commit can be retried without creating another commit. Rollback restores
+the preceding managed release as a new commit, never a Git reset. The first
+managed installation has no previous managed version to roll back to.
+

@@ -140,6 +140,19 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       break;
     }
   });
+  // Double-click text in the preview to put the cursor on it in the editor.
+  document.addEventListener('dblclick', event => {
+    if (presenting || event.target.closest('a,button,.slide-menu,.controls')) return;
+    const block = event.target.closest('li,td,th,p,blockquote,figcaption,h1,h2,h3,h4,h5,h6,[role="heading"]');
+    const section = format === 'slides' ? event.target.closest('section') : null;
+    const list = headings();
+    const el = format === 'slides' ? section?.querySelector('h1,h2,h3,[role="heading"]')
+      : list.filter(item => item.getBoundingClientRect().top <= event.clientY).at(-1) || list[0];
+    const current = info(el);
+    if (!current) return;
+    post({matsugitEdit: {text: (block?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200),
+      heading: {...current, occurrence: list.filter(item => { const other = info(item); return other.key === current.key && other.level === current.level; }).indexOf(el)}}});
+  });
   document.addEventListener('click', event => {
     const anchor = event.target.closest('a');
     if (!anchor) return;
