@@ -115,6 +115,10 @@ function paintNotice() {
   $('notice-title').textContent = receipt?.title || '';
   $('notice-text').textContent = message;
   $('notice-check').hidden = !state.renderError || noticeMessage !== state.renderNotice;
+  // The file vanished from disk: offer the two ways to keep the text.
+  const missing = /^The file is no longer at /.test(noticeMessage) && !!state.session;
+  $('notice-recreate').hidden = !missing; $('notice-download').hidden = !missing;
+  $('notice-recreate').disabled = state.saving || state.loading;
   $('reload').hidden = !state.conflict && !incomingDocument && !(state.fileReceipt && externalChange);
   $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
@@ -240,6 +244,21 @@ check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.re
 const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editing, notice,
   reveal: () => { if (state.layout === 'story' || state.layout === 'render') changeLayout('split'); }});
 $('notice-check').onclick = () => check.open();
+$('notice-download').onclick = () => download();
+$('notice-recreate').onclick = async () => {
+  if (state.saving || state.loading || !state.session) return;
+  const value = text(), sequence = loadSequence;
+  state.saving = true; refreshControls(); status('Saving');
+  try {
+    const result = await call('matsugit_save', {session: state.session, text: value, etag: state.etag || 'missing', recreate: true});
+    if (sequence !== loadSequence) return;
+    if (result.outcome !== 'saved') throw Error('A file appeared at that place in the meantime. Nothing was replaced; your text is still here.');
+    state.base = value; state.etag = result.etag; state.saveError = null; state.lastSavedAt = Date.now();
+    state.conflict = false; savedHistory.clear();
+    notice('Saved the document back to ' + state.path + '.');
+  } catch (error) { if (sequence === loadSequence) { state.saveError = error.message; notice(error.message); } }
+  finally { if (sequence === loadSequence) { state.saving = false; refreshControls(); } }
+};
 $('story-preview').onchange=()=>{
   state.storyPreview=$('story-preview').checked;
   changeLayout('story');
@@ -285,9 +304,35 @@ $('compact-markup').onclick = () => {
   editor.dispatch({effects:compactMarkup.of(compact)});
 };
 
-async function call(name, args) {
+async function rawCall(name, args) {
   const response = await app.callServerTool({name, arguments: args});
   return hostResultData(response);
+}
+// The plugin process can restart under an open panel (an update, a host that
+// reloads its servers). Its sessions are then gone. Reconnect to the same file
+// once and carry on: the draft, its base and version stay as they are, so the
+// usual version checks decide what happens next. Never switches to another file.
+let reconnecting = null;
+async function reconnect(expired) {
+  if (!state.path || state.session !== expired) return false;
+  reconnecting ||= (async () => {
+    const opened = await rawCall('matsugit_open', {path: state.path});
+    if (state.session !== expired || opened.path !== state.path) return false;
+    state.session = opened.session;
+    try { recoveryId = (await rawCall('matsugit_recovery_begin', {...recoveryScope(), name: state.name})).id; recoveryGeneration = 0;
+      $('recovery-status').dataset.error = 'false'; }
+    catch (error) { recoveryFailure(error); }
+    if (noticeMessage.includes('Workspace expired')) notice();
+    return true;
+  })().finally(() => { reconnecting = null; });
+  return reconnecting;
+}
+async function call(name, args) {
+  try { return await rawCall(name, args); }
+  catch (error) {
+    if (!/Workspace expired/.test(error.message) || !args?.session || !await reconnect(args.session)) throw error;
+    return rawCall(name, {...args, session: state.session});
+  }
 }
 function refreshControls() {
   story?.refresh();
@@ -301,6 +346,10 @@ function refreshControls() {
     button.disabled = state.loading || (depth > 0 && !headings.some(h => h.level <= depth));
   }
   $('edit-table').disabled=demo || state.loading;
+  // A button that cannot do anything right now is disabled, and says why.
+  $('undo').disabled = !!demo || state.loading || !undoDepth(editor.state);
+  $('redo').disabled = !!demo || state.loading || !redoDepth(editor.state);
+  $('undo').title = $('undo').disabled ? 'Undo (nothing to undo)' : 'Undo'; $('redo').title = $('redo').disabled ? 'Redo (nothing to redo)' : 'Redo';
   for(const button of document.querySelectorAll('.ff-visual-table>div:first-child>button')) button.disabled=demo || state.loading;
   $('copy-path').disabled=copying || (!state.path&&!state.uri&&!state.session);
   $('copy-path').title=state.path?'Copy document path: '+state.path:'Copy document path';
@@ -610,6 +659,12 @@ async function reload(force = false, manual = false, expectedEtag = null) {
   try {
     const data = await resourceRead();
     if (sequence !== loadSequence || read !== readSequence || state.saving) return false;
+    // Writability can change while the file is open (chmod, a checkout, a sync client).
+    if (typeof data.readOnly === 'boolean' && data.readOnly !== !!state.readOnly) {
+      state.readOnly = data.readOnly;
+      if (!data.readOnly && /read-only on disk/.test(state.saveError || '')) { state.saveError = null; notice(); scheduleAutosave(); }
+      refreshControls();
+    }
     if (force && expectedEtag !== null && data.etag !== expectedEtag) {
       notice('The incoming file changed again. Nothing was replaced; review the new version first.');
       return false;
@@ -688,12 +743,15 @@ async function applyMerged(data, merged, snapshot, receipt = 'reviewed') {
   checkMergeSnapshot(snapshot);
   if (latest.etag !== data.etag || latest.text !== data.text)
     throw Error('The file changed again. Draft retained; reopen Review changes for the latest version.');
-  // Rebase undo onto the incoming file. Undo removes only our merged edits,
-  // never the agent's newly accepted changes or the entire initial document.
-  replaceText(latest.text, {baseline:true});
+  // The combined text is what the author chose. Undo must not cross it: going
+  // back to either side would silently drop what the other side contributed,
+  // including lines the author explicitly kept. The pre-merge draft is in
+  // recovery (checkpointed above) if it is ever needed.
+  const selection = editor.state.selection.main;
+  replaceText(merged, {baseline:true});
+  editor.dispatch({selection: {anchor: Math.min(selection.anchor, merged.length), head: Math.min(selection.head, merged.length)}});
   state.base = latest.text; state.etag = latest.etag; state.writable = latest.writable;
   state.saveError = null; state.lastSavedAt = null;
-  if (merged !== latest.text) replaceText(merged);
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
   state.conflict = false; state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false; savedHistory.clear();
   state.fileReceipt = receipt;
@@ -784,6 +842,9 @@ async function save({review = true, auto = false} = {}) {
     }
     else if (result.outcome === 'conflict') {
       state.conflict = true; notice('The file changed before Save completed. Your draft is retained; review before saving.');
+    } else if (result.outcome === 'read-only') {
+      state.readOnly = true;
+      throw Error('This file is read-only on disk, so it was not saved. Your text is safe in this window. Make the file writable, then save again.');
     } else throw Error(result.outcome === 'too-large' ? 'The file exceeds the host write limit.' : 'The host did not save the file.');
   } catch (error) { if (sequence === loadSequence) { state.saveError = error.message; notice(error.message); } }
   finally { if (sequence === loadSequence) { readSequence++; state.saving = false; refreshControls(); scheduleRecovery(); await flushRecovery(); } }
@@ -850,7 +911,7 @@ async function load(data, {acceptRevision = null} = {}) {
     if (sequence !== loadSequence) return;
     const source = sourceText(data);
     if (new TextEncoder().encode(source).length > 2 * 1024 * 1024 || source.includes('\0')) throw Error('Invalid source or document exceeds the 2 MiB editor limit.');
-    state.base = source; state.etag = data.etag;
+    state.base = source; state.etag = data.etag; state.readOnly = !!data.readOnly;
     state.writable = !!data.writable; replaceText(state.base, {baseline:true});
     editor.dispatch({selection: {anchor: 0}});
     if (!demo) {

@@ -18,7 +18,16 @@ export function checkedText(text) {
   if (typeof text !== 'string' || Buffer.byteLength(text) > MAX_SOURCE || text.includes('\0')) throw Error('Invalid source or document exceeds 2 MiB.');
   return text;
 }
+// Said in words a person can act on; the raw system error stays in the cause.
+export class MissingFile extends Error {
+  constructor(file) {
+    super(`The file is no longer at ${file}. It was moved, renamed or deleted. Your text is safe in this window.`);
+    this.code = 'missing-file';
+  }
+}
+const writable = file => { try { fs.accessSync(file, fs.constants.W_OK); return true; } catch { return false; } };
 function read(file) {
+  if (!fs.existsSync(file)) throw new MissingFile(file);
   if (checkedPath(file) !== file) throw Error('The document path changed; reopen it before continuing.');
   const bytes = fs.readFileSync(file);
   return new TextDecoder('utf-8', {fatal: true}).decode(bytes);
@@ -33,7 +42,7 @@ export class WorkspaceStore {
     const target = checkedPath(file), text = read(target), id = randomUUID();
     if (this.sessions.size >= 64) throw Error('Too many open workspaces; restart the matsugit plugin.');
     this.sessions.set(id, target);
-    return {session: id, name: path.basename(target), path: target, text, etag: hash(text), writable: true};
+    return {session: id, name: path.basename(target), path: target, text, etag: hash(text), writable: true, readOnly: !writable(target)};
   }
   // A reviewed publication may move the open file and leave a symlink while
   // the workspace keeps polling. Follow exactly that reviewed move, never an
@@ -54,7 +63,7 @@ export class WorkspaceStore {
     const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
     const text = read(file);
-    return {text, etag: hash(text), writable: true};
+    return {text, etag: hash(text), writable: true, readOnly: !writable(file)};
   }
   relocated(previous, destination) {
     // Called only for the explicit reviewed relocation, never to follow an
@@ -65,11 +74,21 @@ export class WorkspaceStore {
     for (const job of this.jobs.values()) if (job.owner === previous) job.owner = destination;
     return this.open(destination);
   }
-  save(session, text, etag) {
+  save(session, text, etag, {recreate = false} = {}) {
     checkedText(text);
     const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
+    if (recreate) {
+      // Put the document back where it was, after it was moved or deleted. Only
+      // when nothing has appeared there since; never replaces an existing file.
+      if (fs.existsSync(file)) return {outcome: 'conflict', etag: this.source(session).etag};
+      fs.mkdirSync(path.dirname(file), {recursive: true});
+      fs.writeFileSync(file, text, {flag: 'wx'});
+      return {outcome: 'saved', etag: hash(text)};
+    }
     const current = this.source(session);
+    // A file marked read-only on disk is left alone; the rename below would otherwise replace it.
+    if (current.readOnly) return {outcome: 'read-only', etag: current.etag};
     if (!etag || current.etag !== etag) return {outcome: 'conflict', etag: current.etag};
     // Identical saves must not invalidate another editor's visited-file timestamp.
     if (current.text === text) return {outcome: 'saved', etag: current.etag};

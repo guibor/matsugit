@@ -101,9 +101,9 @@ serveStdio(() => {
     inputSchema:z.object({session:z.string().optional()}),annotations:readOnly},
     guard(async ({session},context)=>result(await store.themes(session,getResourcePath(context.mcpReq?._meta)))));
   server.registerTool('matsugit_save', {description: 'Save explicit workspace edits only if the opened file still matches the expected version. Never force overwrites.', ...appOnly,
-    inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1)}),
+    inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1), recreate: z.boolean().optional()}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
-    guard(async ({session, text, etag}) => result(store.save(session, text, etag))));
+    guard(async ({session, text, etag, recreate}) => result(store.save(session, text, etag, {recreate}))));
   server.registerTool('matsugit_recovery_begin', {description: 'Prepare a private recovery copy for this viewer; does not save the document.', ...appOnly,
     inputSchema: z.object({...scope, name: z.string().max(512)}), annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
     guard(async (args, context) => {

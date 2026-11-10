@@ -45,7 +45,11 @@ for (const name of (await readdir(path.join(root, '../matsugit'))).sort().filter
 await includeTree('matsugit/runtime');
 await includeTree('matsugit/diagram_runtime');
 await includeTree('matsugit/themes/default');
-const runtime = gzipSync(JSON.stringify({app, files})).toString('base64');
+const packed = gzipSync(JSON.stringify({app, files}));
+// The gzip header records the building OS (byte 9). Pin it so a build on macOS
+// and on Linux produce the same committed bundle.
+packed[9] = 3;
+const runtime = packed.toString('base64');
 const mergeWorker = await build({entryPoints: [path.join(root, 'src/merge-worker.mjs')], bundle: true,
   write: false, platform: 'node', format: 'cjs', target: 'node22', legalComments: 'inline', metafile: true});
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,

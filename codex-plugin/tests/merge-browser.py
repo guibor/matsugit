@@ -72,10 +72,9 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             assert frame.locator('#save-state').inner_text() == 'Unsaved draft'
             records = [json.loads(f.read_text()) for f in Path(ready['recovery']).glob('*.json')]
             assert any(r['text'] == mine for r in records)
+            # Undo never crosses the merge: neither the incoming edit nor the author's is dropped.
             frame.locator('#undo').click()
-            assert current() == incoming, 'Undo must not erase the incoming edit'
-            frame.locator('#redo').click()
-            assert current() == merged
+            assert current() == merged, 'Undo must not cross a merge'
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving')
             assert source.read_text() == merged

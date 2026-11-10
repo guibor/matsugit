@@ -394,9 +394,10 @@ Cancel leaves both versions untouched. Ordinary typing is never a review shortcu
 changes versus incoming Git commits. It then shows a separate destination/file
 review before =Commit and push=. See [[file:canonical-source.org][Git synchronization]] for safety limits.
 
-Undo after a merge returns to the incoming file, not the old version without the
-agent's edits; Redo restores the merged draft. The full pre-merge text remains in
-recovery. Pending table edits, an active Redo branch, different documents, a failed
+Undo does not go back past a merge or a review you resolved (from 0.30). Going
+back to either side would drop what the other side contributed, including
+passages you chose to keep. Edits you make after the merge undo as usual. The
+full pre-merge text remains in recovery. Pending table edits, an active Redo branch, different documents, a failed
 backup or a newer file during review prevent automatic replacement. Apply/cancel
 table edits first. Large or expensive merges run in a bounded background worker;
 a timeout retains both versions for manual review or external merging.
