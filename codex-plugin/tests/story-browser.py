@@ -338,7 +338,10 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             frame.locator('button[data-story-mode="overview"]').click()
             assert frame.locator('.story-slide').count() == 24
             visible = frame.locator('.story-slide').evaluate_all('(rows)=>{const box=document.getElementById("story-list").getBoundingClientRect();return rows.filter(r=>{const b=r.getBoundingClientRect();return b.top>=box.top && b.bottom<=box.bottom}).length}')
-            assert visible >= 14, visible
+            # The Cursor harness caps its iframe at 800 px, not this page's
+            # 1000 px. Keep a density requirement for both available heights.
+            minimum_visible = 12 if os.environ.get('MATSUGIT_TEST_HOST') == 'cursor' else 14
+            assert visible >= minimum_visible, visible
             time.sleep(4.1)
             page.screenshot(path=str(shots/'story-map.png'))
             frame.locator('button[data-story-mode="walkthrough"]').click()
