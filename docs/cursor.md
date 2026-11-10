@@ -5,14 +5,15 @@
 ## Interactive workspace
 
 With a current Cursor version supporting MCP Apps, Node 22+, Python 3.10+ and
-Quarto, run from an authenticated matsugit checkout (or use its existing launcher):
+Quarto, run from a local matsugit checkout:
 
 ```sh
-matsugit setup-cursor --check
-matsugit setup-cursor
+python3 -m matsugit setup-cursor --check
+python3 -m matsugit setup-cursor
 ```
 
-For a pip installation, add `--checkout /absolute/path/to/matsugit`. This installs
+For a pip installation, use `matsugit setup-cursor` with
+`--checkout /absolute/path/to/matsugit`. This installs
 the shared MCP workspace into `~/.cursor/mcp.json`, links the existing authoring
 skill, and adds `/matsugit-open`, `/matsugit-slides`, `/matsugit-publish` commands.
 `/matsugit-story` opens the same Overview/Walkthrough narrative editor as Codex.
@@ -69,9 +70,11 @@ one-click fix and Ask AI. Agents read the same findings through the
 
 The view tabs are `Write`, `Preview` and `Side by side`; the editor modes are
 `Formatted` and `Markdown`. A slide strip under the workspace shows where you
-are and which slides `Check` flags; double-click a slide to edit that spot. The
-workspace is opened by the agent on a file, inside the chat: its one-time hint
-says so. `matsugit check FILE` gives the same findings in a terminal.
+are and which slides `Check` flags. Click a strip item to navigate, even with
+Follow off; double-click text in the preview to edit that spot. The workspace
+opens on the requested file, inside the chat. `python3 -m matsugit check FILE`
+from the checkout gives the same findings in a terminal. An installed CLI can
+use `matsugit check FILE --checkout /absolute/path/to/matsugit`.
 
 ### Share
 

@@ -92,7 +92,10 @@ test('two-way Git review is owner/scope-bound and retains complete large Unicode
   try {
     const job=actions.start({action:'exchange-plan',session:source,assets:[]});
     let result;
-    for (let i=0;i<500;i++) {
+    // This checks complete version transport, not a ten-second performance
+    // budget; renderer/browser suites can share a small CI worker.
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline) {
       result=actions.status(job.job,source); if(result.state!=='running') break;
       await new Promise(resolve=>setTimeout(resolve,20));
     }

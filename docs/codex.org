@@ -586,32 +586,31 @@ Tool options are unchanged: =layout= is still =source=, =render=, =split= or
 - *Slide strip.* A row under the workspace lists the slides by number and
   title. The current slide is highlighted; click one to go there. A red dot
   means =Check= has something to fix on that slide, an amber dot a tip. It is
-  hidden for a one-slide deck and in Story.
+  hidden for a one-slide deck and in Story. Clicking explicitly navigates the
+  preview even with =Follow= off; manual preview navigation updates the strip
+  without moving the editor when =Follow= is off.
 - *Double-click to edit.* Double-click text on a slide or in the document
   preview to put the cursor on those words in the editor. It finds them by
   their text within that slide, so text produced by the renderer (a chart
   label, a generated cover) lands on the slide's title instead.
-- *A short hint, once.* The first time the workspace opens on a file it shows
-  one line saying what this is and what =Add=, =Check=, =Story= and =Share=
-  do. =Got it= dismisses it for good where the host allows the workspace to
-  remember; agents can pass =tips: false= when opening.
 - =Add= is available in Story as well; adding from there opens =Side by side=.
 - Fix buttons in =Check= say what they do in plain words (=Make it a
   sub-heading=), and Share's project list shows where each project lives.
 - *The same check on the command line.* =matsugit check deck.md= prints the
   findings by slide and line; =--json= gives the data and =--strict= exits 2
   when something needs fixing. It needs Node and this checkout's bundled
-  workspace; =matsugit lint= remains the density check that needs neither.
+  workspace. A separately installed CLI can use
+  =--checkout /path/to/matsugit=; =matsugit lint= remains the density check
+  that needs neither. Sources are limited to 2 MiB, as in the workspace.
 
 *An edit inside text you saved earlier.* When another writer changes a file you
-have saved several times, the workspace must decide whether that writer saw your
-latest version. From 0.29 it accepts the change without a review only on
-evidence: wherever the incoming text touches something you saved earlier, it
-still contains a distinctive line of yours in place, which a writer working
-from the older version could not have typed. An agent tightening one line of a
-slide you just wrote therefore combines by itself. A same-line replacement, a
-removal of your addition, or the return of something you deleted proves
-nothing and still asks you to review.
+have saved several times, the workspace cannot infer that writer's parent
+revision from matching words. For example, keeping your new title does not
+prove the writer also saw the new number below it. The retained versions must
+agree on a conflict-free result before changes combine automatically. Otherwise
+review preserves your draft and lets you choose, including when a short line
+you deleted reappears. Version checks cover workspace writes, not unrelated
+external editors.
 
 * Saving automatically (0.28)
 

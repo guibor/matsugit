@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from matsugit.check import check, report
 from matsugit.cli import main
@@ -44,6 +45,21 @@ class CheckCommandTests(unittest.TestCase):
         other = self.deck.with_suffix('.txt'); other.write_text('x')
         with self.assertRaises(Error):
             check(other)
+
+    def test_installed_cli_can_select_a_checkout(self):
+        self.deck.write_text(HEAD + '## One\n\nFine.\n')
+        with patch('matsugit.check.__file__', str(self.deck.parent / 'installed/matsugit/check.py')):
+            with self.assertRaisesRegex(Error, '--checkout'):
+                check(self.deck)
+            self.assertEqual(check(self.deck, ROOT)['problems'], 0)
+            self.assertEqual(main(['check', str(self.deck), '--checkout', str(ROOT)]), 0)
+
+    def test_oversized_input_is_rejected_before_starting_a_helper(self):
+        self.deck.write_bytes(b'x' * (2 * 1024 * 1024 + 1))
+        with patch('matsugit.check.subprocess.run') as run:
+            with self.assertRaisesRegex(Error, '2 MiB'):
+                check(self.deck)
+            run.assert_not_called()
 
 
 if __name__ == '__main__':

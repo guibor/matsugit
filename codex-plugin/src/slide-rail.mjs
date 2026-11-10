@@ -3,14 +3,17 @@
 import {storyModel} from './story-model.mjs';
 
 export function slideRail({root, text, isOrg, position, jump}) {
-  let model = null, source = null, marks = new Map(), current = -1;
+  let model = null, source = null, mode = null, previewPosition = null, marks = new Map(), current = -1;
   const read = () => {
     const value = text();
-    if (value !== source) { source = value; model = storyModel(value, isOrg()); }
+    const org = isOrg();
+    if (value !== source || org !== mode) {
+      source = value; mode = org; previewPosition = null; model = storyModel(value, org);
+    }
     return model;
   };
   function paintCurrent() {
-    const slides = read().slides, at = position();
+    const slides = read().slides, at = previewPosition ?? position();
     const index = slides.findLastIndex(slide => slide.from <= at);
     if (index === current) return;
     current = index;
@@ -45,6 +48,7 @@ export function slideRail({root, text, isOrg, position, jump}) {
       for (const item of list) if (item.slide && marks.get(item.slide) !== 'problem') marks.set(item.slide, item.severity);
       paint();
     },
-    moved: paintCurrent,
+    moved() { previewPosition = null; paintCurrent(); },
+    previewMoved(from) { previewPosition = from; paintCurrent(); },
   };
 }

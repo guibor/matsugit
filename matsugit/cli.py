@@ -71,6 +71,7 @@ def main(argv=None):
     conversion.add_argument('--to', dest='writer', choices=['markdown', 'org'], required=True)
     plain = commands.add_parser('check', help='Explain slide-structure problems in plain language (reads text only)')
     plain.add_argument('source', type=Path)
+    plain.add_argument('--checkout', type=Path, help='Checkout containing the bundled workspace (for pip installations)')
     plain.add_argument('--json', action='store_true')
     plain.add_argument('--strict', action='store_true', help='Exit 2 if anything needs fixing')
     lint = commands.add_parser('lint', help='Check slide structure and density (not visual proof)')
@@ -177,7 +178,7 @@ def main(argv=None):
             return 0
         if args.command == 'check':
             from .check import check, report
-            data = check(args.source)
+            data = check(args.source, args.checkout)
             print(json.dumps(data, indent=2) if args.json else report(data))
             return 2 if data['problems'] and args.strict else 0
         if args.command == 'lint':

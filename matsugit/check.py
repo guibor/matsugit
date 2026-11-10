@@ -12,20 +12,24 @@ import subprocess
 from .core import Error
 
 
-def helper():
-    path = Path(__file__).resolve().parents[1] / 'codex-plugin/bundle/story-cli.mjs'
+def helper(checkout=None):
+    root = Path(checkout).expanduser().resolve() if checkout else Path(__file__).resolve().parents[1]
+    path = root / 'codex-plugin/bundle/story-cli.mjs'
     node = shutil.which('node')
     if not node or not path.is_file():
         raise Error('matsugit check needs Node 22+ and a matsugit checkout with its bundled workspace. '
-                    'Use "matsugit lint" for the density checks that need neither')
+                    'Use --checkout /path/to/matsugit for a pip install, or '
+                    '"matsugit lint" for density checks that need neither')
     return node, path
 
 
-def check(source):
+def check(source, checkout=None):
     source = Path(source)
     if source.suffix.lower() not in ('.md', '.markdown', '.qmd', '.org'):
         raise Error('Supported sources: .md, .markdown, .qmd and .org')
-    node, path = helper()
+    node, path = helper(checkout)
+    if source.stat().st_size > 2 * 1024 * 1024:
+        raise Error('Slide checks accept sources up to 2 MiB')
     request = {'action': 'check', 'source': source.read_text(encoding='utf-8'), 'org': source.suffix.lower() == '.org'}
     try:
         result = subprocess.run([node, str(path)], input=json.dumps(request), capture_output=True, text=True, timeout=60)

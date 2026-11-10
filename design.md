@@ -159,14 +159,11 @@ typed in this session: reconcile. Table edit or Redo branch pending: mark
 File contents cannot prove the other writer's parent revision. Automatic
 combining therefore requires every candidate to produce the same conflict-free
 result. Disagreement, including a possible deliberate deletion, requires an
-explicit review. A historical base is only a review proposal. One exception
-rests on evidence instead of agreement: `sawSavedEdits()` drops an older
-candidate when the incoming text still holds a distinctive line the author
-saved after it, in place, wherever the two overlap. A writer working from that
-candidate could not have produced those lines, so it is not a plausible parent.
-Same-line replacements, removals and re-added deletions carry no such evidence
-and still go to review. The three-way
-merge runs in the existing server worker. Without ambiguity or conflicts,
+explicit review. A historical base is only a review proposal. Retaining a
+saved title does not prove that the writer saw a saved number beside it;
+short deleted lines need the same protection as long paragraphs. No matching
+line is used to discard a possible parent revision. The three-way merge runs
+in the existing server worker. Without ambiguity or conflicts,
 `applyExternal()` re-reads the file to confirm its version, turns the result
 into line hunks with `textChanges()` and dispatches them outside the undo
 history, so selection and Undo survive; a result that differs from the file is

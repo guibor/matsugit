@@ -88,16 +88,17 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R24. The header shows only everyday actions; the rest is in one =More= menu.
 
 ** A workspace that feels finished (0.29, branch =polish-ux-and-readme=)
-- R25. The workspace is opened by an agent, on a file, inside a chat. Its
-  first-time guidance says that in one line; there is no standalone start screen.
+- R25. The workspace opens directly on the requested file inside the chat.
+  Labels, tooltips and the setup guide provide orientation; no start screen
+  or instruction banner takes space away from the document.
 - R26. The formatted view reads as a document, not as a code editor.
 - R27. The author can always see the whole deck as a storyline (titles in
   order, not pictures of slides), where they are in it, and which slides need
   attention. The product is about the argument; thumbnails would turn it back
   into a slide sorter.
 - R28. Text on a slide leads back to the same text in the editor.
-- R29. The README lets a newcomer understand the product in a minute and start
-  in two; reference detail lives in the guides.
+- R29. The README shows the workflow and gives commands usable from a fresh
+  checkout; reference detail lives in the guides.
 - R30. The plain-language check is available from the command line.
 - R31. Both test suites pass on macOS and Linux.
 

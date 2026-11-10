@@ -1,7 +1,7 @@
 #+title: Renderer and workspace regression checks
 
 * Fast checks
-Both suites pass on macOS as well as Linux. macOS keeps temporary files behind a
+The suites support macOS and Linux. macOS keeps temporary files behind a
 symlink (=/var= to =/private/var=); =tests/realtmp.py= and the Node tests
 resolve the temporary directory first, because the code under test resolves
 paths and compares them.
@@ -48,6 +48,7 @@ python3 codex-plugin/tests/story-navigation-browser.py
 python3 codex-plugin/tests/story-layout-browser.py
 python3 codex-plugin/tests/slide-agent-browser.py
 python3 codex-plugin/tests/check-browser.py
+python3 codex-plugin/tests/slide-rail-browser.py
 #+end_src
 
 The browser tests exercise the real built MCP workspace with temporary synthetic

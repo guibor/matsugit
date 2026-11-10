@@ -172,16 +172,6 @@ $('view-options').onclick = () => {
   const open = $('source-pane').dataset.options !== 'true';
   $('source-pane').dataset.options = String(open); $('view-options').setAttribute('aria-pressed', String(open));
 };
-// One short orientation, once. The workspace is opened from a chat about a
-// file, so it says what this is and what the four main controls do.
-let tipsSeen = false;
-try { tipsSeen = localStorage.getItem('matsugit-tips') === 'seen'; } catch {}
-function showTips(wanted) { $('welcome').hidden = !wanted || tipsSeen || !!demo; }
-$('welcome-dismiss').onclick = () => {
-  tipsSeen = true; $('welcome').hidden = true;
-  try { localStorage.setItem('matsugit-tips', 'seen'); } catch {}
-  editor.requestMeasure();
-};
 function moreMenu(open) {
   $('more-panel').hidden = !open; $('more').setAttribute('aria-expanded', String(open));
 }
@@ -238,8 +228,10 @@ const editing = () => !demo && !state.loading && !state.merging && !state.saving
 const rail = slideRail({root: $('slide-rail'), text: () => editor.state.doc.toString(), isOrg,
   position: () => editor.state.selection.main.head,
   jump: from => {
+    if (state.loading) return;
     if (state.layout === 'story') changeLayout('split');
     editor.dispatch({selection: {anchor: from}, effects: EditorView.scrollIntoView(from, {y: 'start', yMargin: 8})});
+    followSource(true);
     if (state.layout !== 'render') editor.focus();
   }});
 railMoved = rail.moved;
@@ -357,8 +349,8 @@ function sourceOutline() {
   }
   return outline.headings;
 }
-function followSource() {
-  if (!$('sync').checked || !state.rendered || origin !== 'source') return;
+function followSource(explicit = false) {
+  if ((!explicit && (!$('sync').checked || origin !== 'source')) || !state.rendered) return;
   $('preview').contentWindow?.postMessage({matsugitPreview: previewToken,
     targets: headingTargets(sourceOutline(), editor.state.selection.main.head)}, '*');
 }
@@ -479,15 +471,18 @@ window.addEventListener('message', event => {
       slideId: typeof position.slideId === 'string' && position.slideId.length < 512 ? position.slideId : ''};
     if (position.format === 'slides') $('present-position').textContent = String((position.h || 0) + 1);
     scheduleRecovery();
-    if ($('sync').checked && position.userNavigation && position.heading
+    if (position.userNavigation && position.heading
         && Number.isFinite(position.inputTime) && position.inputTime >= sourceInput) {
       const target = position.heading;
       const matches = sourceOutline().filter(h => h.key === target.key && h.level === target.level);
       const heading = matches[target.occurrence] || matches[0];
       if (heading) {
-        origin = 'preview'; followingPreview = true;
-        editor.dispatch({selection: {anchor: heading.from}, effects: EditorView.scrollIntoView(heading.from, {y: 'start'})});
-        followingPreview = false;
+        if ($('sync').checked) {
+          origin = 'preview'; followingPreview = true;
+          editor.dispatch({selection: {anchor: heading.from}, effects: EditorView.scrollIntoView(heading.from, {y: 'start'})});
+          followingPreview = false;
+        }
+        rail.previewMoved(heading.from);
       }
     }
   }
@@ -803,7 +798,6 @@ function applyOpenView(data) {
   if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
   if (['raw', 'visual'].includes(data.editor)) changeEditorMode(data.editor);
-  if (data.tips === false) showTips(false);
   if (typeof data.autosave === 'boolean') { state.autosave = data.autosave; $('autosave').checked = data.autosave; }
 }
 async function load(data, {acceptRevision = null} = {}) {
@@ -876,7 +870,6 @@ async function load(data, {acceptRevision = null} = {}) {
       } catch (error) { recoveryFailure(error); }
     }
     // Restoring an existing copy must not depend on creating another backup.
-    showTips(!!(state.session || state.uri));
     if (suppliedRecovery) applyRecovery(suppliedRecovery);
     else applyOpenView(requestedView);
     state.loading = false;

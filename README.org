@@ -8,8 +8,9 @@ thing you share. No text boxes to nudge, no second copy drifting out of date.
 
 [[file:docs/images/workspace/visual-story-demo.gif]]
 
-/Recorded from the real workspace with the bundled theme and a
-[[file:examples/automotive-story.md][synthetic example deck]]./
+/Recorded from the real workspace in an isolated test host, with the bundled
+theme and a [[file:examples/automotive-story.md][synthetic example deck]]. Waiting time is shortened; this is not
+a timing benchmark or a recording of native Cursor/Codex chrome./
 
 Created by [[https://github.com/guibor][MDF (guibor)]]. [[file:LICENSE][MIT licensed]]. Runs inside Cursor and Codex.
 
@@ -23,7 +24,7 @@ Created by [[https://github.com/guibor][MDF (guibor)]]. [[file:LICENSE][MIT lice
   no AI call, and rendering uses no model tokens.
 - *You and the agent can edit at the same time.* Changes on different lines
   combine by themselves. When you both touch the same sentence, you choose.
-  Nothing you typed is overwritten.
+  Ambiguous changes pause for review rather than replacing your draft.
 - *One file, three outputs.* Slides to present, a document to read, and plain
   text that lives in Git. Export to PowerPoint or PDF when someone asks for one.
 - *You do not need to know Markdown.* Pick layouts by picture, read problems in
@@ -74,14 +75,17 @@ brings in a colleague's edits and tells you when the site is live. It shows its
 three steps, asks once before anything leaves your computer, and never needs a
 Git command.
 
-* Start in two minutes
+* Get started
 
 You need Node 22+, Python 3.10+, Git and [[https://quarto.org/docs/get-started/][Quarto]].
 
-*Cursor.* From a checkout of this repository:
+*Cursor.* In a directory where you keep projects:
 #+begin_src sh
-matsugit setup-cursor
+git clone https://github.com/guibor/matsugit.git
+cd matsugit
+python3 -m matsugit setup-cursor
 #+end_src
+For an existing checkout, enter that directory and run the last command.
 Enable the matsugit server in Cursor's MCP settings and start a new chat.
 
 *Codex.*
@@ -89,6 +93,11 @@ Enable the matsugit server in Cursor's MCP settings and start a new chat.
 codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit
 #+end_src
+
+The formatted editor needs Pandoc 3.7.0.2 or newer, which can be newer than the
+copy bundled with Quarto. If setup reports it missing, run
+=python3 -m matsugit setup-editor= from a checkout to install a verified,
+isolated converter. This leaves system Pandoc unchanged.
 
 Then, in a chat about your notes or an existing file:
 
@@ -119,8 +128,9 @@ skill-only option with no server.
 8. *Share.* One button, then a link.
 
 Your file is saved when you press Save. Turn on =Save automatically= under the
-=...= menu if you prefer; either way a file that changed elsewhere is never
-overwritten, and a private recovery copy covers a crash.
+=...= menu if you prefer. Saves check the file version and stop for review
+when needed; local recovery copies can restore an interrupted draft. These
+checks protect workspace saves, but cannot lock out an unrelated external editor.
 
 * If you do write Markdown
 
@@ -156,11 +166,14 @@ Expand only when both conditions are met.
 and themes you can write yourself. Org files work too. From the command line:
 
 #+begin_src sh
-python3 -m pip install .
-matsugit template section --output deck.md
-matsugit check deck.md
-matsugit render deck.md --output /tmp/deck-preview
+python3 -m matsugit template section --output deck.md
+python3 -m matsugit check deck.md
+python3 -m matsugit render deck.md --output /tmp/deck-preview
 #+end_src
+
+Run these from the checkout. With a separately installed CLI, the structural
+check needs =matsugit check deck.md --checkout /path/to/matsugit=; =matsugit lint=
+is the separate density check that does not need the Node workspace bundle.
 
 * What it is not
 
