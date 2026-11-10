@@ -324,6 +324,25 @@ classes also work on other slide types; the headings remain in the Markdown,
 storyline and reading document. Org retains them as `:CUSTOM_CLASS:` properties.
 Use `slide-layout: structured` for the standard H2 title / H3 claim hierarchy.
 
+## When something looks wrong
+
+In the Codex or Cursor workspace, open `Check` (beside Document/Slides). It
+names the slide and line, explains the problem in plain words and can fix the
+common ones. The mistakes it catches most often:
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| `:::` printed on the slide | The block's first line is glued to the text above it | Leave an empty line before `::: name` |
+| Later slides vanish into one slide | A block is missing its closing `:::` line | Add the closing line where the block ends |
+| A line turned into a big heading | `---` sits directly under text | Leave an empty line before `---` |
+| `##Title` shown as text | No space after the `#` signs | Write `## Title` |
+| Columns are stacked, not side by side | `slide-layout: structured` is missing from the settings at the top | Add it |
+| The preview stops updating | The renderer refused a slide, for example four columns or two claims | Read `Check`; the preview shows the last version that worked |
+| A slide is missing | It has only a title | Add content, or set `slide-empty-slides: true` |
+
+Agents can run the same check with the `matsugit_check` tool. It checks
+structure only; still look at the slides.
+
 ## Emacs and CLI
 
 - `M-x mdf/matsugit-insert-template` / `SPC m e v i`: insert a starter.

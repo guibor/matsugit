@@ -91,6 +91,23 @@ def main():
             page.keyboard.type('/take')
             ui.locator('.cm-tooltip-autocomplete').wait_for()
             shot('07-insert-menu')
+            page.keyboard.press('Escape')
+            ui.locator('#insert').click()
+            ui.locator('#gallery-dialog').wait_for()
+            shot('08-add-picker')
+            ui.locator('#gallery-close').click()
+            # Two beginner mistakes, in the draft only: four columns and a mistyped block.
+            frame.evaluate(r'''() => {
+              const e = matsugitWorkspace.editor, text = e.state.doc.toString().replace(/\n\n\/take$/, '\n');
+              const broken = text.replace(':::: rows', ':::: columns')
+                .replace('#### Decision', '#### Owner\nProduct lead.\n\n#### Timing\nSix weeks.\n\n#### Decision')
+                .replace('::: takeaway\nApprove', '::: takaway\nApprove');
+              e.dispatch({changes:{from:0,to:e.state.doc.length,insert:broken},selection:{anchor:broken.indexOf(':::: columns')}});
+            }''')
+            ui.locator('#check-status[data-kind="problem"]').wait_for()
+            ui.locator('#check-status').click()
+            ui.locator('.check-item').first.wait_for()
+            shot('09-check-panel')
             assert not errors, errors
             (args.output / 'capture.json').write_text(json.dumps({
                 'theme': args.theme, 'fixture': 'codex-plugin/tests/product-review.md',

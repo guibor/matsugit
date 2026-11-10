@@ -1,4 +1,4 @@
-// ../../matsugit-public-audit-20261107/fixed-source/codex-plugin/node_modules/@lezer/common/dist/index.js
+// node_modules/@lezer/common/dist/index.js
 var DefaultBufferLength = 1024;
 var nextPropID = 0;
 var Range = class {
@@ -1551,7 +1551,7 @@ var StringInput = class {
 };
 var stoppedInner = new NodeProp({ perNode: true });
 
-// ../../matsugit-public-audit-20261107/fixed-source/codex-plugin/node_modules/@lezer/highlight/dist/index.js
+// node_modules/@lezer/highlight/dist/index.js
 var nextTagID = 0;
 var Tag = class _Tag {
   /**
@@ -2175,7 +2175,7 @@ var classHighlighter = tagHighlighter([
   { tag: tags.punctuation, class: "tok-punctuation" }
 ]);
 
-// ../../matsugit-public-audit-20261107/fixed-source/codex-plugin/node_modules/@lezer/markdown/dist/index.js
+// node_modules/@lezer/markdown/dist/index.js
 var CompositeBlock = class _CompositeBlock {
   static create(type, value, from, parentHash, end) {
     let hash = parentHash + (parentHash << 8) + type + (value << 4) | 0;
@@ -4161,6 +4161,9 @@ var Emoji = {
 function headingKey(label) {
   return label.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
+function frontmatterLength(source) {
+  return /^\uFEFF?(?:[ \t]*\r?\n)*---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
+}
 function structure(source, org = false) {
   const headings = [], literals = [], markers = [], blocks = [], breaks = [];
   const counts = /* @__PURE__ */ new Map();
@@ -4203,7 +4206,7 @@ function structure(source, org = false) {
     for (const block of stack2) if (block.opaque) literals.push({ from: block.from, to: source.length });
     return { headings, markers, blocks, breaks, unfinished: stack2.map((b) => ({ ...b, to: source.length })), literals: literals.sort((a, b) => a.from - b.from) };
   }
-  const frontmatter = /^\uFEFF?(?:[ \t]*\r?\n)*---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
+  const frontmatter = frontmatterLength(source);
   if (frontmatter) literals.push({ from: 0, to: frontmatter });
   const tree = parser.parse(source);
   tree.iterate({ enter(node) {

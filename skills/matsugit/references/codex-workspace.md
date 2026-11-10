@@ -17,7 +17,9 @@ local editor. `matsugit_workspace` opens an unsaved draft. Desktop file handlers
 can open Markdown/QMD/Org through opaque host resource URIs; never invent a path
 from one of those URIs. A terminal-only host cannot display this UI.
 
-From plugin 0.25.3, pass `layout: "split"`, `format: "slides"`, and
+From plugin 0.26, `matsugit_check` (path or text) returns the workspace's plain-language
+findings by slide and line; run it after edits. Markdown opens in Visual unless
+`editor: "raw"` is passed. From plugin 0.25.3, pass `layout: "split"`, `format: "slides"`, and
 `editor: "visual"` to open readable Markdown beside the deck. Use
 `format: "document"` for reading output or `editor: "raw"` for source editing.
 Check the connected tool schema before using these options with an older plugin.

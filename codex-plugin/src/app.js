@@ -10,10 +10,13 @@ import {GFM} from '@lezer/markdown';
 import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
 import {EditorState, Compartment, Transaction} from '@codemirror/state';
+import {gallery} from './gallery.mjs';
+import {checkPanel} from './check-panel.mjs';
+import {rendererFinding} from './check.mjs';
 import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
-import {authoringExtensions, insertMenu, compactMarkup, slideSeparators} from './authoring.mjs';
+import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} from './authoring.mjs';
 import {installRoleHelp} from './role-help.mjs';
 import {delivery} from './delivery.js';
 import {visualExtensions, visualMode} from './visual.mjs';
@@ -50,6 +53,7 @@ let restoredPosition = false;
 let presentation = null;
 let tables;
 let story;
+let check;
 let publication;
 let refreshRequested = false, copying = false, feedbackTimer;
 let incomingDocument = null;
@@ -97,11 +101,13 @@ const dirty = () => text() !== state.base;
 function paintNotice() {
   const receipt = changeNotice(state, dirty());
   const message = noticeMessage || (incomingDocument ? 'Another document is waiting. Your current draft is retained.' : receipt?.detail || '');
-  $('notice').hidden = !message;
+  // The open Check list already says why the preview stopped; do not repeat it.
+  $('notice').hidden = !message || (message === state.renderNotice && !$('check-panel').hidden);
   $('notice').dataset.kind = state.conflict ? 'review' : 'info';
   $('notice-title').hidden = !receipt;
   $('notice-title').textContent = receipt?.title || '';
   $('notice-text').textContent = message;
+  $('notice-check').hidden = !state.renderError || noticeMessage !== state.renderNotice;
   $('reload').hidden = !state.conflict && !incomingDocument && !(state.fileReceipt && externalChange);
   $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
@@ -129,6 +135,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
         button.setAttribute('aria-pressed', String(button.dataset.depth === '0' && !foldedRanges(update.state).size));
     }
     if (update.docChanged && !state.loading) { state.revision++; refreshControls(); scheduleRender(); }
+    if (update.docChanged) check?.schedule();
     if ((update.docChanged || update.selectionSet) && !state.loading) scheduleRecovery();
     if ((update.selectionSet || update.docChanged) && !state.loading && !followingPreview) {
       origin = 'source'; clearTimeout(followTimer); followTimer = setTimeout(followSource, 180);
@@ -145,6 +152,7 @@ for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': P
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
   'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
+$('insert').append('Add');
 $('workspace-version').textContent = version;
 $('workspace-version').title = `matsugit workspace ${version}`;
 tables=tableDialog({editor,state,call,changed:()=>{scheduleRecovery();if(tables)refreshControls();},notice,downloadFile,enabled:()=>!demo&&!state.loading});
@@ -166,6 +174,22 @@ story=storyView({editor,state,notice,changed:scheduleRecovery,
     });
     editor.dispatch({selection:{anchor:from},effects});editor.focus();
   }});
+// Show a source position, opening the editor if a preview-only view hides it.
+function showSource(from) {
+  if (state.layout === 'story' || state.layout === 'render') changeLayout('split');
+  const effects = [EditorView.scrollIntoView(from, {y: 'center'})];
+  foldedRanges(editor.state).between(0, editor.state.doc.length, (start, end) => {
+    if (from > start && from <= end) effects.push(unfoldEffect.of({from: start, to: end}));
+  });
+  editor.dispatch({selection: {anchor: from}, effects}); editor.focus();
+}
+const isOrg = () => state.name.toLowerCase().endsWith('.org');
+const editing = () => !demo && !state.loading && !state.merging && !state.saving && !tables.pending();
+check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.renderError, show: showSource, toggled: paintNotice,
+  askAgent: (slide, suggestion) => agentSlide.open(slide, suggestion)});
+const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editing, notice,
+  reveal: () => { if (state.layout === 'story' || state.layout === 'render') changeLayout('split'); }});
+$('notice-check').onclick = () => check.open();
 $('story-preview').onchange=()=>{
   state.storyPreview=$('story-preview').checked;
   changeLayout('story');
@@ -473,12 +497,18 @@ async function render(manual = true) {
         themeCatalog.default = job.theme;
         updateThemePicker($('theme'), themeCatalog);
       }
+      state.renderError = null; $('preview-stale').hidden = true; check.refresh();
       if (!state.conflict) notice();
       completed = true;
     }
   } catch (error) {
     if (current()) {
-      notice(error.message); $('empty-label').textContent = 'Preview unavailable';
+// Say it in slide words, keep the last good preview visibly marked as old,
+      // and point at the list that explains where the problem is.
+      state.renderError = error.message;
+      state.renderNotice = "The preview can't update yet. " + check.refresh().find(item => item.severity === 'problem').message;
+      notice(state.renderNotice); $('empty-label').textContent = 'Preview unavailable';
+      $('preview-stale').hidden = !state.rendered?.[format];
       if (refreshRequested) { refreshRequested = false; actionFeedback('refresh', 'error', 'Preview failed'); }
     }
   } finally {
@@ -665,7 +695,10 @@ async function load(data, {acceptRevision = null} = {}) {
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
   themeCatalog = {}; themeSequence++;
   updateThemePicker($('theme'), themeCatalog, ''); $('theme').title = 'Theme';
-  changeEditorMode('raw');
+  state.renderError = null; state.renderNotice = null; $('preview-stale').hidden = true;
+  // Newcomers meet formatted text first. Org stays in source; an explicit
+  // open option or a restored session still chooses its own mode below.
+  changeEditorMode('visual');
   if (['source', 'render', 'split', 'story'].includes(data.layout)) changeLayout(data.layout);
   if (['document', 'slides'].includes(data.format)) changeFormat(data.format);
   document.querySelector('button[data-layout="source"]').textContent = state.name.toLowerCase().endsWith('.org') ? 'Org' : 'Markdown';
@@ -930,7 +963,7 @@ $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
 publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
 delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
-$('insert').onclick = () => insertMenu(editor);
+$('insert').onclick = () => layouts.open();
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };

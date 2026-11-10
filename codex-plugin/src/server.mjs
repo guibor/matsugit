@@ -3,7 +3,9 @@ import {serveStdio} from '@modelcontextprotocol/server/stdio';
 import {OpenAIExtensions} from '@openai/mcp-extensions/server';
 import {getResourcePath, OpenAIFileEntrypointInputSchema} from '@openai/mcp-extensions';
 import {z} from 'zod';
-import {WorkspaceStore, MAX_SOURCE, checkedPath} from './store.mjs';
+import fs from 'node:fs';
+import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText} from './store.mjs';
+import {checkDeck, checkSummary} from './check.mjs';
 import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
 import {WorkspaceActions} from './actions.mjs';
@@ -31,7 +33,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.25.5'});
+  const server = new McpServer({name: 'matsugit', version: '0.26.0'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -72,6 +74,19 @@ serveStdio(() => {
     description: 'Open a user-requested existing Markdown/Org file for editing and document/slides preview. Reads only the specified file. Never publishes.',
     inputSchema: z.object({path: z.string(), ...viewOptions}), annotations: readOnly, _meta: {ui: {resourceUri: uri}}},
     guard(async ({path: file, ...options}) => { const data = store.open(file); const {text, ...summary} = data; return result({...summary, ...options}, {source: text}); }));
+  server.registerTool('matsugit_check', {title: 'Check slides',
+    description: 'Check a Markdown/Org deck for slide-structure problems and report each in plain language with its slide and line. Use after editing a deck and whenever a user asks what is wrong or why a slide looks off. Read-only: no rendering, saving or publishing. Structure only; a visual look at the slides is still needed.',
+    inputSchema: z.object({path: z.string().optional(), text: z.string().max(MAX_SOURCE).optional(), format: z.enum(['markdown', 'org']).optional()}),
+    annotations: readOnly},
+    guard(async ({path: file, text, format}) => {
+      if ((file === undefined) === (text === undefined)) throw Error('Give either the path of a document or its text.');
+      const target = file === undefined ? null : checkedPath(file);
+      const source = target ? new TextDecoder('utf-8', {fatal: true}).decode(fs.readFileSync(target)) : checkedText(text);
+      // Offsets and edit operations are for the editor; agents get the words.
+      const findings = checkDeck(source, target ? target.toLowerCase().endsWith('.org') : format === 'org')
+        .map(({from, fix, ...finding}) => ({...finding, ...(fix ? {suggestedFix: fix.label} : {})}));
+      return result({...checkSummary(findings), findings});
+    }));
   server.registerTool('matsugit_read', {description: 'Refresh the document already opened in this workspace.', ...appOnly,
     inputSchema: z.object({session: z.string()}), annotations: readOnly},
     guard(async ({session}) => { const {text, ...data} = store.source(session); return appResult(data, {source: text}); }));

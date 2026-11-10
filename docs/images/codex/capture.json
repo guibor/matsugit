@@ -9,7 +9,9 @@
     "04-diagram-and-source.png",
     "05-presentation-view.png",
     "06-agent-review-in-source.png",
-    "07-insert-menu.png"
+    "07-insert-menu.png",
+    "08-add-picker.png",
+    "09-check-panel.png"
   ],
   "synthetic": true,
   "browser_errors": []

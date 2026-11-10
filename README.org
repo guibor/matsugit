@@ -24,6 +24,29 @@ require another AI call; rendering itself uses no model tokens. Small iterations
 can refresh in seconds, while first builds and complex diagrams can take longer.
 Review the output before sharing. Org is also supported when that is your workflow.
 
+* New to Markdown? Start here
+
+You do not need to learn the syntax first (plugin 0.26).
+
+- *Ask for the deck.* In Cursor, =/matsugit-new= turns your notes into slides:
+  it proposes one line per slide, waits for your edits, then opens the result.
+  =/matsugit-help= lists what else to ask for. In Codex, ask the same in words.
+- *Edit like a document.* Markdown opens as formatted text beside the slides.
+  Change a title, a number or a bullet and watch the slide follow.
+- *Pick layouts by picture.* =Add= shows each slide and layout as a thumbnail
+  with a plain name: two columns, key numbers, compare options, timeline, chart,
+  quote. It puts the text in the right place and selects what to type over.
+- *Always know what is wrong.* The =Check= chip says =No problems=, =2 to fix=
+  or =1 tip=. Its list names the slide and line in plain words, with =Show=, a
+  one-click fix where one is safe, and =Ask AI=. When a mistake stops the
+  preview, a banner says why and the preview is marked as the last version that
+  worked. =/matsugit-check= gives the same findings in chat.
+
+It is still one ordinary Markdown file that you own; nothing above adds a
+hidden format. The check covers slide structure, not facts or appearance, so
+look at the slides before sharing. See [[file:docs/codex.org::*Check: what is working and what is not (0.26)][Check]] and
+[[file:docs/codex.org::*Add: pick a layout by picture (0.26)][Add]] for what each does and does not do.
+
 * Edit and preview inside Codex
 
 *Shape the argument before polishing the slides.* In =Story=, use =Overview=
@@ -115,7 +138,7 @@ slide HTML and presenter handouts can still contain those notes.
 
 Source and preview can follow the same heading in both directions. Semantic
 gutter hints distinguish titles, claims and takeaways; type =/= on a blank line
-or use =+= to insert a slide recipe, columns, notes or a hidden agent comment.
+or use =Add= to insert a slide recipe, columns, notes or a hidden agent comment.
 The source stays ordinary Markdown or Org, with explicit saving and undo.
 
 The Markdown pane has independent =Raw= and =Visual= editing modes. Visual
@@ -152,8 +175,8 @@ needed. A browser-only fallback cannot confirm receipt.
 Short forms reduce layout boilerplate: =:::: columns 2:1= groups H4 regions,
 and a quoted =[!TAKEAWAY]= marks the conclusion. The braces icon can show quiet
 structural labels instead of delimiters; column ratios remain directly editable.
-Select a table and use =+ > /chart-barh= to turn it into a chart without copying
-its data. Inserted placeholders use Tab/Shift-Tab. Long-form source still works;
+Select a table and use =Add > Chart from the selected table= to turn it into a
+chart without copying its data. Inserted placeholders use Tab/Shift-Tab. Long-form source still works;
 see the [[file:skills/matsugit/references/authoring.md][authoring contract]] for native Org equivalents and examples.
 
 Smart refresh renders only the selected output. Warm text, link, list-item and
@@ -214,7 +237,8 @@ Use the same interactive workspace, skill and slash commands with Cursor MCP App
 matsugit setup-cursor
 #+end_src
 Enable the matsugit MCP server, start a new chat and ask =/matsugit-slides= to open
-your document. The installer needs a matsugit checkout with its bundled workspace;
+your document, =/matsugit-new= to make a deck from notes, =/matsugit-check= to
+hear what is wrong with one, or =/matsugit-help= for what to ask. The installer needs a matsugit checkout with its bundled workspace;
 existing launchers already point there. Other MCP settings and custom commands
 are preserved. See the [[file:docs/cursor.md][Cursor quickstart]] for prerequisites and plugin packaging.
 

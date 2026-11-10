@@ -43,6 +43,7 @@ python3 codex-plugin/tests/story-browser.py
 python3 codex-plugin/tests/story-navigation-browser.py
 python3 codex-plugin/tests/story-layout-browser.py
 python3 codex-plugin/tests/slide-agent-browser.py
+python3 codex-plugin/tests/check-browser.py
 #+end_src
 
 The browser tests exercise the real built MCP workspace with temporary synthetic
@@ -52,6 +53,11 @@ viewports. Story tests cover subtree moves, drag/drop, keyboard reordering, titl
 edits, section/detail folding, explicit saves, undo and concurrent agent edits.
 Layout tests cover section transitions, compact grid traversal, persistent size
 preferences, empty sections, long titles, native Org and mobile/split panes.
+The check test makes beginner mistakes in a draft and covers the verdict chip,
+located findings, Show, a fix with Undo, the Ask AI prefill, the stale-preview
+marker and where the layout picker puts a slide or part; the file is never saved.
+=npm test= also runs every reported problem through the real renderer, which
+must fail or misrender where the check says so and accept each fixed text.
 Slide AI tests use a local mock chat host, never a real agent. They check both
 messaging capabilities, selected-slide scope, Save and send, stale-draft refusal,
 uncertain delivery without retry, prompt retention and unsupported-host copying.

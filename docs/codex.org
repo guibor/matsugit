@@ -70,7 +70,7 @@ The browser check requires Playwright/Chromium and blocks remote requests.
 Click the presentation-screen icon at the top right. It switches to slides and
 hides the editor and workspace chrome. Use arrow keys, Space, Page Up/Down or the
 quiet bottom-right controls. Escape or the exit icon restores your previous view
-and Sync setting. Browser fullscreen is requested when allowed; embedded hosts
+and Follow setting. Browser fullscreen is requested when allowed; embedded hosts
 that block it still get the full slide-only workspace. Nothing is saved or published.
 
 Upgrade the plugin, then open the document in a fresh Codex session:
@@ -162,12 +162,12 @@ open the global matsugit workspace to start an unsaved draft.
 - =Split=: source and preview, with a draggable/keyboard-resizable divider.
 - =Document= / =Slides=: choose the rendered output independently of layout.
 - The selected slide is retained across preview refreshes when it still exists.
-- =Auto=: render after a pause in editing. Refresh first checks the file for
-  external changes, then renders the latest source even with Auto off. Unsaved
+- =Auto-update= (=Auto= before 0.26): render after a pause in editing. Refresh first checks the file for
+  external changes, then renders the latest source even with it off. Unsaved
   text or table edits are retained on conflict; no automatic overwrite occurs.
   A spinner, completion checkmark and brief notification acknowledge the action.
   Shift-click the refresh icon to force a complete rebuild of the selected view.
-- =Sync=: follow the edited heading in the document/slide preview, and follow
+- =Follow= (=Sync= before 0.26): follow the edited heading in the document/slide preview, and follow
   preview navigation back to its source heading. Turn it off to browse panes
   independently. Matching uses heading text and hierarchy, not guessed pixels;
   body paragraphs follow their containing heading, not an exact scroll fraction.
@@ -330,10 +330,12 @@ editor's fold gutter. Code examples are not interpreted as slide structure.
 These heading roles describe =slide-layout: structured=; they do not silently
 change the layout setting of an existing document.
 
-Type =/= at the start of a blank source line, then choose an insertion, or use
-the =+= toolbar button. Filter by typing, choose with the arrow keys and Enter,
-and dismiss with Escape. This inserts source locally; it is not a Codex chat
-slash command, does not call an agent, and does not save or publish.
+Type =/= at the start of a blank source line, then choose an insertion. Filter
+by typing, choose with the arrow keys and Enter, and dismiss with Escape. Entries
+show their plain name beside the keyword, everyday layouts first. This inserts
+source locally; it is not a Codex chat slash command, does not call an agent,
+and does not save or publish. The =Add= toolbar button opens the same catalogue
+as pictures; see [[*Add: pick a layout by picture (0.26)][Add]].
 
 | Insert | Purpose |
 |--------+---------|
@@ -400,7 +402,7 @@ a timeout retains both versions for manual review or external merging.
 Both file-entrypoint and tool-opened workspaces poll for changes every three
 seconds, in addition to supported host notifications. Superseded renders are
 canceled; they cannot replace a newer preview. Clicking refresh during a render
-queues the latest draft, including when =Auto= is off.
+queues the latest draft, including when =Auto-update= is off.
 The existing =Use incoming file= action also preserves a separate draft backup.
 The text editor uses UTF-8 and may normalize line endings when you explicitly save.
 Version 0.4.0 checkpoints drafts separately from Save, as described below.
@@ -474,7 +476,7 @@ After the first full render, ordinary prose, emphasis, link, list-item and
 table-cell edits update their text regions in place. Unchanged slides, diagrams,
 images, fonts and compiled theme styles stay loaded. The current slide and
 scroll position are preserved; source/preview following remains controlled by
-=Sync=.
+=Follow=.
 
 This is deliberately not a second, approximate Markdown renderer. The complete
 source is reparsed with Quarto's bundled Pandoc, shared references are resolved,
@@ -561,6 +563,65 @@ per render and 20 MiB of embedded HTML per output. A failed render retains the
 last successful preview and the editor text. Preview links switch between
 document and slides; external navigation is disabled inside the preview frame.
 
+* Check: what is working and what is not (0.26)
+
+The chip beside =Document= / =Slides= always shows a verdict: =No problems=,
+=2 to fix= or =1 tip=. It updates as you type. It reads only the text: no
+render, no model call, nothing saved.
+
+Open it for the list. Each item names the slide and line, says what is wrong in
+plain words, and how to put it right:
+
+- =Show= moves the cursor to the line, opening =Split= if the editor is hidden.
+- A fix button (for example =Close the block=, =Add empty line=,
+  =Change to takeaway=) edits the draft as one Undo step. It never saves.
+- =Ask AI= opens the existing slide request with the problem already written,
+  for you to review and send. Hosts without chat messaging offer the copy.
+
+| Reported as a problem | Why |
+|-----------------------+-----|
+| A block that is never closed | It swallows the slides after it |
+| A stray =:::= line, or a block or =---= glued to the text above | The colons or a stray heading show up on the slide |
+| Columns, rows, key numbers, comparison, timeline or decision with the wrong number of parts, an empty part, or content before the first part | The renderer refuses the slide |
+| A second claim, a claim after body text, or a claim without a slide title | The renderer refuses the slide |
+| Two takeaways on one slide | The renderer refuses the slide |
+| A chart without a unit, with an unknown type, or without a table | The renderer refuses the chart |
+| Columns or rows without =slide-layout: structured= | The parts are not arranged |
+| A quoted true/false setting, an unknown layout, an unclosed settings block | The settings are refused or shown as text |
+
+Tips do not stop anything: a block name one typo from a known one, a title-only
+slide (left out of the deck), a long title, a dense slide or a large table.
+
+When the preview cannot update, the banner says so in the same words with
+=Show problems=, and the preview is marked =Showing the last version that
+worked= until it renders again. If the check has no explanation of its own, the
+renderer's message is shown as the item, restated where it is a known one.
+
+Boundaries: this checks structure, not appearance, facts or overflow; a clean
+verdict is not a reviewed deck. The renderer remains the authority. Org sources
+currently report unfinished blocks only. Text inside code examples and hidden
+agent comments is not checked. Agents get the same findings from the
+=matsugit_check= tool; =matsugit lint= on the command line is a separate, older
+density check.
+
+* Add: pick a layout by picture (0.26)
+
+=Add= opens a searchable picker with a thumbnail, a plain name and one line on
+when to use each layout. =New slide= entries go after the slide you are
+editing, or at the end of the deck when the cursor is above the first slide.
+=Add to this slide= entries go at the cursor when the line is free, otherwise
+after the paragraph or block you are in, never into the settings, a code
+example or the middle of a block. Takeaways, sources, notes and AI notes go to
+the foot of the slide. A slide that already has a claim or takeaway gets that
+one selected instead of a second. With a table selected, =Chart from the
+selected table= wraps it without copying the data.
+
+Inserted text carries placeholders; type to replace the first and press Tab for
+the next. The picker switches a preview-only layout to =Split= so you see what
+was added. It refuses to add while a block above is unclosed, and says so.
+The names and text come from the same Python catalogue as =matsugit template=
+and the =/= list. Nothing is saved until you save.
+
 * Raw and Visual editing (0.10.0+)
 
 Choose =Raw= or =Visual= above the source pane, independently of the
@@ -568,8 +629,10 @@ Choose =Raw= or =Visual= above the source pane, independently of the
 styles headings, emphasis and links, revealing inline syntax at the cursor,
 and shows pipe/grid tables as tables. Switching modes never rewrites the source.
 Custom slide blocks, YAML, code and unsupported constructs remain source-backed;
-this is not a general HTML-to-Markdown round trip. Raw is the initial default;
-the choice is remembered per recovered workspace.
+this is not a general HTML-to-Markdown round trip. From 0.26 Markdown opens in
+Visual, so a newcomer meets formatted text rather than markup; Org opens in Raw.
+An explicit =editor= option when opening, and the mode remembered with a
+recovered workspace, both take precedence.
 
 Click a table cell to edit in place, or use its pencil. Expand opens a larger
 editor without discarding your draft. In Raw, put the cursor in a table and use

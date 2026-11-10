@@ -16,6 +16,16 @@ For a pip installation, add `--checkout /absolute/path/to/matsugit`. This instal
 the shared MCP workspace into `~/.cursor/mcp.json`, links the existing authoring
 skill, and adds `/matsugit-open`, `/matsugit-slides`, `/matsugit-publish` commands.
 `/matsugit-story` opens the same Overview/Walkthrough narrative editor as Codex.
+From 0.26 three commands start from a goal instead of a tool:
+
+| Command | Use it to |
+| --- | --- |
+| `/matsugit-new` | Turn notes into a deck: agree the story first, then open it |
+| `/matsugit-check` | Hear what is wrong, slide by slide, and have it fixed on request |
+| `/matsugit-help` | Learn what to ask for and what the workspace buttons do |
+
+Rerun `matsugit setup-cursor` after updating to install them.
+
 Other servers/settings are preserved; conflicting custom commands or skills are
 refused, not replaced. Enable/reload the matsugit MCP server in Cursor and start
 a new chat. Ask `/matsugit-slides Open /absolute/path/deck.md`. Present, split
@@ -45,6 +55,15 @@ and host-controlled downloads need `ui/download-file`. If unavailable, the AI
 action retains a copyable request and downloads offer the supported fallback;
 neither silently reports success. Actual desktop support depends on the Cursor
 version, so protocol tests alone do not establish every installed host's support.
+
+### Add and Check
+
+The workspace opens Markdown as formatted text. `Add` picks a slide or layout by
+picture. The `Check` chip beside Document/Slides says `No problems`, `2 to fix`
+or `1 tip`; its list names the slide and line in plain words, with Show, a
+one-click fix and Ask AI. Agents read the same findings through the
+`matsugit_check` tool, so `/matsugit-check` and the panel agree. See the
+[workspace guide](codex.org) for what is and is not checked.
 
 ### Panel size and typing
 
