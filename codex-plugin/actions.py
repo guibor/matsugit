@@ -22,6 +22,9 @@ def main(request):
     if action == 'publication-status':
         from matsugit.publication import status
         return status(Path(request['path']), check=bool(request.get('check')))
+    if action == 'share-status':
+        from matsugit.share import status as share_status
+        return share_status(Path(request['path']))
     if action == 'themes':
         from matsugit.core import theme_options
         return theme_options(config(Path(request['path'])))
@@ -60,8 +63,10 @@ def main(request):
                           expected=request.get('fingerprint'), message=request.get('message'), confirmed=True)
         from matsugit.publication import record
         try:
-            result['publication'] = record(source, {'branch':result['branch'], 'target':result['repo'],
-                'source_sha256':result['etag'], 'build':'git'}, result['revision'])
+            # A push into a configured project carries what a later site check needs.
+            from matsugit.share import receipt_plan
+            described, environment = receipt_plan(result)
+            result['publication'] = record(source, described, result['revision'], environment)
         except (Error, OSError) as error:
             result['message'] += ' Could not save local push receipt: ' + str(error)
         return result
@@ -95,6 +100,11 @@ def main(request):
     from matsugit.publication import record
     result = {'revision': sha, 'project_url': current['project_url'], 'site_url': current['site_url'],
             'status': 'Pushed. Verify CI and site access before sharing; deployment is not yet verified.'}
+    if not current.get('source_sha256'):
+        # In-place and moved sources: the receipt must still say which text was sent,
+        # or the workspace reports unsent changes straight after publishing.
+        import hashlib
+        current = dict(current, source_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
     try:
         result['publication'] = record(source, current, sha, settings.get('deployment_environment'))
     except (Error, OSError) as error:

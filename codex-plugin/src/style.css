@@ -304,3 +304,18 @@ button[data-feedback=busy] svg{animation:action-spin 1s linear infinite}
 .gallery-hint,#gallery-status{font-size:12px;line-height:1.45;color:var(--muted);margin:10px 0 0}#gallery-status:empty{display:none}
 /* Phone-width panels: the select names itself, so its label yields the row. */
 @media(max-width:480px){.render-actions>label[for=theme]{display:none}#theme{width:112px}.render-actions{gap:6px}}
+/* One Share button replaces the separate status, Git sync and Publish controls;
+   those stay in the page for the detailed views opened from "More options". */
+header .actions #publication-state,header .actions #git-sync,header .actions #publish{display:none}
+#share{width:auto;display:flex;align-items:center;gap:5px;padding:0 10px 0 8px;font-size:12px;border:1px solid var(--border)}
+#share svg{width:15px;height:15px}#share[data-state=changes]{color:var(--accent);border-color:var(--accent)}
+#share[data-state=live]{color:#23734e}#share[data-state=failed]{color:#b13c35}
+#share-title{font-size:16px!important;font-weight:650;color:var(--fg)!important;margin:14px 0 6px}
+#share-detail{white-space:pre-line;line-height:1.5;margin:0 0 10px;font-size:13px!important}
+#share-link-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}#share-link{color:var(--accent);font-size:13px}
+#share-copy{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);padding:3px 9px;font-size:12px}#share-copy svg{width:14px;height:14px}
+#share-go{display:block}#share-go[hidden],#share-link-row[hidden],#share-destination-row[hidden]{display:none}
+#share-progress:empty{display:none}
+#share-advanced{margin-top:16px;border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--muted)}
+#share-advanced button{border:1px solid var(--border);font-size:12px;margin:0 6px 6px 0;padding:3px 9px}
+@media(prefers-color-scheme:dark){#share[data-state=live]{color:#6fcf9b}#share[data-state=failed]{color:#f08a83}}

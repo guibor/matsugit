@@ -11,6 +11,7 @@ import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
 import {EditorState, Compartment, Transaction} from '@codemirror/state';
 import {gallery} from './gallery.mjs';
+import {share} from './share.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding} from './check.mjs';
 import {createElement, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
@@ -977,9 +978,13 @@ $('expand-workspace').onclick = async () => {
 $('save').onclick = () => save();
 $('notice-save').onclick = () => save();
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
-publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo});
-delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
+let sharing;
+publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo,painted:(label,busy)=>sharing?.painted(label,busy)});
+const delivering = delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
+sharing = share({call, state, text, dirty: () => dirty() || tables.pending(), save: () => save({review: false}), ...delivering,
+  mergeReview, publication, reload, notice, demo});
+publication.update();
 $('insert').onclick = () => layouts.open();
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };

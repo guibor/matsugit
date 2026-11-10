@@ -50,7 +50,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-git-ux-') as temp:
             frame=page.frames[1]
             wait(frame,'!!window.matsugitWorkspace?.state.etag && !matsugitWorkspace.state.loading')
             frame.locator('#auto').uncheck()
-            frame.locator('#git-sync').click()
+            frame.locator('#git-sync').dispatch_event('click')
             wait(frame,'!document.getElementById("git-sync-check").disabled')
             assert 'overlap' in frame.locator('#git-sync-progress').inner_text()
             original_head=git(repo,'rev-parse','HEAD')

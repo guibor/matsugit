@@ -1,5 +1,9 @@
 #+title: One canonical source, with safe Git sync
 
+Most people should use the workspace's =Share= button (plugin 0.27), which
+drives the operations below one plain step at a time. This page documents those
+operations and the detailed views behind =Share > More options=.
+
 * Move and leave a link
 
 Core 0.15 / plugin 0.11 add explicit move-and-link for Source to CI publication.

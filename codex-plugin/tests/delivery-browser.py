@@ -80,7 +80,7 @@ try:
         wait(frame,'!document.getElementById("table-download").disabled')
         frame.locator('#table-close').click()
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == draft
-        frame.locator('#publish').click()
+        frame.locator('#publish').dispatch_event('click')
         wait(frame, '!document.getElementById("publish-review").disabled')
         frame.locator('#repository-toggle').click()
         frame.locator('#repository-host').fill('not/a/host')
@@ -103,7 +103,7 @@ try:
             assert bounds['y'] >= 0 and bounds['y'] + bounds['height'] <= height
             page.screenshot(path=f'/tmp/matsugit-export-ui-{width}.png')
             frame.locator('#close-export').click()
-            frame.locator('#publish').click()
+            frame.locator('#publish').dispatch_event('click')
             wait(frame, '!document.getElementById("publish-review").disabled')
             frame.locator('#repository-toggle').click()
             bounds = frame.locator('#publish-dialog').bounding_box()

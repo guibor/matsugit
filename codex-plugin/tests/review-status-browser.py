@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
             frame.locator('#auto').uncheck(); frame.locator('#sync').uncheck()
             frame.locator('[data-layout="source"]').click()
             wait(frame,'document.getElementById("publication-state").textContent === "Pushed" && !document.getElementById("publication-state").disabled')
-            frame.locator('#publication-state').click()
+            frame.locator('#publication-state').dispatch_event('click')
             assert 'a'*40 in frame.locator('#publication-details').inner_text()
             assert frame.locator('#publication-pipeline').get_attribute('href').endswith('/pipeline/1')
             frame.locator('#publication-close').click()

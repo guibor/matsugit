@@ -63,12 +63,25 @@ the formatting. Rendering uses no model tokens; an agent is optional.
   checkout, the open workspace follows it automatically: new path shown, Save
   writes there, unsaved typing kept. No reopen step.
 
+** Sharing without Git knowledge (0.27, branch =clearer-save-and-git=)
+- R17. One =Share= button covers saving, syncing and deploying for someone who
+  has a GitLab or GitHub project but knows no Git commands. It shows one state
+  and one next step, in plain words.
+- R18. Share saves first, shows what will be sent, and sends only on a final
+  click. It never logs in, creates a project, installs a site build or changes
+  access.
+- R19. Share says =Live= only when the provider reports this version deployed;
+  otherwise it says what it does not know.
+- R20. The detailed Git sync, Publish and status views remain available.
+- R21. Everything above works identically in Cursor and Codex.
+
 * Next steps
 
 Immediate, in priority order:
-0. Simplify saving, syncing and deploying for people who barely use GitLab and
-   know no Git commands: one guided Share flow instead of separate Save, Git
-   sync and Publish dialogs. Proposal pending the owner's decisions.
+0. Share, remaining gaps: first-time setup of a project that has no matsugit
+   site build (today reported, not fixed); checking for colleagues' changes
+   before the button is clicked; a per-deck site link instead of the site or
+   project link.
 1. Try 0.26 with two or three non-technical authors in Cursor and record where
    they still get stuck (first-run, vocabulary, the settings block at the top).
 2. Hide the YAML settings block in Visual behind a small "Deck settings" form
@@ -97,5 +110,8 @@ Immediate, in priority order:
   message in the notice bar and left the old preview in place. Now: the notice
   restates it in slide words with =Show problems=, and the preview is marked as
   the last version that worked. Reason: R8, R9.
+- 2026-11-10, header delivery controls. Was: a =Not pushed= status button, a
+  Git sync icon and a Publish icon, each with its own dialog. Now: one =Share=
+  button; those dialogs open from =Share > More options=. Reason: R17.
 - 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
   =Follow=. Behaviour unchanged.

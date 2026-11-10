@@ -42,6 +42,13 @@ You do not need to learn the syntax first (plugin 0.26).
   preview, a banner says why and the preview is marked as the last version that
   worked. =/matsugit-check= gives the same findings in chat.
 
+- *Share with one button.* =Share= (plugin 0.27) replaces the separate status,
+  Git sync and Publish controls. It shows one state and one next step: put the
+  deck into your GitLab or GitHub project the first time, send later changes,
+  get a colleague's changes, choose when you both edited the same sentence, and
+  then say whether the site is live. It saves first, asks once before sending,
+  and never needs a Git command. The detailed views are under =More options=.
+
 It is still one ordinary Markdown file that you own; nothing above adds a
 hidden format. The check covers slide structure, not facts or appearance, so
 look at the slides before sharing. See [[file:docs/codex.org::*Check: what is working and what is not (0.26)][Check]] and

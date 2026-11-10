@@ -41,7 +41,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     $('git-sync-check').disabled = value;
     $('git-sync-publish').disabled = value;
     $('git-sync-apply').disabled = value || !syncPlan?.canApply;
-    for (const id of ['git-exchange-start','git-exchange-confirm','git-exchange-message','close-git-sync']) $(id).disabled = value;
+    for (const id of ['git-exchange-start','git-exchange-confirm','git-exchange-message','close-git-sync','share-go','share-destination','share-close']) $(id).disabled = value;
     for (const input of $('git-exchange-assets').querySelectorAll('input')) input.disabled = value;
     $('git-sync-progress').setAttribute('aria-busy', String(value));
   }
@@ -271,4 +271,5 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     finally { invalidate(); lock(false); }
   };
   if (demo) { $('publish').disabled = true; $('git-sync').disabled = true; }
+  return {run, lock, isBusy: () => busy, snapshot};
 }
