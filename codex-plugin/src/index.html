@@ -11,7 +11,7 @@
       <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" disabled></button>
       <button id="compact-markup" title="Use compact structural labels" aria-label="Use compact structural labels" aria-pressed="false"></button>
       <button id="recover" title="Recover workspaces" aria-label="Recover workspaces"></button>
-      <button id="insert" title="Insert slide or element" aria-label="Insert slide or element"></button>
+      <button id="insert" title="Add a slide or a layout" aria-label="Add a slide or a layout"></button>
       <button id="open" title="Open Markdown file" aria-label="Open Markdown file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
@@ -24,24 +24,30 @@
   </header>
   <nav aria-label="Workspace views">
     <div class="segmented" aria-label="Layout">
-      <button data-layout="story" aria-pressed="false">Story</button>
-      <button data-layout="source" aria-pressed="false">Markdown</button>
-      <button data-layout="render" aria-pressed="false">Render</button>
-      <button data-layout="split" aria-pressed="true">Split</button>
+      <button data-layout="story" aria-pressed="false" title="Arrange slide titles and claims">Story</button>
+      <button data-layout="source" aria-pressed="false" title="Write and edit the content">Markdown</button>
+      <button data-layout="render" aria-pressed="false" title="See the result only">Render</button>
+      <button data-layout="split" aria-pressed="true" title="Write on the left, see the result on the right">Split</button>
     </div>
     <div class="segmented" aria-label="Preview format">
-      <button data-format="document" aria-pressed="true">Document</button>
-      <button data-format="slides" aria-pressed="false">Slides</button>
+      <button data-format="document" aria-pressed="true" title="Preview as a reading document">Document</button>
+      <button data-format="slides" aria-pressed="false" title="Preview as slides">Slides</button>
     </div>
+    <button id="check-status" aria-expanded="false" aria-controls="check-panel" data-kind="ok"><span id="check-icon"></span><span id="check-label">No problems</span></button>
     <div class="render-actions">
       <label for="theme">Theme</label><select id="theme" aria-label="Theme"><option value="">Project default</option></select>
-      <label class="auto"><input id="auto" type="checkbox" checked>Auto</label>
-      <label class="auto" title="Follow the current heading between source and preview"><input id="sync" type="checkbox" checked>Sync</label>
+      <label class="auto" title="Update the preview while you type"><input id="auto" type="checkbox" checked>Auto-update</label>
+      <label class="auto" title="Keep the preview on the slide you are editing, and the editor on the slide you click"><input id="sync" type="checkbox" checked>Follow</label>
       <button id="refresh" title="Render preview" aria-label="Render preview"></button>
     </div>
   </nav>
-  <div id="notice" role="status" hidden><div class="notice-copy"><strong id="notice-title" hidden></strong><span id="notice-text"></span></div><div class="notice-actions"><button id="reload" hidden>Review changes</button><button id="notice-save" hidden>Save file</button><button id="notice-dismiss" title="Dismiss update receipt" aria-label="Dismiss update receipt" hidden></button></div></div>
+  <div id="notice" role="status" hidden><div class="notice-copy"><strong id="notice-title" hidden></strong><span id="notice-text"></span></div><div class="notice-actions"><button id="notice-check" hidden>Show problems</button><button id="reload" hidden>Review changes</button><button id="notice-save" hidden>Save file</button><button id="notice-dismiss" title="Dismiss update receipt" aria-label="Dismiss update receipt" hidden></button></div></div>
   <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
+  <section id="check-panel" aria-label="Slide check" hidden>
+    <div class="check-heading"><strong>Check</strong><span id="check-summary"></span><button id="check-close" title="Close check" aria-label="Close check"></button></div>
+    <ol id="check-list"></ol>
+    <p id="check-feedback" role="status" aria-live="polite"></p>
+  </section>
   <div id="workspace" data-layout="split">
     <section id="source-pane" aria-label="Source">
       <div class="source-tools">
@@ -87,11 +93,19 @@
     <div id="divider" role="separator" aria-label="Resize source and preview" aria-orientation="vertical" tabindex="0" aria-valuenow="50" aria-valuemin="20" aria-valuemax="80"></div>
     <section id="preview-pane" aria-label="Rendered preview">
       <iframe id="preview" title="Document preview" sandbox="allow-scripts allow-downloads" referrerpolicy="no-referrer"></iframe>
+      <div id="preview-stale" role="status" hidden>Showing the last version that worked</div>
       <div id="empty" aria-live="polite"><span id="empty-icon"></span><span id="empty-label">Waiting for preview</span></div>
     </section>
   </div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span><span id="workspace-version"></span></footer>
 </main>
+<dialog id="gallery-dialog" aria-labelledby="gallery-title">
+  <div class="recovery-heading"><h2 id="gallery-title">Add to your deck</h2><button type="button" id="gallery-close" title="Close" aria-label="Close"></button></div>
+  <input id="gallery-search" type="search" placeholder="Search, for example: compare, numbers, quote" aria-label="Search layouts" autocomplete="off">
+  <p id="gallery-status" role="status" aria-live="polite"></p>
+  <div id="gallery-groups"></div>
+  <p class="gallery-hint">The text is added to your draft with placeholders to replace. Press Tab to move between them. Typing / on an empty line opens the same list.</p>
+</dialog>
 <dialog id="story-move-dialog" class="delivery-dialog" aria-labelledby="story-move-title">
   <form id="story-move-form">
     <div class="recovery-heading"><h2 id="story-move-title">Move slide</h2><button type="button" id="story-move-close" title="Close" aria-label="Close"></button></div>

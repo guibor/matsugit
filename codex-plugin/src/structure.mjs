@@ -4,6 +4,11 @@ export function headingKey(label) {
   return label.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
+// Length of the leading YAML settings block, or 0 when there is none.
+export function frontmatterLength(source) {
+  return /^\uFEFF?(?:[ \t]*\r?\n)*---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
+}
+
 export function structure(source, org = false) {
   const headings = [], literals = [], markers = [], blocks = [], breaks = [];
   const counts = new Map();
@@ -41,7 +46,7 @@ export function structure(source, org = false) {
     for (const block of stack) if (block.opaque) literals.push({from: block.from, to: source.length});
     return {headings, markers, blocks, breaks, unfinished: stack.map(b => ({...b, to:source.length})), literals: literals.sort((a,b)=>a.from-b.from)};
   }
-  const frontmatter = /^\uFEFF?(?:[ \t]*\r?\n)*---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
+  const frontmatter = frontmatterLength(source);
   if (frontmatter) literals.push({from: 0, to: frontmatter});
   const tree = parser.parse(source);
   tree.iterate({enter(node) {
@@ -82,7 +87,8 @@ export function structure(source, org = false) {
         const role = /(?:^|[.{\s])([a-z][a-z-]*)\b/.exec(fence[2])?.[1] || 'block';
         stack.push({from: offset, startEnd: offset + line.length, width: fence[1].length, role});
         markers.push({from: offset, role});
-      } else if (stack.length && fence[1].length >= stack.at(-1).width) {
+      } else if (stack.length) {
+        // Pandoc closes the innermost div with any bare fence of 3+ colons.
         const block = stack.pop();
         blocks.push({...block, endFrom: offset, to: offset + line.length});
         markers.push({from: offset, role: block.role, closing: true});

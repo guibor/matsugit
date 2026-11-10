@@ -38,7 +38,9 @@ try:
         assert frame.locator('#action-feedback').inner_text() == 'Document path copied'
         print('Clipboard and first render ready', flush=True)
         assert page.evaluate('navigator.clipboard.readText()') == str(source.resolve())
-        assert frame.evaluate('matsugitWorkspace.state.editorMode') == 'raw'
+        # Markdown opens formatted from 0.26; the rest of this test starts from Raw.
+        assert frame.evaluate('matsugitWorkspace.state.editorMode') == 'visual'
+        frame.locator('[data-editor="raw"]').click()
         # Refresh must read disk even with Auto off, not rebuild the stale draft.
         changed = original.replace('Cycle time', 'External metric')
         source.write_text(changed)

@@ -52,6 +52,25 @@ one slide.
   Distinguish native support, composition from existing blocks, external-image
   fallback, and proposed features. Never invent supported options.
 
+## Authors who do not read Markdown
+
+Many authors know PowerPoint, not Markdown. Unless they use syntax themselves:
+
+- Speak in slide words: title, claim, columns, table, chart, takeaway. Describe
+  a change by its effect on the slide ("the two options now sit side by side"),
+  not by the syntax you typed. Show source only when asked.
+- Name layouts as the workspace's `Add` picker does: blank slide, cover, section
+  heading, big statement, answer first, table and what it means, evidence
+  beside its meaning, chart, key numbers, compare options, timeline, decision
+  request, flow diagram, quote, cause and effect, insight to action.
+- After every edit, and whenever asked what is wrong, run the `matsugit_check`
+  tool when it is available (otherwise `matsugit lint`). Report by slide number
+  and title, problems before tips, each with what you would change. Fix problems
+  you introduced before replying; never leave a deck that the check rejects.
+- Point to the workspace for what is easier by hand: `Add` to pick a layout by
+  picture, `Check` for the same findings with Show and a one-click fix, Story to
+  reorder slides. The check covers structure only; still look at the slides.
+
 ## Content guidance is separate
 
 For diagrams, prefer D2 for relationship maps, nested systems and branching

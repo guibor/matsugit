@@ -1,6 +1,6 @@
 import unittest
 
-from matsugit.authoring import ELEMENTS, TEMPLATES, editor_templates
+from matsugit.authoring import CATALOG, ELEMENTS, HIDDEN, TEMPLATES, editor_templates
 from matsugit.source import convert
 from matsugit.converter import converter
 
@@ -18,6 +18,25 @@ class EditorTemplatesTest(unittest.TestCase):
             self.assertEqual(entry['kind'], 'Slide')
             self.assertIn('** ', entry['org'])
 
+    def test_every_recipe_has_a_plain_name_or_is_deliberately_hidden(self):
+        self.assertEqual(set(self.entries), set(CATALOG) | HIDDEN)
+        self.assertFalse(set(CATALOG) & HIDDEN)
+        titles = [entry['title'] for entry in self.entries.values() if 'title' in entry]
+        self.assertEqual(len(titles), len(set(titles)))
+        for key, entry in self.entries.items():
+            if key in HIDDEN:
+                self.assertNotIn('title', entry)
+                continue
+            self.assertIn(entry['group'], ('slide', 'part'))
+            self.assertTrue(entry['title'] and entry['when'].endswith('.') and entry['sketch'])
+            # Names are for people who do not read Markdown.
+            self.assertNotRegex(entry['title'] + entry['when'], r'[#{}`]|::|H[1-6]\b')
+        # Every recipe that starts with a slide heading is offered as a new slide.
+        for key, entry in self.entries.items():
+            if key not in HIDDEN:
+                starts_slide = entry['markdown'].lstrip().startswith(('## ', '# '))
+                self.assertEqual(entry['group'] == 'slide', starts_slide, key)
+
     def test_org_elements_preserve_semantics(self):
         for name in ['columns', 'columns-3', 'takeaway', 'notes', 'rows']:
             with self.subTest(name=name):
@@ -30,6 +49,11 @@ class EditorTemplatesTest(unittest.TestCase):
             self.assertIn('review-INSERT_ID', comment)
             self.assertIn('Pending.', comment)
             self.assertIn('Request:', comment)
+
+    def test_notes_description_does_not_promise_privacy(self):
+        description = self.entries['notes']['when']
+        self.assertIn('included in slide HTML and handouts', description)
+        self.assertNotIn('Only you', description)
 
 
 if __name__ == '__main__':

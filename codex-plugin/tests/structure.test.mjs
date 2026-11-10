@@ -54,6 +54,15 @@ test('Org source blocks and hidden comments do not create slide targets', () => 
   assert.deepEqual(structure(source, true).headings.map(h => h.key), ['topic', 'slide', 'claim']);
 });
 
+test('shorter closing fences keep nested block and next-slide boundaries', () => {
+  const source = '## One\n\n::::: columns\n:::: column\nLeft.\n:::\n:::: column\nRight.\n:::\n:::\n\n## Two\n\nBody.\n';
+  const parsed = structure(source);
+  assert.deepEqual(parsed.unfinished, []);
+  assert.deepEqual(parsed.blocks.map(block => block.role), ['column', 'column', 'columns']);
+  assert.deepEqual(slideBoundaries(parsed), [source.indexOf('## One'), source.indexOf('## Two')]);
+  assert.equal(source.slice(parsed.blocks[2].endFrom, parsed.blocks[2].to), ':::');
+});
+
 test('source slide guides ignore YAML, code, quotes, tables and nested layout blocks', () => {
   const source = '---\ntitle: Deck\n---\n# Topic\n## Slide one\n### Claim\n\nBody\n\n---\n\nContinued\n\n'
     + '> ## Quoted heading\n> ---\n\n```md\n## Code\n---\n```\n\n'

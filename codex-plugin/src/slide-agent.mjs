@@ -91,13 +91,14 @@ export function slideAgent({snapshot, enabled, save, read, path, sender, notice}
         : error.message;
     } finally { busy = false; controls(); }
   };
-  return {open(node) {
+  return {open(node, suggestion = '') {
     if (busy || !enabled()) return;
     try {
       opened = snapshot();
       target = slideAgentTarget(opened.text,node.from,opened.name.toLowerCase().endsWith('.org'));
       delivered = false; uncertain = false;
-      prompt.value = remembered?.identity === identity(opened) && remembered.from === target.from ? remembered.prompt : '';
+      // A request started from Check arrives with the problem already written.
+      prompt.value = suggestion || (remembered?.identity === identity(opened) && remembered.from === target.from ? remembered.prompt : '');
       $('slide-agent-context').textContent = [target.section,`Slide ${target.number}`,target.title].filter(Boolean).join(' / ');
       $('slide-agent-source').textContent = target.source;
       $('slide-agent-request-panel').hidden = true;

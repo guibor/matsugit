@@ -118,7 +118,9 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
         validFor: /^\/[-\w]*$/,
         options: [...Object.entries(recipes), ...chartTypes.map(type => ['chart-' + type,
           {kind:'Chart: selected table or new table',markdown:wrapElement('chart-' + type,'',false),org:wrapElement('chart-' + type,'',true)}])].map(([name, recipe]) => ({
-          label: '/' + name, detail: recipe.kind, type: 'keyword',
+          label: '/' + name, detail: recipe.title || recipe.kind, type: 'keyword',
+          // Everyday layouts first; aliases and chart variants after them.
+          boost: recipe.rank === undefined ? -50 : 40 - recipe.rank,
           info: recipe[isOrg() ? 'org' : 'markdown'],
           apply(view, _completion, from, to) {
             const selected = view.state.selection.main;
@@ -142,3 +144,4 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
 }
 
 export function insertMenu(editor) { editor.focus(); startCompletion(editor); }
+export const recipeCatalogue = recipes;

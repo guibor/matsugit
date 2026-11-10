@@ -22,7 +22,8 @@ def wait(frame, expression, timeout=180):
 
 
 host = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')],
-                        env=dict(os.environ, MATSUGIT_SHOWCASE_SOURCE=str(Path(__file__).with_name('authoring-sugar.md'))),
+                        env=dict(os.environ, MATSUGIT_SHOWCASE_SOURCE=str(Path(__file__).with_name('authoring-sugar.md')),
+                                 MATSUGIT_TEST_OPEN_OPTIONS='{"editor":"raw"}'),
                         stdout=subprocess.PIPE, text=True)
 try:
     ready = json.loads(host.stdout.readline())
@@ -66,7 +67,9 @@ try:
           e.dispatch({selection:{anchor:from,head:to}});e.focus();
         }''')
         frame.locator('#insert').click()
-        frame.locator('.cm-completionLabel').filter(has_text='/chart-barh').click()
+        card = frame.locator('.gallery-card[data-recipe="chart-block"]')
+        assert card.locator('strong').inner_text() == 'Chart from the selected table'
+        card.click()
         text = frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         assert text.count('| Baseline | 12 |') == 1
         assert 'type="barh" unit="units"' in text
@@ -77,9 +80,16 @@ try:
           const text='#+begin_src text\n#+end_columns\n\n/take';
           w.editor.dispatch({changes:{from:0,to:w.editor.state.doc.length,insert:text},selection:{anchor:text.length}});
         }''')
-        frame.locator('#insert').click()
+        frame.evaluate('matsugitWorkspace.editor.focus()')
+        page.keyboard.press('Control+Space')
         page.wait_for_timeout(500)
         assert frame.locator('.cm-completionLabel').count() == 0
+        # The picker refuses to add into an unfinished block instead of guessing.
+        frame.locator('#insert').click()
+        frame.locator('.gallery-card[data-recipe="takeaway"]').click()
+        assert 'not closed' in frame.locator('#gallery-status').inner_text()
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()').endswith('/take')
+        frame.locator('#gallery-close').click()
         for width,height in [(390,844),(768,1024)]:
             page.set_viewport_size({'width':width,'height':height})
             page.screenshot(path=str(shots / f'authoring-{width}.png'))

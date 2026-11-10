@@ -47,11 +47,26 @@ Hidden rendering is not confidentiality: source exports retain source text.
 [[file:images/codex/06-agent-review-in-source.png]]
 
 * Insert without memorizing the syntax
-Type =/= on a blank line or open =+= to insert a recipe or semantic block.
-The screenshot shows the takeaway menu; inserting remains an undoable source
-edit, not a separate visual object.
+=Add= opens a picker: each slide and layout as a thumbnail with a plain name and
+one line on when to use it. The text goes after the slide you are editing, or
+into it, with placeholders to type over. It remains an undoable source edit,
+not a separate visual object.
+
+[[file:images/codex/08-add-picker.png]]
+
+Keyboard users can type =/= on a blank line for the same catalogue as a list.
+The screenshot shows it filtered to the takeaway.
 
 [[file:images/codex/07-insert-menu.png]]
+
+* See what is wrong, in plain words
+The =Check= chip says =No problems=, =2 to fix= or =1 tip=. The list names the
+slide and line, explains the problem, and offers =Show=, a one-click fix where
+one is safe, and =Ask AI=. Here the draft has four columns (the layout works
+with two or three) and a mistyped =takeaway=. It checks structure only; the
+slides still need a look.
+
+[[file:images/codex/09-check-panel.png]]
 
 * Try it
 Follow [[file:codex.org][the installation guide]], then ask:

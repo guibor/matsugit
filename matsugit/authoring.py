@@ -276,6 +276,50 @@ ELEMENTS = {
 }
 
 
+# Plain-language names for the layout picker and help. Keys are editor names
+# (see editor_templates). `group` says whether the recipe starts a new slide or
+# goes inside the current one; `sketch` selects the picker's thumbnail.
+CATALOG = {
+    'slide': ('slide', 'Blank slide', 'A title, a claim and room for your points.', 'slide'),
+    'cover': ('slide', 'Cover', 'Open the deck with its title and purpose.', 'cover'),
+    'section': ('slide', 'Section heading', 'Start a new chapter of the deck.', 'section'),
+    'statement': ('slide', 'Big statement', 'One sentence that deserves a whole slide.', 'statement'),
+    'summary': ('slide', 'Answer first', 'The recommendation, then the reasons behind it.', 'summary'),
+    'evidence': ('slide', 'Evidence beside its meaning', 'A table on the left, what it means on the right.', 'wide'),
+    'table': ('slide', 'Table and what it means', 'A full-width table above, the implication below.', 'stack'),
+    'exhibit': ('slide', 'One table', 'Let a single table carry the point.', 'table'),
+    'chart-slide': ('slide', 'Chart', 'A bar chart drawn from a small table.', 'chart'),
+    'metrics': ('slide', 'Key numbers', 'Up to four headline figures, each with a line of context.', 'metrics'),
+    'comparison': ('slide', 'Compare options', 'Two or three alternatives, side by side.', 'columns'),
+    'timeline': ('slide', 'Timeline', 'Stages in order, with dates or owners.', 'timeline'),
+    'decision': ('slide', 'Decision request', 'What you ask for, the reservations and the proof needed.', 'columns3'),
+    'process': ('slide', 'Flow diagram', 'Boxes and arrows drawn from a few lines of text.', 'flow'),
+    'quotation': ('slide', 'Quote', 'A quotation with its author.', 'quote'),
+    'implication': ('slide', 'Cause and effect', 'A change on the left leads to a result on the right.', 'arrow'),
+    'mapping': ('slide', 'Insight to action', 'Pair each finding with what to do about it.', 'mapping'),
+    'annotated': ('slide', 'Pointed-out evidence', 'Notes that point at the numbers that matter.', 'annotated'),
+    'assertion': ('slide', 'Turning point', 'One bold sentence that changes direction.', 'statement'),
+    'd2': ('slide', 'Relationship diagram', 'A richer diagram (D2). Needs the one-time diagram setup.', 'flow'),
+    'section-deck': ('slide', 'Three-slide starter', 'A short section: conclusion, mechanism, takeaway.', 'section'),
+    'claim': ('part', 'Claim under the title', 'The one-sentence point of this slide.', 'claim'),
+    'takeaway': ('part', 'Takeaway', 'The conclusion band at the bottom of the slide.', 'takeaway'),
+    'columns': ('part', 'Two columns', 'Two blocks side by side.', 'columns'),
+    'columns-3': ('part', 'Three columns', 'Three blocks side by side.', 'columns3'),
+    'columns-evidence': ('part', 'Wide and narrow columns', 'Evidence wide on the left, its meaning on the right.', 'wide'),
+    'rows': ('part', 'Stacked rows', 'Two blocks, one above the other.', 'stack'),
+    'table-block': ('part', 'Table', 'A small table to fill in.', 'table'),
+    'chart-block': ('part', 'Chart from a table', 'Select a table first to turn it into a chart.', 'chart'),
+    'region': ('part', 'Sub-heading', 'A small heading with points under it.', 'region'),
+    'source': ('part', 'Source line', 'Where the evidence comes from.', 'source'),
+    'notes': ('part', 'Presenter notes', 'Hidden on slides; included in slide HTML and handouts.', 'notes'),
+    'break': ('part', 'Continue on a new page', 'Same title and claim, next page.', 'break'),
+    'agent-comment': ('part', 'Note for the AI', 'A review request that never appears on slides.', 'comment'),
+    'canvas': ('part', 'Interactive HTML', 'Embed a trusted local HTML file. Advanced.', 'canvas'),
+}
+# Aliases and duplicates stay available by typing "/", but not in the picker.
+HIDDEN = {'quote', 'takeaway-block'}
+
+
 def editor_templates():
     """Build the editor catalogue using the same Markdown/Org conversion as CLI."""
     from .source import convert
@@ -291,6 +335,10 @@ def editor_templates():
                    'Request:\nDescribe the change or question for this slide.\n\n'
                    'Response:\nPending.\n#+end_agent-comment\n') if name == 'agent-comment' else convert(text, 'markdown', 'org', command)
             entries[key] = {'kind': kind, 'markdown': text, 'org': org}
+            if key in CATALOG:
+                group, title, when, sketch = CATALOG[key]
+                entries[key].update(group=group, title=title, when=when, sketch=sketch,
+                                    rank=list(CATALOG).index(key))
     return entries
 
 

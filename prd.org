@@ -1,0 +1,93 @@
+#+title: matsugit product requirements
+
+High-level requirements. README.org and docs/ describe behaviour in detail;
+design.md explains how the code is organised.
+
+* Product principle
+
+Your next presentation starts with the notes you already have. One editable
+Markdown or Org file holds titles, claims, evidence and takeaways. It renders as
+themed slides and as a reading document. You control the story; the theme does
+the formatting. Rendering uses no model tokens; an agent is optional.
+
+* Who it is for
+
+1. People who think in Markdown or Org and want slides without PowerPoint.
+2. People who feel the pain of going back and forth in PowerPoint but are *not*
+   technical: they can type Markdown when shown, but the syntax is unfamiliar
+   and they will not read a syntax reference. Most use Cursor; others Codex.
+   (Added 2026-11-10; drives the "Intuitive authoring" requirements below.)
+
+* Requirements
+
+** Source and rendering
+- R1. One canonical source file (Markdown, Quarto Markdown or Org). No hidden
+  format, sidecar or second editable copy.
+- R2. The same source renders slides and a reading document with a chosen theme.
+- R3. A bounded set of slide recipes composed from ordinary Markdown and a few
+  semantic blocks; the theme never changes what headings mean.
+- R4. Document code is data and is never executed. Themes are explicitly
+  selected, trusted inputs.
+
+** Workspace (Codex and Cursor, one shared bundle)
+- R5. Source, Story and preview in one workspace; explicit Save with version
+  checks, recovery, and review of external changes.
+- R6. Preview never publishes. Export and publication are separate, explicit,
+  reviewed actions.
+
+** Intuitive authoring (0.26, branch =intuitive-authoring=)
+- R7. A newcomer never needs the syntax reference to add a slide or layout:
+  layouts are picked by picture and plain name, and land in a sensible place
+  wherever the cursor is.
+- R8. The workspace always says whether the deck is working. Problems are
+  stated in plain words, name the slide and line, say how to fix them, and offer
+  a one-click fix where that is safe. Fixes edit the draft as one Undo step and
+  never save.
+- R9. A mistake that stops the preview is announced as such, and the stale
+  preview is visibly marked. No silent staleness.
+- R10. The check is honest about its limits: structure only, the renderer stays
+  the authority, a clean verdict is not a reviewed deck.
+- R11. The first screen shows formatted text, not markup, for Markdown files.
+- R12. Agents speak in slide words to these users, get the same findings as the
+  workspace (=matsugit_check=), and offer goal-shaped entry points
+  (=/matsugit-new=, =/matsugit-check=, =/matsugit-help=).
+- R13. None of the above changes the source format or removes a power-user
+  path: Raw mode, the =/= list, Org and the CLI keep working.
+
+** Delivery
+- R14. Local export to HTML, ZIP, PDF and editable PowerPoint.
+- R15. Reviewed Git publication and optional CI deployment; never automatic.
+
+* Next steps
+
+Immediate, in priority order:
+1. Try 0.26 with two or three non-technical authors in Cursor and record where
+   they still get stuck (first-run, vocabulary, the settings block at the top).
+2. Hide the YAML settings block in Visual behind a small "Deck settings" form
+   (layout, section dividers, slide shape, title page).
+3. Run the plain-language check from the command line (=matsugit lint= or a new
+   =matsugit check=) so skill-only and CI users get the same findings. Today it
+   runs in the workspace and through the =matsugit_check= tool only.
+4. Bring the check to Org beyond unfinished blocks (part counts, claims).
+5. Decide whether to rename the view tabs (Markdown/Render/Split) to plainer
+   words; kept in 0.26 because every guide and command uses them.
+6. Per-slide thumbnails in the picker rendered with the selected theme, instead
+   of neutral sketches.
+7. A first-run tour of the four things a newcomer needs: edit, Add, Check, Story.
+
+* Requirements that changed
+
+- 2026-11-10, default editor. Was: "Raw is the initial default" for the source
+  pane. Now: Markdown opens in Visual; Org opens in Raw. An explicit =editor=
+  option and a restored session still win. Reason: R11.
+- 2026-11-10, insert button. Was: the =+= toolbar button opened the same
+  keyboard completion list as typing =/=, at the cursor. Now: =Add= opens the
+  layout picker and chooses the position itself; the =/= list remains for the
+  keyboard. Reason: R7 (the list showed nothing with the cursor at the top of
+  the file, and listed keywords with raw source).
+- 2026-11-10, preview errors. Was: a failed render showed the renderer's
+  message in the notice bar and left the old preview in place. Now: the notice
+  restates it in slide words with =Show problems=, and the preview is marked as
+  the last version that worked. Reason: R8, R9.
+- 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
+  =Follow=. Behaviour unchanged.
