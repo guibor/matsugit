@@ -40,7 +40,8 @@ class PublicationTests(unittest.TestCase):
                 result = p.status(self.source, check=True)
             self.assertEqual(result['stage'], stage)
             self.assertEqual(result['pipeline_status'], state)
-            self.assertIn(self.sha, api.call_args[0][2])
+            # The pipeline is looked up by this revision (later optional lookups may follow).
+            self.assertTrue(any(self.sha in call[0][2] for call in api.call_args_list))
             self.assertNotIn('Private synthetic draft', str(api.call_args))
 
     def test_gitlab_matching_environment_deployment_can_verify_revision(self):

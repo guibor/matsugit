@@ -27,7 +27,11 @@ smaller claim, not another slide. Use H4 for body headings. `::: claim` is an
 alternative to H3, not an additional claim. One `takeaway` per slide is optional.
 
 A standalone `---` with blank lines around it continues the current title and
-claim on another slide. A new H2 changes the title. Do not use `---` as a
+claim on another slide. A new H2 changes the title. When a slide's content does
+not fit, split it with `---`; never repeat the heading as `## Title (continued)`,
+`## Title (cont.)` or similar. The renderer carries the title and claim over to
+the next slide by itself, and the storyline stays one slide per idea. Check
+flags a repeated "continued" title and offers to replace it with `---`. Do not use `---` as a
 decorative line within a slide. Keep frontmatter at the start of the file.
 
 `slide-title-page: false` suppresses the generated cover. An authored cover uses

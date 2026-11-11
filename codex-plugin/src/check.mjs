@@ -299,8 +299,22 @@ export function checkDeck(source, org = false) {
   // --- Tips: the deck works, these make it better --------------------------
   const hidden = line => { const block = enclosing(line.from); return !!block && (block.opaque || block.role === 'notes'); };
   const keepEmpty = settings['slide-empty-slides']?.value === 'true';
+  // "Title (continued)" repeats a slide by hand; a `---` line does it for you.
+  const CONTINUED = /\s*(?:[([]\s*(?:continued|cont(?:'d|d|\.)?)\s*[)\]]|[-:–—]\s*(?:continued|cont(?:'d|d|\.)?)|,?\s+continued|\s+cont(?:'d|d|\.))\s*$/i;
+  let previousTitle = null;
   for (const scope of scopes) {
-    if (scope.heading.level !== 2) continue;
+    if (scope.heading.level !== 2) { previousTitle = null; continue; }
+    const base = scope.heading.label.replace(CONTINUED, '').trim();
+    if (base !== scope.heading.label && previousTitle && base.toLowerCase() === previousTitle.toLowerCase()) {
+      const headingLine = lineOf(scope.heading.from), next = lines[headingLine.index + 1];
+      // A repeated claim straight under the heading goes too: the break carries the claim over.
+      const claimTo = next && /^ {0,3}###\s/.test(next.text) ? next.to : headingLine.to;
+      add('title-continued', 'tip', scope.heading.from,
+        `This slide repeats the title "${base}" with "continued". A \`---\` line does that: the slide keeps the title and claim of the one before.`,
+        'Replace this heading with a line containing only `---`.',
+        {label: 'Use a slide break', changes: [{from: headingLine.from, to: claimTo, insert: '---'}]});
+    }
+    previousTitle = base;
     const body = lines.filter(line => line.from >= scope.from && line.from < scope.to && !blank(line)
       && !enclosing(line.from)?.opaque && !blocks.some(block => block.opaque && (block.open === line.index || block.close === line.index)));
     if (arranged && !keepEmpty && !body.length) add('slide-empty', 'tip', scope.heading.from,

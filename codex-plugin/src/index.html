@@ -17,6 +17,7 @@
         <button id="more" title="More" aria-label="More" aria-haspopup="true" aria-expanded="false" aria-controls="more-panel"></button>
         <div id="more-panel" hidden>
           <label class="auto" title="Opt in to saving after typing stops. External changes may pause saving for review."><input id="autosave" type="checkbox">Save automatically</label>
+          <div id="more-published" hidden><span>Shared deck</span></div>
           <button id="open" title="Open Markdown file" aria-label="Open Markdown file" data-label="Open another file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
           <button id="recover" title="Recover workspaces" aria-label="Recover workspaces" data-label="Recover an earlier draft"></button>
           <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" data-label="Review changes made elsewhere" disabled></button>
@@ -121,6 +122,7 @@
   <ol id="share-steps" aria-label="What sharing does" hidden></ol>
   <p id="share-detail"></p>
   <label id="share-destination-row" hidden>Project<select id="share-destination"></select></label>
+  <ul id="share-links" aria-label="Open the shared deck" hidden></ul>
   <p id="share-link-row" hidden><a id="share-link" target="_blank" rel="noopener noreferrer"></a><button id="share-copy" type="button"></button></p>
   <div class="share-actions"><button id="share-go" class="delivery-primary" hidden></button><button id="share-later" type="button" hidden>Not now</button></div>
   <pre id="share-progress" role="status" aria-live="polite"></pre>

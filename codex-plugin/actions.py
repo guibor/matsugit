@@ -12,6 +12,19 @@ from matsugit.exports import export_file
 from matsugit.publish import publish
 
 
+def deployment_problem(error):
+    """Why the site build could not be started, in words a person can act on."""
+    text = str(error)
+    if 'Executable not found' in text:
+        tool = 'glab' if 'glab' in text else 'gh'
+        return (f'The site build could not be started from this computer: the {"GitLab" if tool == "glab" else "GitHub"} '
+                f'command-line tool ({tool}) is not installed. Start the build in the project\'s pipelines page, '
+                f'or install {tool} and log in once.')
+    if any(word in text.lower() for word in ('auth', 'login', '401', '403', 'token')):
+        return 'The site build could not be started: this computer is not logged in to the project. Start the build in the project\'s pipelines page, or log in once.'
+    return 'The site build could not be started: ' + text[-300:]
+
+
 def main(request):
     # A GUI worker cannot answer credential prompts; fail instead of hanging.
     os.environ['GIT_TERMINAL_PROMPT'] = '0'
@@ -69,6 +82,17 @@ def main(request):
             result['publication'] = record(source, described, result['revision'], environment)
         except (Error, OSError) as error:
             result['message'] += ' Could not save local push receipt: ' + str(error)
+            described = {}
+        # A project whose site build runs only on request gets that request, so
+        # "the site updates" holds. The push itself has already succeeded.
+        if request.get('deploy') and described.get('deployment') == 'ci' and described.get('project_url'):
+            try:
+                from matsugit.publish import request_deployment
+                target = config(source, {'command': 'publish', 'target': described['target']})
+                request_deployment(target, described['provider'], described['project_url'])
+                result['deployment_requested'] = True
+            except (Error, OSError, KeyError) as error:
+                result['deployment_error'] = deployment_problem(error)
         return result
     if action == 'options':
         data = preferences()
@@ -96,9 +120,26 @@ def main(request):
         return current
     if request.get('fingerprint') != current['fingerprint']:
         raise Error('Source or target changed since confirmation. Review a new publishing plan')
-    sha = publish(settings, confirmed=True, deploy=bool(request.get('deploy')))
+    # The push and the request to build the site are separate: a failed request
+    # must not report a push that already happened as a failure.
+    sha = publish(settings, confirmed=True, deploy=False)
+    deployment_error = None
+    if request.get('deploy'):
+        try:
+            from matsugit.publish import request_deployment
+            request_deployment(settings, current['provider'], current['project_url'])
+        except (Error, OSError) as error:
+            deployment_error = deployment_problem(error)
+    # Remember where the deck now lives, so its slides, document and source can be opened later.
+    from matsugit.links import describe
+    destination = current.get('destination') or str(Path(current['repo']) / current['directory'] / ('source.org' if source.suffix.lower() == '.org' else 'source.md'))
+    try:
+        current = dict(current, **describe(current['repo'], destination, {'ci_layout': current.get('ci_layout', 'native'),
+            'site_dir': settings.get('site_dir'), 'document_url': settings.get('document_url'), 'slides_url': settings.get('slides_url')}))
+    except (ValueError, OSError):
+        pass
     from matsugit.publication import record
-    result = {'revision': sha, 'project_url': current['project_url'], 'site_url': current['site_url'],
+    result = {'revision': sha, 'project_url': current['project_url'], 'site_url': current['site_url'], 'deployment_error': deployment_error,
             'status': 'Pushed. Verify CI and site access before sharing; deployment is not yet verified.'}
     if not current.get('source_sha256'):
         # In-place and moved sources: the receipt must still say which text was sent,

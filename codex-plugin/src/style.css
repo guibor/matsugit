@@ -465,3 +465,11 @@ footer{justify-content:flex-end}
   #app:has(#workspace:is([data-layout=split],[data-layout=render])) .check-actions{grid-column:1;grid-row:auto;justify-content:flex-start;margin-top:4px}
 }
 #source-pane[data-mode=visual] .cm-activeLineGutter{background:transparent!important}
+/* Shared deck links: one row each, open and copy. */
+#share-links{list-style:none;margin:10px 0 4px;padding:0;display:grid;gap:6px}#share-links[hidden]{display:none}
+#share-links li{display:flex;gap:6px;align-items:stretch}
+.share-open{flex:1;display:flex;align-items:baseline;gap:8px;text-align:left;border:1px solid var(--border);border-radius:8px;padding:7px 11px;min-width:0}
+.share-open:hover{border-color:var(--accent);background:var(--muted-bg)}.share-open strong{font-size:13px}.share-open span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-copy-link{flex:none;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:12px}
+#more-published{display:grid;gap:2px;padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid var(--border)}#more-published[hidden]{display:none}
+#more-published>span{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px 2px}

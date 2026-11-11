@@ -69,6 +69,10 @@ assume that the file contains all of their current typing.
   require review. If the author reports
   a "Changed elsewhere" review, wait for them to finish it before editing again.
 
+When asked where a shared deck is, or for its link, call the `matsugit_links`
+tool with the file's path and give the slides, document and source links it
+returns; say if the site state is unknown or the build failed.
+
 ## Authors who do not read Markdown
 
 Many authors know PowerPoint, not Markdown. Unless they use syntax themselves:
@@ -140,6 +144,8 @@ long titles, tables, media, source notes and narrow viewports. Optional
 `matsugit lint deck.md --rendered /tmp/deck-preview --strict` needs Playwright
 and Chromium. Lint is not proof of factual accuracy or perfect typography.
 
+Split a slide that does not fit with a `---` line, which repeats its title and
+claim automatically; never write a second heading such as "Title (continued)".
 Fix crowded slides by splitting or simplifying with the author, not by silently
 deleting content, shrinking everything, or hiding overflow. Media should retain
 aspect ratio; never crop evidence to make it fit. Handouts include presenter

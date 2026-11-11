@@ -61,6 +61,7 @@ if(message.method==='ui/update-model-context') {
   if (${cursorHost}) document.getElementById('chat-prompt').focus();
 }
 if(message.method==='ui/request-display-mode') window.displayRequests.push(message.params.mode);
+if(message.method==='ui/open-link'){(window.openedLinks ||= []).push(message.params.url);e.source.postMessage({jsonrpc:'2.0',id:message.id,result:{}},'*');return;}
 if(message.method==='ui/notifications/initialized'){
 const result=await(await fetch(location.search.includes('file')?'/file-result':location.search.includes('untitled')?'/untitled-result':'/result')).json();
 e.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:result},'*');return;}

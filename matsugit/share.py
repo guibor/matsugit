@@ -28,7 +28,10 @@ def receipt_plan(result):
     """Describe a Git push so its site build can be looked up afterwards."""
     name, profile = target_for(result['repo'])
     label, url = project(result['repo'], profile.get('remote', 'origin'))
-    return {'branch': result['branch'], 'target': name or result['repo'], 'source_sha256': result['etag'],
+    from .links import describe
+    where = describe(result['repo'], result['source'], profile) if result.get('source') else {}
+    return {**where, 'deployment': profile.get('deployment'),
+            'branch': result['branch'], 'target': name or result['repo'], 'source_sha256': result['etag'],
             'build': 'ci' if name else 'git', 'project_url': url if name else None,
             'provider': (profile.get('provider') or ('github' if (url or '').startswith('https://github.com/') else 'gitlab')) if name else None,
             'site_url': profile.get('site_url')}, profile.get('deployment_environment')
@@ -57,5 +60,5 @@ def status(source):
     name, profile = target_for(repo, profiles)
     label, url = project(repo, profile.get('remote', 'origin'))
     result.update(mode='sync', repo=str(repo), branch=info['branch'], target=name, label=label or repo.name,
-                  project_url=url, site_url=profile.get('site_url'))
+                  project_url=url, site_url=profile.get('site_url'), deployment=profile.get('deployment'))
     return result

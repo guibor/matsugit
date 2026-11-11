@@ -51,6 +51,7 @@ Three surfaces sit on top:
 | `publish.py`, `canonical.py`, `targets.py`, `repositories.py`, `publication.py` | Reviewed Git publication | `publish()`, `setup_ci()`, `plan()` |
 | `git_sync.py`, `git_exchange.py`, `adopt.py` | Pull, reviewed push, moving a source into a checkout | `sync()`, `plan()`, `exchange()` |
 | `cursor.py`, `skill_install.py` | Cursor setup | `install()` writes the MCP entry, links the skill, copies every file in `cursor-commands/` |
+| `links.py` | Where a shared deck can be opened | `links()` builds slides, document, source and edit URLs from a push receipt; `build_step()` reads a build log; `describe()` records what links need |
 | `share.py` | Local facts for the Share button | `status()`, `receipt_plan()`, `target_for()` |
 | `updates.py` | Versioned renderer bundles for CI checkouts | `manage()` |
 | `table_editor.py` | Standalone visual table editor | `serve()` |

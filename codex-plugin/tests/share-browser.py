@@ -86,10 +86,17 @@ try:
         page.screenshot(path=str(shots / 'share-ready.png'))
         frame.locator('#share-go').click()
         settled('Sent')
-        # No provider login exists for this synthetic host: say so, never claim "Live".
-        wait(frame, 'document.getElementById("share-detail").textContent.includes("cannot see the site build")', 60)
-        assert title() == 'Sent'
-        assert frame.locator('#share-link').get_attribute('href') == 'https://git.example.invalid/team/docs'
+        # This project builds its site only on request, and this machine has no glab:
+        # the push still counts as sent, and the reason the site will not update is plain.
+        assert title() == 'Sent, but the site was not asked to update', title()
+        assert 'glab' in detail() and 'pipelines page' in detail() and 'Executable not found' not in detail()
+        # Every place the deck can be opened: slides and document on the site, source in the project.
+        # Until the site updates, only the source is offered; it already shows the new version.
+        links = {row.get_attribute('data-link'): row.get_attribute('title') for row in frame.locator('#share-links .share-open').all()}
+        assert links == {'source': 'https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md'}, links
+        frame.locator('#share-links .share-open[data-link="source"]').click()
+        page.wait_for_function('(window.openedLinks || []).length === 1', timeout=5000)
+        assert page.evaluate('window.openedLinks') == ['https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md']
         assert Path(info['source']).is_symlink() and 'first version' in Path(info['destination']).read_text()
         assert 'first version' in git(root / 'remotes/team/docs.git', 'show', 'main:matsugit-site/deck/source.md')
         assert frame.evaluate('matsugitWorkspace.state.path') == info['destination']
@@ -97,6 +104,15 @@ try:
         page.screenshot(path=str(shots / 'share-sent.png'))
         frame.locator('#share-close').click()
         wait(frame, 'document.getElementById("share").textContent.trim() === "Sent"', 20)
+        # The same links stay one click away in the "..." menu.
+        # All three are one click away in the "..." menu.
+        frame.locator('#more').click()
+        assert [b.get_attribute('data-link') for b in frame.locator('#more-published button').all()] == ['slides', 'document', 'source']
+        assert frame.locator('#more-published button[data-link="slides"]').get_attribute('title') == 'https://team.example.invalid/docs/deck/slides.html'
+        assert frame.locator('#more-published button[data-link="document"]').get_attribute('title') == 'https://team.example.invalid/docs/deck/index.html'
+        frame.locator('#more-published button[data-link="source"]').click()
+        page.wait_for_function('window.openedLinks.length === 2', timeout=5000)
+        assert page.evaluate('window.openedLinks').pop() == 'https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md'
 
         # Later changes: one check, one confirmation.
         edit('first version', 'second version')

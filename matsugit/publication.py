@@ -40,11 +40,13 @@ def record(source, plan, revision, environment=None):
     if not re.fullmatch(r'[0-9a-f]{40,64}', revision or ''):
         raise Error('Publication did not return a commit revision')
     value = {key:plan.get(key) for key in ('provider', 'project_url', 'site_url', 'branch',
-             'target', 'source_sha256', 'theme', 'build')}
+             'target', 'source_sha256', 'theme', 'build', 'source_path', 'ci_layout', 'site_dir',
+             'document_url', 'slides_url', 'deployment')}
     value.update(version=1, revision=revision, pushed_at=now(), stage='pushed',
                  environment=environment, detail='Pushed; deployment has not been verified.')
     store(source, value)
-    return value
+    from .links import links
+    return {**value, 'links': links(value)}
 
 
 def safe_url(value):
@@ -68,16 +70,22 @@ def status(source, check=False):
             value.pop(key, None)
         try:
             inspect(value)
+            details(value)
         except (Error, ValueError, KeyError, TypeError) as error:
             value['check_error'] = str(error)
             value['detail'] = 'Pushed; provider status unavailable. No login or permission change was attempted.'
         if value['stage'] != 'published':
             value['stage'] = pipeline_stage(value.get('pipeline_status'))
+        if value['stage'] != 'building':
+            value.pop('build_step', None)
         # Do not replace a newer push that finished while the provider was queried.
         current = json.loads(path.read_text())
         if (current.get('revision'), current.get('pushed_at')) != (value['revision'], value['pushed_at']):
-            return current
+            from .links import links
+            return {**current, 'links': links(current)}
         store(source, value)
+    from .links import links
+    value['links'] = links(value)
     return value
 
 
@@ -121,6 +129,7 @@ def inspect(value):
         if runs:
             run = runs[0]
             value.update(pipeline_url=safe_url(run.get('web_url')), pipeline_status=run.get('status'))
+            value['pipeline_id'] = run.get('id')
         # GitLab Pages metadata has no commit SHA. A green pipeline alone is
         # insufficient, especially when documents and slides deploy separately.
         environment = value.get('environment')
@@ -136,6 +145,40 @@ def inspect(value):
     pipeline = value.get('pipeline_status')
     value['detail'] = f'Pushed; pipeline {pipeline}. Deployment not verified.' if pipeline else 'Pushed; no matching pipeline or verified deployment found.'
     value['stage'] = pipeline_stage(pipeline)
+
+
+def details(value):
+    """Optional extras after the main check: the site's address when the target
+    does not configure one, and how far a running GitLab build has got. Any
+    failure here leaves the main result untouched."""
+    try:
+        parsed = urlsplit(value['project_url'])
+        provider, host, project = value['provider'], parsed.hostname, parsed.path.strip('/')
+        endpoint = 'repos/' + project if provider == 'github' else 'projects/' + quote(project, safe='')
+        if not value.get('site_url'):
+            pages = api(provider, host, endpoint + '/pages')
+            value['site_url'] = safe_url(pages.get('url' if provider == 'gitlab' else 'html_url'))
+        if provider == 'gitlab' and value.get('pipeline_status') in ('running', 'pending') and value.get('pipeline_id'):
+            value['build_step'] = gitlab_step(provider, host, endpoint, {'id': value['pipeline_id']})
+    except Exception:
+        pass
+
+
+def gitlab_step(provider, host, endpoint, run):
+    """How far a running GitLab pipeline has got, read from its running job's log."""
+    from .links import build_step
+    from .repositories import command
+    try:
+        jobs = api(provider, host, endpoint + f"/pipelines/{int(run['id'])}/jobs?per_page=50")
+        running = [job for job in jobs if job.get('status') == 'running']
+        if not running:
+            return 'waiting' if any(job.get('status') in ('pending', 'created') for job in jobs) else None
+        if running[0].get('stage') == 'deploy' or running[0].get('name') == 'pages:deploy':
+            return 'publishing'
+        log = command(['glab', 'api', '--hostname', host, endpoint + f"/jobs/{int(running[0]['id'])}/trace"])
+        return build_step(log) or 'starting'
+    except (Error, ValueError, KeyError, TypeError):
+        return None
 
 
 def pipeline_stage(status):

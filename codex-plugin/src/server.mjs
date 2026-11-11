@@ -33,7 +33,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.30.1'});
+  const server = new McpServer({name: 'matsugit', version: '0.31.0'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -93,6 +93,16 @@ serveStdio(() => {
       const findings = checkDeck(source, target ? target.toLowerCase().endsWith('.org') : format === 'org')
         .map(({from, fix, ...finding}) => ({...finding, ...(fix ? {suggestedFix: fix.label} : {})}));
       return result({...checkSummary(findings), findings});
+    }));
+  server.registerTool('matsugit_links', {title: 'Where is this deck shared',
+    description: 'For a Markdown/Org deck shared from this computer with matsugit, return the links to its slides and reading document on the project site and to its source on GitLab/GitHub, plus the last known site build state. Use when the user asks where a deck is published or wants to open it. Read-only and local: no network, no login; the state is as of the last check.',
+    inputSchema: z.object({path: z.string()}), annotations: readOnly},
+    guard(async ({path: file}) => {
+      const receipt = await store.links(file);
+      const {links = {}} = receipt;
+      return result({shared: receipt.stage !== 'local', links,
+        state: ({published: 'live', building: 'building', failed: 'build failed', pushed: 'sent, site state unknown', local: 'not shared from this computer'})[receipt.stage] || receipt.stage,
+        checked_at: receipt.checked_at || null, pushed_at: receipt.pushed_at || null});
     }));
   server.registerTool('matsugit_read', {description: 'Refresh the document already opened in this workspace.', ...appOnly,
     inputSchema: z.object({session: z.string()}), annotations: readOnly},

@@ -165,3 +165,21 @@ print(json.dumps(out))`;
   cases.forEach((item, index) => assert.equal(results[index], item.renderer, `${item.code}: ${JSON.stringify(item.source)}`));
   accepted.forEach((source, index) => assert.equal(results[cases.length + index], 'accepts', JSON.stringify(source)));
 });
+
+test('a slide titled "continued" becomes a break that carries the title and claim over', () => {
+  for (const suffix of [' (continued)', ' (cont.)', ' - continued', ', continued', " (cont'd)", ' Continued']) {
+    const source = H + '## Rollout plan\n### Validate each stage\n\nFirst part.\n\n## Rollout plan' + suffix + '\n### Validate each stage\n\nSecond part.\n';
+    const finding = checkDeck(source).find(item => item.code === 'title-continued');
+    assert.ok(finding, suffix);
+    assert.equal(finding.severity, 'tip');
+    const fixed = applyFix(source, finding.fix);
+    assert.equal(fixed, H + '## Rollout plan\n### Validate each stage\n\nFirst part.\n\n---\n\nSecond part.\n', suffix);
+    assert.deepEqual(checkDeck(fixed), []);
+  }
+  // Without a repeated claim only the heading is replaced; unrelated titles are left alone.
+  const plain = H + '## Plan\n\nA.\n\n## Plan (continued)\n\nB.\n';
+  assert.equal(applyFix(plain, checkDeck(plain).find(item => item.code === 'title-continued').fix), H + '## Plan\n\nA.\n\n---\n\nB.\n');
+  for (const source of [H + '## Plan\n\nA.\n\n## Continued growth\n\nB.\n', H + '## Plan\n\nA.\n\n## Other (continued)\n\nB.\n',
+    H + '# One\n\n## Plan\n\nA.\n\n# Two\n\n## Plan (continued)\n\nB.\n'])
+    assert.ok(!checkDeck(source).some(item => item.code === 'title-continued'), source);
+});

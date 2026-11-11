@@ -1211,7 +1211,9 @@ publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pen
 const delivering = delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
   hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
 sharing = share({call, state, text, dirty: () => dirty() || tables.pending(), save: () => save({review: false}), ...delivering,
-  mergeReview, publication, reload, notice, demo});
+  mergeReview, publication, reload, notice, demo,
+  // Links open in the person's browser through the host when it can; a plain new tab otherwise.
+  openLink: url => app.getHostCapabilities()?.openLinks ? app.openLink({url}).catch(() => window.open(url, '_blank', 'noopener')) : window.open(url, '_blank', 'noopener')});
 publication.update();
 $('insert').onclick = () => layouts.open();
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);

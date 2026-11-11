@@ -38,7 +38,7 @@ def create(root):
     source.write_text('---\ntitle: Pilot\nslide-layout: structured\n---\n\n## One claim\n\nEvidence.\n')
     config_file = root / 'config.json'
     config_file.write_text(json.dumps({'default_publish_target': 'docs', 'publish_targets': {
-        'docs': {'repo': str(repo), 'build': 'ci', 'provider': 'gitlab'}}}))
+        'docs': {'repo': str(repo), 'build': 'ci', 'provider': 'gitlab', 'site_url': 'https://team.example.invalid/docs'}}}))
     os.environ.update(MATSUGIT_CONFIG=str(config_file), GIT_SSH_COMMAND=str(ssh))
     from matsugit.core import config
     from matsugit.publish import setup_ci

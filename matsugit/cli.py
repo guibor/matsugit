@@ -31,7 +31,8 @@ def main(argv=None):
     targets = commands.add_parser('target', help='Configure named publishing checkouts without publishing')
     targets.add_argument('action', choices=['list', 'set', 'default'])
     targets.add_argument('name', nargs='?')
-    for flag in ('repo', 'provider', 'branch', 'remote', 'site-dir', 'site-url', 'theme', 'expected-remote', 'deployment', 'build', 'ci-layout', 'source-dir'):
+    for flag in ('repo', 'provider', 'branch', 'remote', 'site-dir', 'site-url', 'theme', 'expected-remote', 'deployment', 'build', 'ci-layout', 'source-dir',
+                 'document-url', 'slides-url'):
         targets.add_argument('--' + flag)
     targets.add_argument('--default', action='store_true')
     targets.add_argument('--json', action='store_true')

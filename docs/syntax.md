@@ -260,6 +260,11 @@ Second group of evidence, with the same title and claim.
 New content.
 ```
 
+There is no need to write "(continued)": the second slide shows the same title
+and claim by itself, and Story still lists it as one idea. A heading such as
+`## Rollout plan (continued)` is flagged by Check, which offers to turn it into
+a `---` break.
+
 Use blank lines before and after `---`, otherwise Markdown may treat it as an
 underline-style heading. A break repeats the current title and claim; a new H3
 immediately after the break can replace the claim. Use H2 to change the title.

@@ -126,6 +126,23 @@ export class WorkspaceStore {
     if (hostPath) return checkedPath(hostPath);
     return null;
   }
+  // Where a deck that was shared from this computer can be opened. Reads the
+  // local push receipt only; no network, no login.
+  links(file) {
+    const target = checkedPath(file);
+    const root = typeof this.root === 'function' ? this.root() : this.root;
+    return new Promise((resolve, reject) => {
+      const child = execFile(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
+        [path.join(root, 'codex-plugin/actions.py')],
+        {cwd: os.tmpdir(), env: {...process.env, PWD: os.tmpdir()}, timeout: 15000, maxBuffer: 262144},
+        (error, stdout, stderr) => {
+          if (error) { reject(Error(stderr.trim() || 'Could not read where this deck was shared')); return; }
+          try { resolve(JSON.parse(stdout)); } catch { reject(Error('Invalid sharing record')); }
+        });
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify({action: 'publication-status', path: target, check: false}));
+    });
+  }
   themes(session, hostPath) {
     const owner = this.owner(session, hostPath);
     if (this.themeRequests.size >= 4) throw Error('Theme discovery busy; try again shortly');
