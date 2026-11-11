@@ -331,6 +331,11 @@ const connectedCall = sessionConnection({request:rawCall,
     state.bases = {}; state.forceFull = true;
     if (noticeMessage.includes('Workspace expired')) notice();
     scheduleRecovery();
+    // A read-only preview may have failed before the polling read reconnected.
+    // Restart it once after a confirmed new session, even with Auto disabled.
+    if (state.renderError && !state.rendering) {
+      clearTimeout(debounce); debounce = setTimeout(() => render(), 0);
+    }
   }});
 async function call(name, args) { return connectedCall(name, args); }
 function refreshControls() {
@@ -621,6 +626,12 @@ async function render(manual = true) {
     }
   } catch (error) {
     if (current()) {
+      if (session && state.session !== session) {
+        // The old backend's render job is gone. Rebuild the same snapshot;
+        // never retry an export or publication through this preview path.
+        state.forceFull = true; state.pendingRender = true;
+        return;
+      }
 // Say it in slide words, keep the last good preview visibly marked as old,
       // and point at the list that explains where the problem is.
       state.renderError = error.message;

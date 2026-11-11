@@ -86,7 +86,8 @@ cd matsugit
 python3 -m matsugit setup-cursor
 #+end_src
 For an existing checkout, enter that directory and run the last command.
-Enable the matsugit server in Cursor's MCP settings and start a new chat.
+Enable the matsugit server in Cursor's MCP settings. Keep your existing chat;
+start a new one only if the newly installed tools are not available there.
 
 *Codex.*
 #+begin_src sh

@@ -203,7 +203,7 @@ Use the same interactive workspace, skill and slash commands with Cursor MCP App
 #+begin_src sh
 matsugit setup-cursor
 #+end_src
-Enable the matsugit MCP server, start a new chat and ask =/matsugit-slides= to open
+Enable the matsugit MCP server and ask =/matsugit-slides= in your chat to open
 your document, =/matsugit-new= to make a deck from notes, =/matsugit-check= to
 hear what is wrong with one, or =/matsugit-help= for what to ask. The installer needs a matsugit checkout with its bundled workspace;
 existing launchers already point there. Other MCP settings and custom commands

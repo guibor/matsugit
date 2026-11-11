@@ -97,4 +97,5 @@ def install(checkout=None, *, home=None, check=False):
             atomic(path, body)
     backup_message = f' Previous skill retained at {skill_backup}.' if skill_backup else ''
     return (f'Cursor matsugit configured: {config_path}. Skill follows {skill}.' + backup_message
-            + ' Enable/reload its MCP server and open a new chat. No documents published.')
+            + ' Enable/reload its MCP server. Save drafts, then reopen the document panel in your existing chat.'
+            + ' Start a new chat only if tools remain unavailable. No documents published.')

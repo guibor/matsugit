@@ -19,7 +19,7 @@ SNAPSHOT = r'''() => {
   const open = [...document.querySelectorAll('dialog')].filter(d => d.open).map(d => d.id);
   const pressed = [...document.querySelectorAll('[aria-pressed],[aria-expanded]')].map(b => (b.id || b.dataset.layout || b.dataset.format || b.dataset.editor || b.dataset.storyMode || b.dataset.storySize || b.dataset.depth || '') + '=' + (b.getAttribute('aria-pressed') ?? b.getAttribute('aria-expanded')));
   const visible = id => $(id) && !$(id).hidden && getComputedStyle($(id)).display !== 'none';
-  return JSON.stringify({open, pressed, layout: s.layout, format: s.format, mode: s.editorMode, presenting: document.body.classList.contains('presenting'),
+  return JSON.stringify({open, pressed, layout: s.layout, format: s.format, mode: s.editorMode, theme: $('theme').value, presenting: document.body.classList.contains('presenting'),
     text: w.editor.state.doc.toString(), selection: w.editor.state.selection.main.head, scroll: Math.round(w.editor.scrollDOM.scrollTop),
     notice: $('notice-text').textContent, feedback: visible('action-feedback') ? $('action-feedback').textContent : '', status: $('status').textContent,
     panels: ['check-panel', 'more-panel', 'role-help', 'story-preview', 'recovery-banner'].map(id => id + ':' + visible(id)).join(','),

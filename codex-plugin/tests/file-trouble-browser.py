@@ -90,6 +90,21 @@ def read_only(source, open_page):
     assert source.read_text().endswith('Typed into a read-only file.')
 
 
+def restart_preview(source, open_page):
+    page, frame = open_page()
+    wait(frame, '!!matsugitWorkspace.state.rendered && !matsugitWorkspace.state.rendering', 120)
+    original = source.read_text()
+    type_at_end(page, frame, '\nPreview survives a backend restart.')
+    frame.evaluate('matsugitWorkspace.state.forceFull = true; matsugitWorkspace.render(); null')
+    wait(frame, 'matsugitWorkspace.state.rendering && document.getElementById("status").textContent !== "Preparing preview"')
+    response = page.request.post(page.url + 'restart')
+    assert response.ok
+    wait(frame, '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision', 120)
+    assert frame.evaluate('matsugitWorkspace.state.renderError') is None
+    assert 'Preview survives' in frame.evaluate('matsugitWorkspace.state.rendered[matsugitWorkspace.state.format]')
+    assert source.read_text() == original
+
+
 def deleted(source, open_page):
     page, frame = open_page()
     type_at_end(page, frame, '\nSaved before the file vanished.')
@@ -164,6 +179,7 @@ def two_windows(source, open_page):
 if __name__ == '__main__':
     session(False, restart)
     session(True, restart)
+    session(False, restart_preview)
     session(True, read_only)
     session(False, deleted)
     session(True, moved)

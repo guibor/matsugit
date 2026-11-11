@@ -28,8 +28,9 @@ From 0.26 three commands start from a goal instead of a tool:
 Rerun `matsugit setup-cursor` after updating to install them.
 
 Other servers/settings are preserved; conflicting custom commands or skills are
-refused, not replaced. Enable/reload the matsugit MCP server in Cursor and start
-a new chat. Ask `/matsugit-slides Open /absolute/path/deck.md`. Present, split
+refused, not replaced. Enable/reload the matsugit MCP server in Cursor, then
+ask `/matsugit-slides Open /absolute/path/deck.md` in your existing chat. Start a
+new chat only if tools remain unavailable after reloading. Present, split
 editing, downloads and reviewed source-to-CI publication use the same runtime as
 Codex. `/matsugit-publish` prepares a plan; it does not grant push approval.
 
