@@ -79,8 +79,7 @@ def main(request):
             # A push into a configured project carries what a later site check needs.
             from matsugit.share import receipt_plan
             described, environment = receipt_plan(result)
-            result['publication'] = record(source, described, result['revision'], environment)
-        except (Error, OSError) as error:
+        except (Error, OSError, ValueError) as error:
             result['message'] += ' Could not save local push receipt: ' + str(error)
             described = {}
         # A project whose site build runs only on request gets that request, so
@@ -93,6 +92,12 @@ def main(request):
                 result['deployment_requested'] = True
             except (Error, OSError, KeyError) as error:
                 result['deployment_error'] = deployment_problem(error)
+        if described:
+            try:
+                described['deployment_error'] = result.get('deployment_error')
+                result['publication'] = record(source, described, result['revision'], environment)
+            except (Error, OSError, ValueError) as error:
+                result['message'] += ' Could not save local push receipt: ' + str(error)
         return result
     if action == 'options':
         data = preferences()
@@ -139,6 +144,7 @@ def main(request):
     except (ValueError, OSError):
         pass
     from matsugit.publication import record
+    current['deployment_error'] = deployment_error
     result = {'revision': sha, 'project_url': current['project_url'], 'site_url': current['site_url'], 'deployment_error': deployment_error,
             'status': 'Pushed. Verify CI and site access before sharing; deployment is not yet verified.'}
     if not current.get('source_sha256'):

@@ -183,3 +183,19 @@ test('a slide titled "continued" becomes a break that carries the title and clai
     H + '# One\n\n## Plan\n\nA.\n\n# Two\n\n## Plan (continued)\n\nB.\n'])
     assert.ok(!checkDeck(source).some(item => item.code === 'title-continued'), source);
 });
+
+test('continuation fixes preserve changed claims, spacing and slide attributes', () => {
+  for (const newline of ['\n', '\r\n']) {
+    const source = (H + '## Plan\n### First claim\n\nFirst body.\n## Plan (continued)\n### Different claim\n\nSecond body.\n').replaceAll('\n', newline);
+    const finding = checkDeck(source).find(item => item.code === 'title-continued');
+    const fixed = applyFix(source, finding.fix);
+    assert.equal(fixed, (H + '## Plan\n### First claim\n\nFirst body.\n\n---\n\n### Different claim\n\nSecond body.\n').replaceAll('\n', newline));
+    assert.deepEqual(checkDeck(fixed), []);
+  }
+  for (const heading of ['## Plan (continued) {.quote}', 'Plan (continued)\n----------------']) {
+    const source = H + '## Plan\n\nFirst body.\n\n' + heading + '\n\nSecond body.\n';
+    assert.ok(!checkDeck(source).some(item => item.code === 'title-continued'));
+  }
+  assert.ok(!checkDeck('## Plan\n\nA\n\n## Plan (continued)\n\nB\n').some(item => item.code === 'title-continued'));
+  assert.ok(!checkDeck(H + '## Plan {.quote}\n\nA\n\n## Plan (continued)\n\nB\n').some(item => item.code === 'title-continued'));
+});

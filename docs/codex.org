@@ -661,9 +661,10 @@ under =...= > =Shared deck=.
 
 *While the site rebuilds*, Share says how far the build has got when GitLab lets
 it see the running job: waiting to start, building the document, building the
-slides, publishing. The document and the slides still go live together: GitLab
-and GitHub Pages publish a site in one piece, so the faster document cannot be
-shown before the slides finish without a second site.
+slides, publishing. The project's CI controls the build order and deployment
+boundaries. The default native template publishes both outputs in one site
+artifact; other pipelines can deploy documents independently. An app update
+does not change that CI policy or make document publication depend on slides.
 
 *Projects that build only on request.* matsugit's own GitLab and GitHub CI
 templates build the site only when asked. Share now asks (that is what "Share

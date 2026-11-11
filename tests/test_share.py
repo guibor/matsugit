@@ -46,6 +46,7 @@ class ShareStatusTests(unittest.TestCase):
         data = share.status(self.repo / 'deck.md')
         self.assertEqual((data['mode'], data['target'], data['label'], data['site_url']),
                          ('sync', 'docs', 'team/docs', 'https://team.example.invalid/docs'))
+        self.assertEqual(data['deployment'], 'ci')
         link = self.root / 'link.md'; link.symlink_to(self.repo / 'deck.md')
         self.assertEqual(share.status(link)['mode'], 'sync')
         (self.repo / 'draft.md').write_text('# Draft\n')
@@ -56,9 +57,19 @@ class ShareStatusTests(unittest.TestCase):
         self.assertEqual((described['provider'], described['project_url'], described['build'], described['site_url']),
                          ('gitlab', 'https://git.example.invalid/team/docs', 'ci', 'https://team.example.invalid/docs'))
         self.assertIsNone(environment)
+        self.assertEqual(described['deployment'], 'ci')
         other = self.root / 'notes-repo'; other.mkdir(); git(other, 'init', '-b', 'main')
         described, _ = share.receipt_plan({'repo': str(other), 'branch': 'main', 'etag': 'a' * 64})
         self.assertEqual((described['provider'], described['project_url'], described['build']), (None, None, 'git'))
+        self.assertIsNone(described['deployment'])
+
+    def test_explicit_push_policy_is_not_overridden_by_the_ci_default(self):
+        config = json.loads(self.config.read_text())
+        config['publish_targets']['docs']['deployment'] = 'push'
+        self.config.write_text(json.dumps(config))
+        self.assertEqual(share.status(self.repo / 'deck.md')['deployment'], 'push')
+        described, _ = share.receipt_plan({'repo': str(self.repo), 'branch': 'main', 'etag': 'a' * 64})
+        self.assertEqual(described['deployment'], 'push')
 
 
 if __name__ == '__main__':

@@ -41,7 +41,7 @@ def record(source, plan, revision, environment=None):
         raise Error('Publication did not return a commit revision')
     value = {key:plan.get(key) for key in ('provider', 'project_url', 'site_url', 'branch',
              'target', 'source_sha256', 'theme', 'build', 'source_path', 'ci_layout', 'site_dir',
-             'document_url', 'slides_url', 'deployment')}
+             'document_url', 'slides_url', 'deployment', 'deployment_error')}
     value.update(version=1, revision=revision, pushed_at=now(), stage='pushed',
                  environment=environment, detail='Pushed; deployment has not been verified.')
     store(source, value)
@@ -66,7 +66,7 @@ def status(source, check=False):
     if check:
         # A cached success is not current evidence after a failed refresh.
         value.update(stage='pushed', checked_at=now(), detail='Deployment not verified.')
-        for key in ('deployed_revision', 'pipeline_url', 'pipeline_status', 'check_error'):
+        for key in ('deployed_revision', 'pipeline_url', 'pipeline_status', 'pipeline_id', 'build_step', 'check_error'):
             value.pop(key, None)
         try:
             inspect(value)
@@ -78,6 +78,8 @@ def status(source, check=False):
             value['stage'] = pipeline_stage(value.get('pipeline_status'))
         if value['stage'] != 'building':
             value.pop('build_step', None)
+        if value.get('pipeline_status') or value['stage'] == 'published':
+            value.pop('deployment_error', None)
         # Do not replace a newer push that finished while the provider was queried.
         current = json.loads(path.read_text())
         if (current.get('revision'), current.get('pushed_at')) != (value['revision'], value['pushed_at']):

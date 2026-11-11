@@ -37,9 +37,21 @@ class LinkTests(unittest.TestCase):
         self.assertNotIn('slides', links({**topics, 'slides_url': '{unknown}/x'}))
 
     def test_only_plain_https_addresses_are_offered(self):
-        for bad in ('http://team.example.invalid', 'https://user:secret@team.example.invalid', 'javascript:alert(1)'):
+        for bad in ('http://team.example.invalid', 'https://user:secret@team.example.invalid', 'javascript:alert(1)',
+                    'https://[broken', 'https://team.example.invalid/a b', 'https://team.example.invalid/\n', 42):
             self.assertNotIn('site', links(self.receipt(site_url=bad)))
         self.assertEqual(links({}), {})
+
+    def test_url_components_are_encoded_without_changing_path_separators(self):
+        receipt = self.receipt(source_path='matsugit-site/Road #1?/source.md', branch='review/new deck')
+        result = links(receipt)
+        self.assertEqual(result['slides'], 'https://team.example.invalid/docs/Road%20%231%3F/slides.html')
+        self.assertIn('/blob/review%2Fnew%20deck/matsugit-site/Road%20%231%3F/source.md', result['source'])
+        result = links({**receipt, 'ci_layout': 'topics', 'slides_url': '{site}/{slug}/{name}.html',
+                        'document_url': '{site}/{dir}/index.html'})
+        self.assertEqual(result['slides'], 'https://team.example.invalid/docs/Road%20%231%3F/source.html')
+        self.assertEqual(result['document'], 'https://team.example.invalid/docs/matsugit-site/Road%20%231%3F/index.html')
+        self.assertNotIn('slides', links({**receipt, 'slides_url': 42}))
 
     def test_build_progress_is_read_from_the_log(self):
         self.assertIsNone(build_step('Preparing environment\nsetup done\n'))

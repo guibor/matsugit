@@ -80,6 +80,25 @@ class PublicationTests(unittest.TestCase):
         with patch.object(p,'api',side_effect=query):
             self.assertEqual(p.status(self.source,check=True)['revision'],'b'*40)
 
+    def test_failed_build_request_survives_reopen_until_pipeline_is_observed(self):
+        self.record(deployment_error='The build tool is not installed.')
+        self.assertEqual(p.status(self.source)['deployment_error'], 'The build tool is not installed.')
+        with patch.object(p, 'api', side_effect=Error('No existing login')):
+            self.assertIn('deployment_error', p.status(self.source, check=True))
+        with patch.object(p, 'api', return_value=[{'sha': self.sha, 'ref': 'main', 'status': 'running'}]):
+            result = p.status(self.source, check=True)
+        self.assertEqual(result['stage'], 'building')
+        self.assertNotIn('deployment_error', result)
+
+    def test_failed_refresh_does_not_reuse_old_build_progress(self):
+        value = self.record()
+        value.update(stage='building', pipeline_id=3, build_step='slides')
+        p.store(self.source, value)
+        with patch.object(p, 'api', side_effect=Error('No existing login')):
+            result = p.status(self.source, check=True)
+        self.assertNotIn('pipeline_id', result)
+        self.assertNotIn('build_step', result)
+
     def test_unsafe_links_and_corrupt_receipts_fail_closed(self):
         self.assertIsNone(p.safe_url('javascript:alert(1)'))
         self.assertIsNone(p.safe_url('https://user:password@example.invalid/'))

@@ -104,6 +104,10 @@ try:
         page.screenshot(path=str(shots / 'share-sent.png'))
         frame.locator('#share-close').click()
         wait(frame, 'document.getElementById("share").textContent.trim() === "Sent"', 20)
+        frame.locator('#share').click()
+        settled('Sent, but the site was not asked to update')
+        assert 'glab' in detail()
+        frame.locator('#share-close').click()
         # The same links stay one click away in the "..." menu.
         # All three are one click away in the "..." menu.
         frame.locator('#more').click()
@@ -125,6 +129,7 @@ try:
         frame.locator('#share-go').click()
         settled('Sent')
         assert 'second version' in git(root / 'remotes/team/docs.git', 'show', 'main:matsugit-site/deck/source.md')
+        assert title() == 'Sent, but the site was not asked to update'
         frame.locator('#share-close').click()
 
         # Nothing new: say so instead of offering to send.

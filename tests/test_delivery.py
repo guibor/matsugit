@@ -149,6 +149,28 @@ class DeliveryTests(unittest.TestCase):
                 worker.main(dict(request, action='publish', fingerprint='wrong'))
             publish.assert_not_called()
 
+    def test_worker_retains_push_and_build_request_failure_in_receipt(self):
+        from matsugit import publication
+        spec = importlib.util.spec_from_file_location('delivery_worker', ROOT / 'codex-plugin/actions.py')
+        worker = importlib.util.module_from_spec(spec); spec.loader.exec_module(worker)
+        described = dict(repo=str(self.repo), directory='matsugit-site/demo', provider='gitlab',
+                         project_url='https://gitlab.example.invalid/team/docs', site_url=None,
+                         target='demo', deployment='ci', branch='main', fingerprint='reviewed')
+        with patch.dict(os.environ, MATSUGIT_PUBLICATION_STATE=str(self.root / 'publication')), \
+                patch.object(worker, 'config', return_value={'deployment': 'ci'}), \
+                patch('matsugit.publish.request_deployment', side_effect=Error('Executable not found: glab')) as deploy:
+            for action in ('publish', 'exchange'):
+                with self.subTest(action=action), patch.object(worker, 'plan', return_value=described.copy()), \
+                        patch.object(worker, 'publish', return_value='a' * 40), \
+                        patch('matsugit.git_exchange.exchange', return_value={'revision': 'a' * 40, 'message': 'Pushed.'}), \
+                        patch('matsugit.share.receipt_plan', return_value=(described.copy(), None)):
+                    result = worker.main(dict(action=action, path=str(self.source), text=self.source.read_text(),
+                                              fingerprint='reviewed', deploy=True))
+                    self.assertEqual(result['publication']['stage'], 'pushed')
+                    self.assertIn('glab', result['deployment_error'])
+                    self.assertEqual(publication.status(self.source)['deployment_error'], result['deployment_error'])
+            self.assertEqual(deploy.call_count, 2)
+
     @unittest.skipUnless(QUARTO, 'Set QUARTO for real PowerPoint export')
     def test_pptx_native_text_tables_unicode_org_parity(self):
         text = self.source.read_text() + '\n\n## Unicode\n\nCaf\u00e9, \u05e9\u05dc\u05d5\u05dd, 50% & <safe>.\n'

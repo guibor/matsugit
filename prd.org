@@ -120,8 +120,8 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R37. Share asks a project that builds only on request to build. A failure to
   ask never turns a successful push into "That did not work".
 - R38. While the site rebuilds, Share reports the build step where the provider
-  shows it. The document cannot go live before the slides on a single Pages
-  site; this is stated rather than worked around.
+  shows it. The project's CI owns deployment order. Share must not imply that
+  documents always wait for slides, or change an independent document pipeline.
 - R39. A slide that continues the previous one uses a `---` break, never a
   repeated "(continued)" title. The skill says so and Check offers the fix.
 

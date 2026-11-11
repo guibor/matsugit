@@ -26,10 +26,10 @@ export function publishedLinks(receipt) {
     !links.slides && !links.document && links.site && {key: 'site', label: 'Site', detail: 'the project\'s website', url: links.site},
     links.source && {key: 'source', label: 'Source', detail: `on ${host}`, url: links.source},
     !links.source && links.project && {key: 'project', label: 'Project', detail: `on ${host}`, url: links.project},
-  ].filter(Boolean);
+  ].filter(item => item && safe(item.url));
 }
 const STEP_LABEL = {waiting: 'Waiting for the build to start...', starting: 'The build is starting...',
-  document: 'Building the document...', slides: 'Document built; building the slides...', publishing: 'Publishing the site...'};
+  document: 'Building the document...', slides: 'Building the slides...', publishing: 'Publishing the site...'};
 export function plainBlocked(reasons) {
   return [...new Set(reasons.map(reason => BLOCKED.find(([pattern]) => pattern.test(reason))?.[1] || reason))];
 }
@@ -118,9 +118,10 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const label = receipt.site_url || context?.site_url ? 'Open the shared deck' : 'Open the project';
     const steps = {save: 'done', send: 'done', project: project(), build: receipt.build_step}, links = publishedLinks(receipt);
     // The push worked but the build that updates the site could not be started.
-    if (context?.deployError && receipt.stage !== 'published' && receipt.stage !== 'building') {
+    const deployError = receipt.deployment_error || context?.deployError;
+    if (deployError && receipt.stage === 'pushed' && !receipt.pipeline_status) {
       paint({title: 'Sent, but the site was not asked to update', outcome: true, links: links.filter(item => ['source', 'project'].includes(item.key)),
-        steps: {...steps, site: 'failed'}, detail: context.deployError + '\n\nYour changes are safe in the project.'});
+        steps: {...steps, site: 'failed'}, detail: deployError + '\n\nYour changes are safe in the project.'});
       return;
     }
     if (!receipt.provider) paint({title: 'Sent', outcome: true, links, link: links.length ? null : link, linkLabel: label, steps: {...steps, site: 'unknown'},
@@ -135,7 +136,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     else if (receipt.gaveUp) paint({title: 'Sent', outcome: true, links, link: links.length ? null : link, linkLabel: label, steps: {...steps, site: 'unknown'},
       detail: receipt.gaveUp});
     else paint({title: 'Sent. The site is rebuilding...', outcome: true, links, link: links.length ? null : link, linkLabel: label, steps: {...steps, site: 'busy'},
-      detail: 'The project builds the document first, then the slides; the site updates once both are done, because it is published in one piece. The source link already shows your new version. You can close this and keep working: the Share button changes to "Shared" when the site is live, and a message tells you.'});
+      detail: 'The source link already shows your new version. The project\'s CI controls when the document and slides are published. You can close this and keep working: the Share button changes to "Shared" when this version is verified live, and a message tells you.'});
   }
   // Keep asking the project until the site is live or failed, whether or not
   // the dialog is open. Read-only; never holds the Save or Share lock.

@@ -30,7 +30,7 @@ def receipt_plan(result):
     label, url = project(result['repo'], profile.get('remote', 'origin'))
     from .links import describe
     where = describe(result['repo'], result['source'], profile) if result.get('source') else {}
-    return {**where, 'deployment': profile.get('deployment'),
+    return {**where, 'deployment': profile.get('deployment', 'ci') if name else None,
             'branch': result['branch'], 'target': name or result['repo'], 'source_sha256': result['etag'],
             'build': 'ci' if name else 'git', 'project_url': url if name else None,
             'provider': (profile.get('provider') or ('github' if (url or '').startswith('https://github.com/') else 'gitlab')) if name else None,
@@ -60,5 +60,6 @@ def status(source):
     name, profile = target_for(repo, profiles)
     label, url = project(repo, profile.get('remote', 'origin'))
     result.update(mode='sync', repo=str(repo), branch=info['branch'], target=name, label=label or repo.name,
-                  project_url=url, site_url=profile.get('site_url'), deployment=profile.get('deployment'))
+                  project_url=url, site_url=profile.get('site_url'),
+                  deployment=profile.get('deployment', 'ci') if name else None)
     return result

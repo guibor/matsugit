@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -20,7 +21,9 @@ test('built plugin initializes and exposes the app, file handler and versioned f
   fs.mkdirSync(launch);
   fs.writeFileSync(file, '# Original\n');
   const client = new Client({name: 'matsugit-test', version: '1.0.0'});
-  const transport = new StdioClientTransport({command: process.execPath, args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd:launch, stderr: 'pipe'});
+  const publication = path.join(directory, 'publication');
+  const transport = new StdioClientTransport({command: process.execPath, args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd:launch, stderr: 'pipe',
+    env: {...process.env, MATSUGIT_PUBLICATION_STATE: publication}});
   let stderr = ''; transport.stderr?.on('data', part => stderr += part);
   client.onerror = error => { stderr += String(error); };
   try {
@@ -29,6 +32,19 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.equal(client.getServerVersion().version,
       JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8')).version);
     const {tools} = await client.listTools();
+    const linkTool = tools.find(tool => tool.name === 'matsugit_links');
+    assert.equal(linkTool.annotations.readOnlyHint, true);
+    assert.equal(linkTool.annotations.openWorldHint, false);
+    fs.mkdirSync(publication);
+    const receipt = path.join(publication, createHash('sha256').update(fs.realpathSync(file)).digest('hex') + '.json');
+    const recorded = JSON.stringify({version: 1, provider: 'gitlab', project_url: 'https://git.example.invalid/team/docs',
+      branch: 'main', source_path: 'matsugit-site/demo/source.md', site_url: 'https://team.example.invalid/docs',
+      revision: 'a'.repeat(40), stage: 'pushed'});
+    fs.writeFileSync(receipt, recorded);
+    const linked = await client.callTool({name: 'matsugit_links', arguments: {path: file}});
+    assert.equal(linked.isError, undefined, JSON.stringify(linked));
+    assert.equal(linked.structuredContent.links.slides, 'https://team.example.invalid/docs/demo/slides.html');
+    assert.equal(fs.readFileSync(receipt, 'utf8'), recorded);
     const handler = tools.find(tool => tool.name === 'matsugit_file');
     assert.deepEqual(handler._meta['openai/ui'].entrypoints[0].extensions, ['.md', '.markdown', '.qmd', '.org']);
     assert.deepEqual(tools.find(tool => tool.name === 'matsugit_save')._meta.ui.visibility, ['app']);

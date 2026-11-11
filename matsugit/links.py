@@ -7,8 +7,13 @@ from urllib.parse import quote, urlsplit
 
 
 def safe(url):
-    parsed = urlsplit(url or '')
-    return url if parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password else None
+    if not isinstance(url, str) or any(c.isspace() or ord(c) < 32 for c in url):
+        return None
+    try:
+        parsed = urlsplit(url)
+        return url if parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password else None
+    except ValueError:
+        return None
 
 
 def describe(repo, source, profile):
@@ -35,28 +40,28 @@ def links(receipt):
     if project and branch and path:
         encoded = '/'.join(quote(part) for part in PurePosixPath(path).parts)
         gitlab = receipt.get('provider') != 'github'
-        result['source'] = f"{project}/{'-/' if gitlab else ''}blob/{quote(branch)}/{encoded}"
-        result['edit'] = f"{project}/{'-/' if gitlab else ''}edit/{quote(branch)}/{encoded}"
+        result['source'] = f"{project}/{'-/' if gitlab else ''}blob/{quote(branch, safe='')}/{encoded}"
+        result['edit'] = f"{project}/{'-/' if gitlab else ''}edit/{quote(branch, safe='')}/{encoded}"
     site = safe(receipt.get('site_url'))
     if site:
         result['site'] = site
     if site and path:
         root = site.rstrip('/')
         folder = PurePosixPath(path).parent
-        values = {'site': root, 'dir': folder.as_posix(), 'slug': folder.name, 'path': path,
-                  'name': PurePosixPath(path).stem}
+        values = {'site': root, 'dir': quote(folder.as_posix()), 'slug': quote(folder.name, safe=''),
+                  'path': quote(path), 'name': quote(PurePosixPath(path).stem, safe='')}
         templates = {'document': receipt.get('document_url'), 'slides': receipt.get('slides_url')}
         site_dir = receipt.get('site_dir') or 'matsugit-site'
         # The project's own CI publishes the site folder as the site root, one folder per deck.
         if receipt.get('ci_layout', 'native') == 'native' and folder.is_relative_to(site_dir):
-            inside = folder.relative_to(site_dir).as_posix()
+            inside = quote(folder.relative_to(site_dir).as_posix())
             templates = {'document': templates['document'] or '{site}/' + inside + '/index.html',
                          'slides': templates['slides'] or '{site}/' + inside + '/slides.html'}
         for key, template in templates.items():
             if template:
                 try:
                     url = safe(template.format(**values))
-                except (KeyError, IndexError, ValueError):
+                except (KeyError, IndexError, ValueError, AttributeError):
                     url = None
                 if url:
                     result[key] = url

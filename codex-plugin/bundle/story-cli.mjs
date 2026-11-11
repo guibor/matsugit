@@ -4742,26 +4742,38 @@ function checkDeck(source, org = false) {
   };
   const keepEmpty = settings["slide-empty-slides"]?.value === "true";
   const CONTINUED = /\s*(?:[([]\s*(?:continued|cont(?:'d|d|\.)?)\s*[)\]]|[-:–—]\s*(?:continued|cont(?:'d|d|\.)?)|,?\s+continued|\s+cont(?:'d|d|\.))\s*$/i;
-  let previousTitle = null;
+  let previousTitle = null, previousClaim = null, previousAttributes = false;
   for (const scope of scopes) {
     if (scope.heading.level !== 2) {
       previousTitle = null;
+      previousClaim = null;
       continue;
     }
     const base = scope.heading.label.replace(CONTINUED, "").trim();
-    if (base !== scope.heading.label && previousTitle && base.toLowerCase() === previousTitle.toLowerCase()) {
-      const headingLine = lineOf(scope.heading.from), next = lines[headingLine.index + 1];
-      const claimTo = next && /^ {0,3}###\s/.test(next.text) ? next.to : headingLine.to;
+    const headingLine = lineOf(scope.heading.from);
+    const attributes = /\{[^{}]*\}\s*$/.test(headingLine.text);
+    if (arranged && base !== scope.heading.label && previousTitle && base.toLowerCase() === previousTitle.toLowerCase() && /^ {0,3}##\s/.test(headingLine.text) && !attributes && !previousAttributes) {
+      const next = lines[headingLine.index + 1];
+      const repeated = next && /^ {0,3}###\s/.test(next.text) && next.text === previousClaim;
+      const end = repeated ? next : headingLine, newline = source.includes("\r\n") ? "\r\n" : "\n";
+      const before = lines[headingLine.index - 1], after = lines[end.index + 1];
       add(
         "title-continued",
         "tip",
         scope.heading.from,
-        `This slide repeats the title "${base}" with "continued". A \`---\` line does that: the slide keeps the title and claim of the one before.`,
+        `This slide repeats the title "${base}" with "continued". A \`---\` line keeps the previous title and carries its claim over unless this slide supplies a different one.`,
         "Replace this heading with a line containing only `---`.",
-        { label: "Use a slide break", changes: [{ from: headingLine.from, to: claimTo, insert: "---" }] }
+        { label: "Use a slide break", changes: [{
+          from: headingLine.from,
+          to: end.from + end.text.length,
+          insert: (before && !blank(before) ? newline : "") + "---" + (after && !blank(after) ? newline : "")
+        }] }
       );
     }
     previousTitle = base;
+    previousAttributes = attributes;
+    const claim = parsed.headings.filter((h) => h.level === 3 && h.topLevel && h.from >= scope.from && h.from < scope.to && !enclosing(h.from)).at(-1);
+    previousClaim = claim ? lineOf(claim.from).text : null;
     const body = lines.filter((line) => line.from >= scope.from && line.from < scope.to && !blank(line) && !enclosing(line.from)?.opaque && !blocks.some((block) => block.opaque && (block.open === line.index || block.close === line.index)));
     if (arranged && !keepEmpty && !body.length) add(
       "slide-empty",
