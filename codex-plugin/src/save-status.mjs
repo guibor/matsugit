@@ -4,6 +4,7 @@ export function saveStatus(state, dirty, tablePending = false) {
   if (state.loading) return {kind:'busy', label:'Loading', detail:'Reading the document'};
   if (state.saving) return {kind:'busy', label:'Saving...', detail:'Waiting for the file write to finish'};
   if (state.merging) return {kind:'busy', label:'Merging...', detail:'The source file is not being written'};
+  if (state.fileMissing) return {kind:'error', label:'File missing', detail:'The file was moved or deleted. Your text is still in this window; restore it or download a copy.'};
   if (state.conflict) return {kind:'review', label:'Changed elsewhere', detail:'Your draft is retained. Save opens a comparison before any file write.'};
   if (state.saveError && dirty) return {kind:'error', label:'Not saved', detail:state.saveError};
   if (tablePending) return {kind:'dirty', label:'Table edits', detail:'Table edits have not been applied to the draft or saved to the file'};

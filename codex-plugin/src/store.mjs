@@ -39,8 +39,12 @@ export class WorkspaceStore {
   relocations = new Map();
   constructor(root) { this.root = root; }
   open(file) {
-    const target = checkedPath(file), text = read(target), id = randomUUID();
-    if (this.sessions.size >= 64) throw Error('Too many open workspaces; restart the matsugit plugin.');
+    const target = checkedPath(file), text = read(target);
+    // Sessions identify a file, not a panel draft. Recovery writers remain
+    // independent, even when several panels open this same file.
+    const existing = [...this.sessions].find(([, owner]) => owner === target)?.[0];
+    const id = existing || randomUUID();
+    if (!existing && this.sessions.size >= 64) throw Error('Too many open workspaces; restart the matsugit plugin.');
     this.sessions.set(id, target);
     return {session: id, name: path.basename(target), path: target, text, etag: hash(text), writable: true, readOnly: !writable(target)};
   }
@@ -81,10 +85,20 @@ export class WorkspaceStore {
     if (recreate) {
       // Put the document back where it was, after it was moved or deleted. Only
       // when nothing has appeared there since; never replaces an existing file.
-      if (fs.existsSync(file)) return {outcome: 'conflict', etag: this.source(session).etag};
-      fs.mkdirSync(path.dirname(file), {recursive: true});
-      fs.writeFileSync(file, text, {flag: 'wx'});
-      return {outcome: 'saved', etag: hash(text)};
+      const parent = path.dirname(file);
+      if (fs.realpathSync(parent) !== parent) throw Error('The document directory changed; reopen it before saving.');
+      const temporary = path.join(parent, `.matsugit-${randomUUID()}.tmp`);
+      try {
+        const fd = fs.openSync(temporary, 'wx', 0o600);
+        try { fs.writeFileSync(fd, text); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+        if (fs.realpathSync(parent) !== parent) throw Error('The document directory changed; reopen it before saving.');
+        // Atomic create-if-absent, including dangling links and racing writers.
+        fs.linkSync(temporary, file);
+        return {outcome: 'saved', etag: hash(text)};
+      } catch (error) {
+        if (error.code === 'EEXIST') return {outcome:'conflict'};
+        throw error;
+      } finally { fs.rmSync(temporary, {force:true}); }
     }
     const current = this.source(session);
     // A file marked read-only on disk is left alone; the rename below would otherwise replace it.

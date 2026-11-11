@@ -13,6 +13,8 @@ test('file status distinguishes edits, save, conflict, failed save and local cop
   assert.equal(saveStatus({},true).label,'Unsaved copy');
   assert.equal(saveStatus(file,false,true).label,'Table edits');
   assert.equal(saveStatus({...file,merging:true},true).label,'Merging...');
+  assert.equal(saveStatus({...file,fileMissing:true},false).label,'File missing');
+  assert.equal(saveStatus({...file,fileMissing:true},true).label,'File missing');
 });
 
 test('recovery status is never used as evidence that the source file was saved', () => {

@@ -1,5 +1,6 @@
 import {App, applyDocumentTheme, applyHostStyleVariables} from '@modelcontextprotocol/ext-apps';
 import {hostResultData, sourceText} from './host-results.mjs';
+import {sessionConnection} from './session-connection.mjs';
 import {cursorHost, inlineEditorHeight} from './host-view.mjs';
 import {version} from '../package.json';
 import {OpenAIExtensions} from '@openai/mcp-extensions/app';
@@ -116,9 +117,9 @@ function paintNotice() {
   $('notice-text').textContent = message;
   $('notice-check').hidden = !state.renderError || noticeMessage !== state.renderNotice;
   // The file vanished from disk: offer the two ways to keep the text.
-  const missing = /^The file is no longer at /.test(noticeMessage) && !!state.session;
+  const missing = state.fileMissing && !!state.session;
   $('notice-recreate').hidden = !missing; $('notice-download').hidden = !missing;
-  $('notice-recreate').disabled = state.saving || state.loading;
+  $('notice-recreate').disabled = state.saving || state.loading || state.merging || state.delivering || tables?.pending();
   $('reload').hidden = !state.conflict && !incomingDocument && !(state.fileReceipt && externalChange);
   $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
@@ -126,7 +127,11 @@ function paintNotice() {
   $('notice-save').disabled = $('save').disabled;
   $('notice-dismiss').hidden = !state.fileReceipt || state.conflict || !!incomingDocument;
 }
-const notice = (message = '') => { noticeMessage = message; paintNotice(); };
+const notice = (message = '') => {
+  noticeMessage = message;
+  if (/^The file is no longer at /.test(message)) state.fileMissing = true;
+  paintNotice();
+};
 // The header already shows the file state; the footer keeps it for screen readers only.
 const status = message => { $('status').textContent = message; $('status').dataset.duplicate = String(['Saved to file', 'Unsaved draft', 'Local draft'].includes(message)); };
 const editability = new Compartment();
@@ -248,18 +253,23 @@ const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editi
 $('notice-check').onclick = () => check.open();
 $('notice-download').onclick = () => download();
 $('notice-recreate').onclick = async () => {
-  if (state.saving || state.loading || !state.session) return;
+  if ($('notice-recreate').disabled || !state.fileMissing || !state.session) return;
   const value = text(), sequence = loadSequence;
+  readSequence++;
   state.saving = true; refreshControls(); status('Saving');
   try {
     const result = await call('matsugit_save', {session: state.session, text: value, etag: state.etag || 'missing', recreate: true});
     if (sequence !== loadSequence) return;
     if (result.outcome !== 'saved') throw Error('A file appeared at that place in the meantime. Nothing was replaced; your text is still here.');
     state.base = value; state.etag = result.etag; state.saveError = null; state.lastSavedAt = Date.now();
-    state.conflict = false; savedHistory.clear();
+    state.conflict = false; state.fileMissing = false; state.readOnly = false;
+    state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false;
+    externalChange = null; state.fileReceipt = null; mergeAttempt = null; savedHistory.clear();
     notice('Saved the document back to ' + state.path + '.');
   } catch (error) { if (sequence === loadSequence) { state.saveError = error.message; notice(error.message); } }
-  finally { if (sequence === loadSequence) { state.saving = false; refreshControls(); } }
+  finally { if (sequence === loadSequence) {
+    readSequence++; state.saving = false; refreshControls(); scheduleRecovery(); await flushRecovery(); scheduleAutosave();
+  } }
 };
 $('story-preview').onchange=()=>{
   state.storyPreview=$('story-preview').checked;
@@ -314,28 +324,15 @@ async function rawCall(name, args) {
 // reloads its servers). Its sessions are then gone. Reconnect to the same file
 // once and carry on: the draft, its base and version stay as they are, so the
 // usual version checks decide what happens next. Never switches to another file.
-let reconnecting = null;
-async function reconnect(expired) {
-  if (!state.path || state.session !== expired) return false;
-  reconnecting ||= (async () => {
-    const opened = await rawCall('matsugit_open', {path: state.path});
-    if (state.session !== expired || opened.path !== state.path) return false;
+const connectedCall = sessionConnection({request:rawCall,
+  current:() => ({sequence:loadSequence, path:state.path, session:state.session}),
+  bind:opened => {
     state.session = opened.session;
-    try { recoveryId = (await rawCall('matsugit_recovery_begin', {...recoveryScope(), name: state.name})).id; recoveryGeneration = 0;
-      $('recovery-status').dataset.error = 'false'; }
-    catch (error) { recoveryFailure(error); }
+    state.bases = {}; state.forceFull = true;
     if (noticeMessage.includes('Workspace expired')) notice();
-    return true;
-  })().finally(() => { reconnecting = null; });
-  return reconnecting;
-}
-async function call(name, args) {
-  try { return await rawCall(name, args); }
-  catch (error) {
-    if (!/Workspace expired/.test(error.message) || !args?.session || !await reconnect(args.session)) throw error;
-    return rawCall(name, {...args, session: state.session});
-  }
-}
+    scheduleRecovery();
+  }});
+async function call(name, args) { return connectedCall(name, args); }
 function refreshControls() {
   story?.refresh();
   publication?.update();
@@ -661,6 +658,16 @@ async function reload(force = false, manual = false, expectedEtag = null) {
   try {
     const data = await resourceRead();
     if (sequence !== loadSequence || read !== readSequence || state.saving) return false;
+    const reappeared = state.fileMissing;
+    state.fileMissing = false;
+    if (reappeared && !force && data.text !== text()) {
+      externalChange = {base:state.base, local:text(), incoming:data.text, data, appliedText:null};
+      state.conflict = true; state.reviewWhole = true; state.ancestor = state.base;
+      notice('A file appeared at the original path. Review it before replacing either version.');
+      refreshControls(); return false;
+    }
+    if (!force && state.conflict && state.reviewWhole) { refreshControls(); return false; }
+    if (reappeared) { state.saveError = null; notice(); refreshControls(); }
     // Writability can change while the file is open (chmod, a checkout, a sync client).
     if (typeof data.readOnly === 'boolean' && data.readOnly !== !!state.readOnly) {
       state.readOnly = data.readOnly;
@@ -722,7 +729,10 @@ async function reload(force = false, manual = false, expectedEtag = null) {
     }
     refreshControls();
     return !state.conflict;
-  } catch (error) { if (sequence === loadSequence && read === readSequence) notice(error.message); return false; }
+  } catch (error) {
+    if (sequence === loadSequence && read === readSequence) { notice(error.message); refreshControls(); }
+    return false;
+  }
 }
 function mergeSnapshot() {
   return {sequence:loadSequence, revision:state.revision, text:text(), base:state.base,
@@ -872,7 +882,7 @@ async function load(data, {acceptRevision = null} = {}) {
   if (before !== state.revision || table !== JSON.stringify(tables.snapshot())) { offerIncoming(data); return; }
   incomingDocument = null;
   mergeAttempt = null; savedHistory.clear(); state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false;
-  externalChange = null;
+  externalChange = null; state.fileMissing = false;
   noticeMessage = '';
   story.reset();
   tables.reset();
@@ -965,7 +975,7 @@ async function follow(workspace) {
   await flushRecovery();
   Object.assign(state, {uri: null, session: workspace.session, name: workspace.name, path: workspace.path,
     base: workspace.text, etag: workspace.etag, writable: true, conflict: false, saveError: null, fileReceipt: null});
-  externalChange = null; mergeAttempt = null; readSequence++;
+  externalChange = null; state.fileMissing = false; mergeAttempt = null; readSequence++;
   try {
     recoveryId = (await call('matsugit_recovery_begin', {...recoveryScope(), name: state.name})).id;
     recoveryGeneration = 0;
@@ -1036,7 +1046,17 @@ async function flushRecovery() {
   const snapshot = {id, generation: ++recoveryGeneration, ...recoveryScope(), text: text(), base: state.base, view: viewState()};
   recoveryPromise = (async () => {
     try {
-      const result = await call('matsugit_recovery_checkpoint', snapshot);
+      let result;
+      try { result = await call('matsugit_recovery_checkpoint', snapshot); }
+      catch (error) {
+        if (error.message !== 'Recovery workspace expired; reopen recovery before continuing.'
+            || sequence !== loadSequence || recoveryId !== id) throw error;
+        const fresh = await call('matsugit_recovery_begin', {...recoveryScope(), name:state.name});
+        if (sequence !== loadSequence || recoveryId !== id) return;
+        recoveryId = fresh.id; recoveryGeneration = 0;
+        result = await call('matsugit_recovery_checkpoint', {...snapshot, ...recoveryScope(),
+          id:recoveryId, generation:++recoveryGeneration});
+      }
       if (sequence !== loadSequence) return;
       $('recovery-status').dataset.error = 'false';
       $('recovery-status').textContent = recoveryPending ? 'Backing up draft...' : 'Draft backed up';

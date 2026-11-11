@@ -47,6 +47,14 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.equal(opened.structuredContent.format, 'slides');
     assert.equal(opened.structuredContent.layout, 'split');
     assert.equal(opened.structuredContent.editor, 'visual');
+    const reconnect = tools.find(tool => tool.name === 'matsugit_reconnect');
+    assert.deepEqual(reconnect._meta.ui.visibility, ['app']);
+    assert.equal(reconnect._meta.ui.resourceUri, undefined);
+    assert.equal(reconnect.annotations.readOnlyHint, true);
+    const rebound = await client.callTool({name:'matsugit_reconnect', arguments:{path:file}});
+    assert.equal(rebound.structuredContent.session, opened.structuredContent.session);
+    assert.equal(rebound.structuredContent.text, undefined);
+    assert.equal(rebound.structuredContent.path, fs.realpathSync(file));
     const story = await client.callTool({name:'matsugit_workspace',arguments:{layout:'story'}});
     assert.equal(story.isError,undefined,JSON.stringify(story));
     assert.equal(story.structuredContent.layout,'story');

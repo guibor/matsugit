@@ -70,7 +70,8 @@ def restart(source, open_page):
     text = source.read_text()
     assert 'before the plugin restarted' in text and 'after the restart' in text
     assert 'Workspace expired' not in frame.locator('#notice').inner_text()
-    assert frame.locator('#recovery-status').inner_text() != 'Draft backup unavailable'
+    frame.evaluate('matsugitWorkspace.flushRecovery()')
+    wait(frame, 'document.getElementById("recovery-status").textContent === "Draft backed up"')
 
 
 def read_only(source, open_page):
@@ -97,6 +98,7 @@ def deleted(source, open_page):
     wait(frame, '!document.getElementById("notice-recreate").hidden', 10)
     assert 'Your text is safe' in frame.locator('#notice-text').inner_text()
     assert 'ENOENT' not in frame.locator('#notice').inner_text()
+    assert frame.locator('#save-state').inner_text().strip() == 'File missing'
     type_at_end(page, frame, '\nTyped after it vanished.')
     frame.locator('#notice-recreate').click()
     wait(frame, '!matsugitWorkspace.state.saving && matsugitWorkspace.editor.state.doc.toString() === matsugitWorkspace.state.base', 10)
@@ -124,6 +126,11 @@ def moved(source, open_page):
     frame.locator('#notice-recreate').click()
     page.wait_for_timeout(1500)
     assert source.read_text() == 'Somebody else put a file here.\n'
+    frame.evaluate('matsugitWorkspace.reload()')
+    wait(frame, 'matsugitWorkspace.state.conflict && matsugitWorkspace.state.reviewWhole')
+    frame.evaluate('matsugitWorkspace.reload()')
+    assert source.read_text() == 'Somebody else put a file here.\n'
+    assert 'after the move' in frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
 
 
 def two_windows(source, open_page):

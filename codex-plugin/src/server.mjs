@@ -33,7 +33,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.30.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.30.1'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -78,6 +78,9 @@ serveStdio(() => {
     description: 'Open a user-requested existing Markdown/Org file for editing and document/slides preview. Reads only the specified file. Never publishes.',
     inputSchema: z.object({path: z.string(), ...viewOptions}), annotations: readOnly, _meta: {ui: {resourceUri: uri}}},
     guard(async ({path: file, ...options}) => { const data = store.open(file); const {text, ...summary} = data; return result({...summary, ...options}, {source: text}); }));
+  server.registerTool('matsugit_reconnect', {description:'Reconnect an existing panel to the same local document after a plugin restart. Read-only; does not open a second panel, save or publish.', ...appOnly,
+    inputSchema:z.object({path:z.string()}), annotations:readOnly},
+    guard(async ({path:file}) => { const {text, ...data} = store.open(file); return result(data); }));
   server.registerTool('matsugit_check', {title: 'Check slides',
     description: 'Check a Markdown/Org deck for slide-structure problems and report each in plain language with its slide and line. Use after editing a deck and whenever a user asks what is wrong or why a slide looks off. Read-only: no rendering, saving or publishing. Structure only; a visual look at the slides is still needed.',
     inputSchema: z.object({path: z.string().optional(), text: z.string().max(MAX_SOURCE).optional(), format: z.enum(['markdown', 'org']).optional()}),

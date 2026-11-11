@@ -70,10 +70,11 @@ class DeckSettings extends WidgetType {
     const edit = document.createElement('span'); edit.className = 'ff-deck-settings-edit'; edit.textContent = 'Edit';
     el.append(label, summary, edit);
     el.title = 'Title and slide options from the top of the file. Click to edit them as text.';
-    el.onmousedown = event => { event.preventDefault(); view.dispatch({selection:{anchor:4}, scrollIntoView:true}); view.focus(); };
+    el.onmousedown = event => event.preventDefault();
+    el.onclick = () => { view.dispatch({selection:{anchor:Math.max(0,this.source.indexOf('\n') + 1)}, scrollIntoView:true}); view.focus(); };
     return el;
   }
-  ignoreEvent() { return false; }
+  ignoreEvent() { return true; }
 }
 
 export function safeTableDOM(html) {

@@ -55,6 +55,17 @@ try:
         print('Refresh reads external changes with Auto off; Copy/Refresh acknowledge completion', flush=True)
         frame.locator('[data-editor="visual"]').click()
         wait(frame, 'document.querySelectorAll(".ff-visual-table table").length===1')
+        frame.evaluate('matsugitWorkspace.editor.dispatch({selection:{anchor:matsugitWorkspace.editor.state.doc.length}}); matsugitWorkspace.editor.scrollDOM.scrollTop = 0')
+        settings = frame.locator('.ff-deck-settings')
+        settings.focus()
+        settings.press('Enter')
+        wait(frame, 'matsugitWorkspace.editor.state.selection.main.head < matsugitWorkspace.editor.state.doc.toString().indexOf("\\n---", 4)')
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
+        frame.evaluate('matsugitWorkspace.editor.dispatch({selection:{anchor:matsugitWorkspace.editor.state.doc.length}}); matsugitWorkspace.editor.scrollDOM.scrollTop = 0')
+        settings.focus()
+        settings.press('Space')
+        wait(frame, 'matsugitWorkspace.editor.state.selection.main.head < matsugitWorkspace.editor.state.doc.toString().indexOf("\\n---", 4)')
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original
         assert frame.locator('.ff-visual-heading').count() >= 3
         assert frame.locator('.ff-visual-table').inner_text().count('Cycle time') == 1
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == original

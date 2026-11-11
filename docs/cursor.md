@@ -179,6 +179,12 @@ team settings or publish a plugin just to preview a deck.
 
 ## Update and troubleshoot
 
+- **Keep your file and chat:** the Markdown belongs in your project, outside
+  the plugin cache. Version 0.30.1 reconnects an open panel after backend expiry,
+  retaining its draft and file-version check. Reload the MCP connection if the
+  host has disconnected it. Reopen the panel to load new UI code, after saving
+  or backing up drafts; do not delete chats or recovery copies. A new chat is
+  only a fallback when the host has not refreshed available tools.
 - **Refresh instructions:** for the interactive setup, update the checkout and
   rerun `matsugit setup-cursor`. For a skill-only installation, rerun the same
   `npx skills add` command, reviewing local skill edits before replacement.

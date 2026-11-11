@@ -171,7 +171,13 @@ codex plugin add matsugit@matsugit
 
 It needs existing repository access, Node 22+, Python 3.10+, Git, Quarto and a
 Codex Desktop build with MCP Apps. Do not install missing prerequisites or change
-credentials without authorization. Start a new session after plugin installation.
+credentials without authorization. Refresh the plugin connection after installation.
+Keep the existing Markdown path and chat. Reopen the panel to load new UI code
+after saving or backing up its draft. A new chat is only a fallback if tools
+remain unavailable; never delete chats or recovery records to update a plugin.
+An open 0.30.1 panel reconnects an expired backend session while retaining its
+draft and original file-version check. Do not retry an uncertain publish or
+save merely because its transport closed; first inspect the actual outcome.
 The plugin includes its renderer; optional chart dependencies remain separate.
 # Canonical source and Git sync (plugin 0.11+)
 

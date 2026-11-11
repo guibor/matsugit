@@ -73,7 +73,7 @@ quiet bottom-right controls. Escape or the exit icon restores your previous view
 and Follow setting. Browser fullscreen is requested when allowed; embedded hosts
 that block it still get the full slide-only workspace. Nothing is saved or published.
 
-Upgrade the plugin, then open the document in a fresh Codex session:
+Upgrade the plugin, then reload its connection and open the same document:
 #+begin_src sh
 codex plugin marketplace upgrade matsugit
 codex plugin add matsugit@matsugit
@@ -110,11 +110,9 @@ codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit
 #+end_src
 
-The repository currently requires authorized Git access. These commands neither
-change repository visibility nor publish documents. For a local checkout, use
+These commands neither change repository visibility nor publish documents. For a local checkout, use
 its absolute path in the first command instead of =guibor/matsugit=.
-Start a new Codex session after installation. Use Codex's plugin manager to
-refresh an installed plugin after a release; the plugin cache is separate from
+Use Codex's plugin manager to refresh an installed plugin after a release; the plugin cache is separate from
 your ordinary source checkout, so a checkout's =git pull= alone does not update
 that cache.
 
@@ -130,6 +128,20 @@ Codex to stop using the old MCP process. From 0.3.1, an already-running workspac
 retains its own renderer when an update replaces the installed cache. It continues
 using that version until reloaded, rather than switching code under a draft.
 This does not require reinstalling Python, pyenv, Quarto or Emacs.
+
+*Keep the file and the conversation.* A document belongs in your project, not
+inside a plugin cache. The workspace holds its absolute path and a draft;
+the backend connection is temporary. From 0.30.1, an existing panel reconnects
+after an expired backend session without replacing that draft or its file-version
+check. Concurrent reads share one reconnect. Reopening the same file does not
+consume another backend workspace slot.
+
+A backend restart and a new UI release are different: an already-open panel
+keeps the JavaScript it loaded. Save or back up the draft, then reopen the panel
+to load new controls. Keep the same Markdown file and chat. If the host does not
+expose the newly installed tools after refreshing the connection, a fresh chat
+is a fallback for tool discovery, not a requirement to migrate the document.
+Do not delete chats, plugin recovery records or source files to update.
 
 The interactive workspace needs Codex Desktop with MCP Apps support. File
 handlers need a desktop build supporting OpenAI Extensions file entrypoints;
@@ -628,16 +640,20 @@ review preserves your draft and lets you choose, including when a short line
 you deleted reappears. Version checks cover workspace writes, not unrelated
 external editors.
 
-* When the file or the plugin misbehaves (0.30)
+* When the file or the plugin misbehaves (0.30.1)
 
 - *The plugin restarts* (an update, or the host reloads its servers) while a
   deck is open. The workspace reconnects to the same file by itself on its next
-  read or save. Your draft, its version check and the draft backup continue; you
-  do not need to reopen anything.
+  read or save, once the host connection is available. Your draft, its version
+  check and the draft backup continue. Transport failures and uncertain publish
+  outcomes are not retried automatically.
 - *The file is deleted, moved or renamed.* The banner says the file is no longer
   there and that your text is safe in the window, with two buttons: =Save it
   there again= puts the document back at its old place (never replacing a file
-  that has since appeared there), and =Download a copy=. If you moved the file
+  that has since appeared there), and =Download a copy=. Restoration requires
+  the original directory to still exist and not redirect elsewhere; the restored
+  file is private to your account. If a different file appears at the old path,
+  automatic combining pauses for full-version review. If you moved the file
   yourself, ask the agent to open it at its new place instead.
 - *The file is read-only on disk.* It is not overwritten. The header says
   =Read-only file=, your text stays in the window, and saving (or autosave)
@@ -645,10 +661,12 @@ external editors.
 - *Two windows on the same file* (two chats, or Codex and Cursor) behave like
   the author and an agent: edits in different places combine; edits in the same
   place ask you to choose.
-- *Undo after a merge or a review.* Undo does not go back past it. Going back to
+- *Undo after accepting a comparison.* Undo does not go back past it. Going back to
   either side would drop what the other side contributed, including passages you
   chose to keep. Edits made afterwards undo as usual; the pre-merge draft is in
   the recovery copies.
+  Independent edits combined automatically still preserve the author's Undo
+  steps where they can be safely mapped onto the updated text.
 - *Buttons that cannot act are disabled and say why* (Undo with nothing to undo,
   Save with nothing to save).
 
@@ -684,8 +702,9 @@ Limits. Saved-version protection lasts for this open workspace, until an
 explicit review is accepted; it does not identify reads made by other programs.
 It retains up to 20 versions and 8 MiB. If that capacity is exceeded, external
 changes require full-version review instead of silently forgetting protection.
-Reloading the plugin starts a new session; recovery copies protect drafts, not
-the entire edit history. A pending table edit or an active Redo branch pauses
+A backend reconnect preserves the open panel's edit history; reloading the panel
+does not. Recovery copies protect drafts, not the entire edit history.
+A pending table edit or an active Redo branch pauses
 combining. After a whole-document replacement, combining may rebase your earlier
 Undo steps into one author-edit step, so Undo cannot erase the other writer's
 accepted changes. The pre-merge draft is retained in recovery; its full Undo

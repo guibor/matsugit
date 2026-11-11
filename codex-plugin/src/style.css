@@ -460,7 +460,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,#divider:focus-vis
 footer{justify-content:flex-end}
 /* Check floats over the preview on wide screens instead of pushing the text down. */
 @media(min-width:1000px){
-  #app:has(#workspace:is([data-layout=split],[data-layout=render])) #check-panel{position:fixed;z-index:25;right:16px;top:104px;width:min(480px,40vw);max-height:min(70vh,640px);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 50px #00000030;padding:10px 14px}
+  #app:has(#workspace:is([data-layout=split],[data-layout=render])) #check-panel{position:fixed;z-index:25;right:16px;top:104px;width:min(480px,40vw);max-height:min(70vh,640px);border:1px solid var(--border);border-radius:8px;box-shadow:0 18px 50px #00000030;padding:10px 14px}
   #app:has(#workspace:is([data-layout=split],[data-layout=render])) .check-item{grid-template-columns:minmax(0,1fr)}
   #app:has(#workspace:is([data-layout=split],[data-layout=render])) .check-actions{grid-column:1;grid-row:auto;justify-content:flex-start;margin-top:4px}
 }
