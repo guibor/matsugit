@@ -37,7 +37,7 @@ def converter():
     candidates = []
     if env("MATSUGIT_PANDOC"):
         candidates.append([env("MATSUGIT_PANDOC")])
-    candidates.append([str(tools_dir() / "pandoc")])
+    candidates.append([str(tools_dir() / ('pandoc.exe' if os.name == 'nt' else 'pandoc'))])
     if os.environ.get("QUARTO") or shutil.which("quarto"):
         candidates.append([os.environ.get("QUARTO") or "quarto", "pandoc"])
     candidates.append(["pandoc"])
@@ -61,15 +61,17 @@ def install_converter():
         return
     except Error:
         pass
-    arch = {"x86_64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(platform.machine())
+    arch = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(platform.machine().lower())
     system = platform.system()
-    if not arch or system not in {"Linux", "Darwin"}:
-        raise Error("Install Pandoc >=3.7.0.2 for this platform, then rerun spacemacs-sync")
+    if not arch or system not in {"Linux", "Darwin", "Windows"} or (system == 'Windows' and arch != 'amd64'):
+        raise Error("Install Pandoc >=3.7.0.2 for this platform, then rerun matsugit setup-editor")
     request = urllib.request.Request("https://api.github.com/repos/jgm/pandoc/releases/latest",
                                      headers={"User-Agent": "matsugit", "Accept": "application/vnd.github+json"})
     with urllib.request.urlopen(request, timeout=30) as response:
         release = json.load(response)
-    suffix = f"linux-{arch}.tar.gz" if system == "Linux" else f"{'x86_64' if arch == 'amd64' else arch}-macOS.zip"
+    suffix = (f"linux-{arch}.tar.gz" if system == "Linux" else
+              'windows-x86_64.zip' if system == 'Windows' else
+              f"{'x86_64' if arch == 'amd64' else arch}-macOS.zip")
     assets = [a for a in release["assets"] if a["name"].endswith(suffix)]
     if len(assets) != 1:
         raise Error("No unambiguous official Pandoc binary found for this machine")
@@ -82,7 +84,8 @@ def install_converter():
         raise Error("Unexpected download location")
     root = tools_dir()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    target = root / "pandoc"
+    executable = 'pandoc.exe' if system == 'Windows' else 'pandoc'
+    target = root / executable
     if target.exists() and not (root / "pandoc-install.json").is_file():
         raise Error(f"Refusing to replace unmanaged converter: {target}")
     print(f"Installing isolated {asset['name']} (SHA-256 verified)", flush=True)
@@ -99,7 +102,7 @@ def install_converter():
                 stream.write(chunk)
         if "sha256:" + sha.hexdigest() != digest:
             raise Error("Pandoc checksum mismatch; nothing installed")
-        binary = Path(temp) / "pandoc"
+        binary = Path(temp) / executable
         if system == "Linux":
             with tarfile.open(archive) as bundle:
                 members = [m for m in bundle.getmembers() if m.name.endswith("/bin/pandoc") and m.isfile()]
@@ -109,7 +112,8 @@ def install_converter():
                     shutil.copyfileobj(src, dest)
         else:
             with zipfile.ZipFile(archive) as bundle:
-                names = [n for n in bundle.namelist() if n.endswith("/bin/pandoc")]
+                names = [n for n in bundle.namelist() if n.endswith(
+                    '/pandoc.exe' if system == 'Windows' else '/bin/pandoc')]
                 if len(names) != 1:
                     raise Error("Unexpected archive layout")
                 with bundle.open(names[0]) as src, binary.open("wb") as dest:

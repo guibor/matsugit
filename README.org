@@ -77,6 +77,9 @@ Git command.
 
 * Get started
 
+Native Windows work is an opt-in [[file:docs/windows.md][compatibility preview]], not yet a
+desktop-verified release. The existing Mac/Linux setup is unchanged.
+
 You need Node 22+, Python 3.10+, Git and [[https://quarto.org/docs/get-started/][Quarto]].
 
 *Cursor.* In a directory where you keep projects:

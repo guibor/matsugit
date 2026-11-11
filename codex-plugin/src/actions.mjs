@@ -4,6 +4,7 @@ import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {randomUUID, createHash} from 'node:crypto';
 import {checkedText} from './store.mjs';
+import {pythonExecutable, pythonEnvironment} from './python.mjs';
 
 export class WorkspaceActions {
   jobs = new Map();
@@ -56,8 +57,8 @@ export class WorkspaceActions {
       exportName:output ? this.exportName(args.name, args.format) : undefined};
     if (relocation) this.store.expectRelocation(owner, relocation.destination);
     this.jobs.set(id, job);
-    const child = spawn(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
-      [path.join(this.runtime.root(), 'codex-plugin/actions.py')], {cwd:directory, stdio:['pipe','pipe','pipe']});
+    const child = spawn(pythonExecutable(),
+      [path.join(this.runtime.root(), 'codex-plugin/actions.py')], {cwd:directory, env:pythonEnvironment(), stdio:['pipe','pipe','pipe']});
     job.child = child;
     let stdout = '';
     child.stdin.on('error', () => {});

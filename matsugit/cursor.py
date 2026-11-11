@@ -47,6 +47,8 @@ def install(checkout=None, *, home=None, check=False):
     servers = data.get('mcpServers', {})
     if not isinstance(servers, dict): raise Error('Cursor mcpServers must be an object; nothing changed')
     environment = {'MATSUGIT_PYTHON':sys.executable, 'PATH':os.environ.get('PATH', '')}
+    if os.name == 'nt':
+        environment['PYTHONUTF8'] = '1'
     quarto = shutil.which('quarto')
     if quarto: environment['QUARTO'] = quarto
     entry = {'command':node, 'args':[str(server)], 'env':environment}
@@ -96,6 +98,8 @@ def install(checkout=None, *, home=None, check=False):
         if body != originals[path]:
             atomic(path, body)
     backup_message = f' Previous skill retained at {skill_backup}.' if skill_backup else ''
-    return (f'Cursor matsugit configured: {config_path}. Skill follows {skill}.' + backup_message
+    skill_message = (f' Verified skill copy from {skill}; rerun setup after updating.' if os.name == 'nt'
+                     else f' Skill follows {skill}.')
+    return (f'Cursor matsugit configured: {config_path}.' + skill_message + backup_message
             + ' Enable/reload its MCP server. Save drafts, then reopen the document panel in your existing chat.'
             + ' Start a new chat only if tools remain unavailable. No documents published.')

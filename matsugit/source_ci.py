@@ -72,7 +72,7 @@ def plan(settings):
     data = {'build':'ci', 'ci_layout':kind, 'target':settings.get('target'),
             'repo':str(repo), 'remote':remote, 'project_url':base,
             'provider':settings.get('provider', 'github' if host == 'github.com' else 'gitlab'),
-            'branch':settings['branch'], 'directory':str(destination.relative_to(repo)),
+            'branch':settings['branch'], 'directory':destination.relative_to(repo).as_posix(),
             'theme':settings['theme'] if kind == 'native' else 'Managed by existing target CI',
             'revision':revision, 'source_sha256':hashlib.sha256(settings['source'].read_bytes()).hexdigest(),
             'site_url':settings.get('site_url'), 'deployment':settings.get('deployment', 'ci'),

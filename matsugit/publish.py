@@ -24,7 +24,7 @@ def identity(repo, remote):
 def preflight(settings):
     repo = settings["repo"]
     branch = settings["branch"]
-    if git(repo, "rev-parse", "--show-toplevel") != str(repo):
+    if Path(git(repo, "rev-parse", "--show-toplevel")).resolve() != repo.resolve():
         raise Error("--repo must be the checkout root")
     if git(repo, "branch", "--show-current") != branch:
         raise Error(f"Switch the target checkout to {branch} first")

@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {randomUUID, createHash} from 'node:crypto';
 import {spawn, execFile} from 'node:child_process';
+import {pythonExecutable, pythonEnvironment} from './python.mjs';
 
 export const MAX_SOURCE = 2 * 1024 * 1024;
 const formats = new Set(['.md', '.markdown', '.qmd', '.org']);
@@ -132,9 +133,9 @@ export class WorkspaceStore {
     const target = checkedPath(file);
     const root = typeof this.root === 'function' ? this.root() : this.root;
     return new Promise((resolve, reject) => {
-      const child = execFile(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
+      const child = execFile(pythonExecutable(),
         [path.join(root, 'codex-plugin/actions.py')],
-        {cwd: os.tmpdir(), env: {...process.env, PWD: os.tmpdir()}, timeout: 15000, maxBuffer: 262144},
+        {cwd: os.tmpdir(), env: {...pythonEnvironment(), PWD: os.tmpdir()}, timeout: 15000, maxBuffer: 262144},
         (error, stdout, stderr) => {
           if (error) { reject(Error(stderr.trim() || 'Could not read where this deck was shared')); return; }
           try { resolve(JSON.parse(stdout)); } catch { reject(Error('Invalid sharing record')); }
@@ -148,9 +149,9 @@ export class WorkspaceStore {
     if (this.themeRequests.size >= 4) throw Error('Theme discovery busy; try again shortly');
     const root = typeof this.root === 'function' ? this.root() : this.root;
     return new Promise((resolve, reject) => {
-      const child = execFile(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
+      const child = execFile(pythonExecutable(),
         [path.join(root, 'codex-plugin/actions.py')],
-        {cwd: os.tmpdir(), env: {...process.env, PWD: os.tmpdir()}, timeout: 15000, maxBuffer: 65536},
+        {cwd: os.tmpdir(), env: {...pythonEnvironment(), PWD: os.tmpdir()}, timeout: 15000, maxBuffer: 65536},
         (error, stdout, stderr) => {
           this.themeRequests.delete(child);
           if (error) { reject(Error(stderr.trim() || 'Could not discover installed themes')); return; }
@@ -204,9 +205,9 @@ export class WorkspaceStore {
     this.jobs.set(id, job);
     // A long-lived host can retain a deleted cwd. Python/pyenv need a real one
     // before the worker starts; absolute source paths still resolve project assets.
-    const child = spawn(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3', [worker],
+    const child = spawn(pythonExecutable(), [worker],
       {cwd: directory, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32',
-        env: {...process.env, PWD: directory}});
+        env: {...pythonEnvironment(), PWD: directory}});
     job.child = child;
     let stderr = '', stdout = '';
     child.stdin.on('error', () => {});

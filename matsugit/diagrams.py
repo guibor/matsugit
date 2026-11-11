@@ -34,10 +34,16 @@ def setup():
     if not re.fullmatch(r'v\d+\.\d+\.\d+', version) or int(version[1:].split('.')[0]) < 22:
         raise ValueError('D2 needs Node.js 22+; found ' + version)
     target = runtime_path()
+    command = [npm]
+    if os.name == 'nt':
+        cli = Path(npm).parent / 'node_modules/npm/bin/npm-cli.js'
+        if not cli.is_file():
+            raise ValueError('D2 setup needs the standard Node.js Windows installation with npm-cli.js')
+        command = [shutil.which('node'), str(cli)]
     target.mkdir(parents=True, exist_ok=True)
     for name in ('package.json', 'package-lock.json'):
         shutil.copyfile(RUNTIME / name, target / name)
-    subprocess.run([npm, 'ci', '--ignore-scripts', '--no-audit', '--no-fund',
+    subprocess.run([*command, 'ci', '--ignore-scripts', '--no-audit', '--no-fund',
                     '--prefix', str(target)], check=True)
     print('D2 backend ready:', target, flush=True)
 

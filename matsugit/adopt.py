@@ -110,6 +110,17 @@ def apply(reviewed):
                    str(Path(reviewed['destination']).relative_to(reviewed['repo'])))
     if current != reviewed:
         raise Error('Source/assets changed since review; nothing moved')
+    if os.name == 'nt':
+        # Verify permissions before installing any destination files. A shortcut
+        # or a copied Markdown file cannot replace a live source alias.
+        try:
+            with tempfile.TemporaryDirectory(prefix='.matsugit-link-check-',
+                                             dir=Path(reviewed['source']).parent) as folder:
+                (Path(folder) / 'link').symlink_to(Path(reviewed['source']))
+        except OSError as exc:
+            raise Error('Windows cannot create the source link required by first Share. '
+                        'Move the deck and its attachments into the publishing checkout, '
+                        'reopen it there, then Share. No files were moved.') from exc
     installed, backups = [], []
     try:
         for move in reviewed['moves']:

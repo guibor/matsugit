@@ -37,7 +37,7 @@ class Error(Exception):
 def run(argv, cwd=None, text=None):
     try:
         result = subprocess.run([str(a) for a in argv], cwd=cwd, input=text,
-                                text=True, capture_output=True, check=True)
+                                text=True, encoding='utf-8', capture_output=True, check=True)
     except FileNotFoundError as exc:
         raise Error(f"Executable not found: {argv[0]}") from exc
     except subprocess.CalledProcessError as exc:

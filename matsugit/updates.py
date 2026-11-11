@@ -1,6 +1,5 @@
 """Versioned, explicitly trusted renderer bundles; no document publication or CI edits."""
 from contextlib import ExitStack, contextmanager
-import fcntl
 import hashlib
 import json
 import os
@@ -175,7 +174,7 @@ def verify_installed(repo, lock):
         for p in vendor.rglob('*'):
             if p.is_symlink():
                 raise Error('Symlink inside installed renderer')
-            if p.is_file() and str(p.relative_to(repo)) not in lock['files']:
+            if p.is_file() and p.relative_to(repo).as_posix() not in lock['files']:
                 # Python bytecode is disposable, but no other unmanaged files are deleted.
                 if '__pycache__' not in p.parts or p.suffix != '.pyc':
                     raise Error(f'Unmanaged file inside renderer: {p}')
@@ -183,7 +182,7 @@ def verify_installed(repo, lock):
 
 def check_repo(project):
     repo = project['repo']
-    if git(repo, 'rev-parse', '--show-toplevel') != str(repo):
+    if Path(git(repo, 'rev-parse', '--show-toplevel')).resolve() != repo.resolve():
         raise Error(f'Not a checkout root: {repo}')
     branch = project.get('branch', 'main'); remote = project.get('remote', 'origin')
     if git(repo, 'branch', '--show-current') != branch:
@@ -199,6 +198,25 @@ def check_repo(project):
 def update_lock(repo):
     # Serialize with older installations as well; this lock is not branding.
     path = Path(git(repo, 'rev-parse', '--path-format=absolute', '--git-path', 'folioforge-update.lock'))
+    if os.name == 'nt':
+        import msvcrt
+        # Lock the first byte, including beyond EOF; never truncate another lock.
+        with path.open('a+b') as stream:
+            stream.seek(0)
+            try:
+                msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                import errno
+                if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise
+                raise Error('Another matsugit update is running for this checkout') from exc
+            try:
+                yield
+            finally:
+                stream.seek(0)
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    import fcntl
     with path.open('w') as stream:
         try:
             fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)

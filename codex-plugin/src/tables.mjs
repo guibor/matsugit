@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+import {pythonExecutable, pythonEnvironment} from './python.mjs';
 
 // Pure, bounded table conversion. No paths, network or file-save operations.
 export class TableTools {
@@ -13,8 +14,8 @@ export class TableTools {
     if (this.children.size >= 4) throw Error('Table conversion busy; try again shortly');
     const root = this.runtime.root();
     return new Promise((resolve, reject) => {
-      const child = spawn(process.env.MATSUGIT_PYTHON || process.env.FOLIOFORGE_PYTHON || 'python3',
-        [path.join(root, 'codex-plugin/actions.py')], {cwd:root, stdio:['pipe','pipe','pipe']});
+      const child = spawn(pythonExecutable(),
+        [path.join(root, 'codex-plugin/actions.py')], {cwd:root, env:pythonEnvironment(), stdio:['pipe','pipe','pipe']});
       this.children.add(child);
       let stdout = '', stderr = '', failure;
       const stop = message => { failure = message; child.kill(); };

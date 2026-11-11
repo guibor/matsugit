@@ -7,9 +7,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
+import sys
 import tempfile
+
+WINDOWS = sys.platform == 'win32'
 
 
 def generated(name):
@@ -109,7 +113,7 @@ class SkillPlan:
             raise ValueError('Source skill lacks SKILL.md: ' + str(self.source))
         self.receipt = {'source': str(self.source), 'files': expected}
         self.before = state(self.target)
-        self.action = 'link'
+        self.action = 'copy' if WINDOWS else 'link'
         if self.before is None:
             self.reason = 'not installed'
             return
@@ -127,6 +131,8 @@ class SkillPlan:
         actual = files(self.target) if self.target.is_dir() else {}
         if actual == expected:
             self.reason = 'unchanged copy of the current release'
+            if WINDOWS:
+                self.action = 'keep'
         elif 'SKILL.md' in prior_files and actual == prior_files:
             self.reason = 'unchanged copy of the previous installation'
         else:
@@ -143,7 +149,7 @@ class SkillPlan:
                     'No skill files changed. This is an installed-skill difference, not Git branch divergence.')
 
     def describe(self):
-        action = 'current' if self.action == 'keep' else 'would link'
+        action = 'current' if self.action == 'keep' else 'would ' + self.action
         return f'{self.target}: {action}; {self.reason}\n  source: {self.source}'
 
     def check_unchanged(self):
@@ -172,7 +178,20 @@ class SkillPlan:
                     raise ValueError('Skill changed during migration; original retained at ' + str(backup))
             # Exclusive creation: never replace something that appeared while
             # the previous directory/link was being backed up.
-            self.target.symlink_to(self.source, target_is_directory=True)
+            if WINDOWS:
+                # Windows users need no symlink privilege. Receipts still detect
+                # local edits before a later setup replaces a managed copy.
+                with tempfile.TemporaryDirectory(prefix='.matsugit-skill-', dir=self.target.parent) as temp:
+                    staged = Path(temp) / 'skill'
+                    shutil.copytree(self.source, staged, symlinks=True)
+                    if files(staged) != self.receipt['files'] or files(self.source) != self.receipt['files']:
+                        raise ValueError('Source skill changed during setup; nothing installed')
+                    # On Windows rename refuses an existing destination directory.
+                    if self.target.exists() or self.target.is_symlink():
+                        raise ValueError('Skill destination changed during setup; retained')
+                    staged.rename(self.target)
+            else:
+                self.target.symlink_to(self.source, target_is_directory=True)
         except BaseException as exc:
             if backup is not None and not self.target.exists() and not self.target.is_symlink():
                 backup.rename(self.target)

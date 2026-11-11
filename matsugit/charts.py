@@ -173,9 +173,10 @@ def render_worker(payload):
 
 def render_chart(data, colours, width=960):
     payload = {'data': data, 'style': style(colours), 'width': max(240, min(1600, int(width)))}
+    executable = 'Scripts/python.exe' if os.name == 'nt' else 'bin/python'
     python = Path(env('MATSUGIT_CHART_PYTHON', existing(
-        '~/.local/share/matsugit/charts/bin/python',
-        '~/.local/share/folioforge/charts/bin/python'))).expanduser()
+        '~/.local/share/matsugit/charts/' + executable,
+        '~/.local/share/folioforge/charts/' + executable))).expanduser()
     if not python.is_file():
         python = Path(sys.executable)
     try:
@@ -259,11 +260,12 @@ def setup():
     target = Path('~/.local/share/matsugit/charts').expanduser()
     uv = shutil.which('uv')
     target.parent.mkdir(parents=True, exist_ok=True)
-    if not (target/'bin/python').is_file():
+    python = target / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    if not python.is_file():
         subprocess.run([uv,'venv',str(target)] if uv else [sys.executable,'-m','venv',str(target)], check=True)
     packages = ['altair>=5', 'vl-convert-python>=1.7', 'matplotlib>=3.7']
-    subprocess.run([uv,'pip','install','--python',str(target/'bin/python'), *packages] if uv else
-                   [str(target/'bin/python'),'-m','pip','install', *packages], check=True)
+    subprocess.run([uv,'pip','install','--python',str(python), *packages] if uv else
+                   [str(python),'-m','pip','install', *packages], check=True)
     print('Local chart backend ready:', target)
 
 
