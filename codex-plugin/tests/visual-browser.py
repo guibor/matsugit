@@ -34,7 +34,7 @@ try:
         wait(frame, '!!window.matsugitWorkspace?.state.rendered')
         frame.locator('#auto').uncheck(); frame.locator('#sync').uncheck()
         frame.locator('#copy-path').click()
-        assert frame.locator('#copy-path').get_attribute('data-feedback') == 'done'
+        wait(frame, 'document.getElementById("copy-path").dataset.feedback === "done"', 20)
         assert frame.locator('#action-feedback').inner_text() == 'Document path copied'
         print('Clipboard and first render ready', flush=True)
         assert page.evaluate('navigator.clipboard.readText()') == str(source.resolve())
