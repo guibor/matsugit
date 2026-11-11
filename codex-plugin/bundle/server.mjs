@@ -36689,13 +36689,6 @@ var OpenAIExtensions = class {
 // src/server.mjs
 import fs6 from "node:fs";
 
-// src/store.mjs
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { randomUUID, createHash } from "node:crypto";
-import { spawn, execFile } from "node:child_process";
-
 // src/python.mjs
 function pythonExecutable(env = process.env, platform = process.platform) {
   return env.MATSUGIT_PYTHON || env.FOLIOFORGE_PYTHON || (platform === "win32" ? "python" : "python3");
@@ -36705,6 +36698,11 @@ function pythonEnvironment(env = process.env, platform = process.platform) {
 }
 
 // src/store.mjs
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { randomUUID, createHash } from "node:crypto";
+import { spawn, execFile } from "node:child_process";
 var MAX_SOURCE = 2 * 1024 * 1024;
 var formats = /* @__PURE__ */ new Set([".md", ".markdown", ".qmd", ".org"]);
 var hash2 = (text) => createHash("sha256").update(text).digest("hex");

@@ -1,9 +1,10 @@
+// Keep the local dependency first so esbuild emits contiguous review excerpts.
+import {pythonExecutable, pythonEnvironment} from './python.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {randomUUID, createHash} from 'node:crypto';
 import {spawn, execFile} from 'node:child_process';
-import {pythonExecutable, pythonEnvironment} from './python.mjs';
 
 export const MAX_SOURCE = 2 * 1024 * 1024;
 const formats = new Set(['.md', '.markdown', '.qmd', '.org']);
