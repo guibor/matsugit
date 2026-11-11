@@ -21,6 +21,7 @@ SNAPSHOT = r'''() => {
   const visible = id => $(id) && !$(id).hidden && getComputedStyle($(id)).display !== 'none';
   return JSON.stringify({open, pressed, layout: s.layout, format: s.format, mode: s.editorMode, theme: $('theme').value, presenting: document.body.classList.contains('presenting'),
     text: w.editor.state.doc.toString(), selection: w.editor.state.selection.main.head, scroll: Math.round(w.editor.scrollDOM.scrollTop),
+    saving: s.saving, saved: $('save-state').textContent,
     notice: $('notice-text').textContent, feedback: visible('action-feedback') ? $('action-feedback').textContent : '', status: $('status').textContent,
     panels: ['check-panel', 'more-panel', 'role-help', 'story-preview', 'recovery-banner'].map(id => id + ':' + visible(id)).join(','),
     feedbackAttr: [...document.querySelectorAll('[data-feedback]')].map(b => b.id + b.dataset.feedback).join(','),
@@ -31,7 +32,11 @@ SNAPSHOT = r'''() => {
 }'''
 CANDIDATES = r'''() => [...document.querySelectorAll('button, input[type=checkbox], select')]
   .filter(el => !el.closest('dialog') && !el.closest('.cm-editor') && el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden')
-  .map((el, index) => { el.dataset.auditIndex = index; return {index, id: el.id, label: (el.getAttribute('aria-label') || el.title || el.textContent || '').trim().slice(0, 60),
+  .map((el, index) => { const selector = el.id ? '#' + CSS.escape(el.id)
+      : el.getAttribute('aria-label') ? el.tagName.toLowerCase() + '[aria-label="' + CSS.escape(el.getAttribute('aria-label')) + '"]'
+      : el.title ? el.tagName.toLowerCase() + '[title="' + CSS.escape(el.title) + '"]'
+      : el.tagName.toLowerCase() + ':text-is(' + JSON.stringify(el.textContent.trim()) + ')';
+    return {index, selector, draggable: el.draggable, id: el.id, label: (el.getAttribute('aria-label') || el.title || el.textContent || '').trim().slice(0, 60),
     disabled: el.disabled, title: el.title, tag: el.tagName, inStory: !!el.closest('#story-list'), inRail: !!el.closest('#slide-rail'),
     selected: el.getAttribute('aria-pressed') === 'true' && !!el.closest('.segmented, [role=group]')}; })'''
 # Controls whose effect is outside the page (or deliberately nothing to observe here).
@@ -82,15 +87,18 @@ def audit(label, query='', host_mode='', options=None, prepare=None):
                     if not control['title']:
                         problems.append(f'{name}: disabled with no explanation')
                     continue
-                if control['id'] in OUTSIDE or control['selected']:
-                    # Choosing the option that is already chosen is meant to do nothing.
+                if control['id'] in OUTSIDE or control['selected'] or control['draggable']:
+                    # Re-selecting a selected option is a no-op. Drag handles are
+                    # exercised by story-browser.py and story-move-browser.py.
                     continue
                 before = frame.evaluate(SNAPSHOT)
                 # Story repaints its rows; find the control again just before using it.
                 fresh = [c for c in frame.evaluate(CANDIDATES) if (c['id'] or c['label'], c['inStory'], c['inRail']) == key]
-                if fresh:
-                    control = fresh[0]
-                element = frame.locator(f'[data-audit-index="{control["index"]}"]')
+                if not fresh:
+                    continue
+                control = fresh[0]
+                scope = '#story-list ' if control['inStory'] else '#slide-rail ' if control['inRail'] else ''
+                element = frame.locator(scope + control['selector'] + ':visible').first
                 try:
                     if control['tag'] == 'SELECT':
                         options_list = element.evaluate('e => [...e.options].map(o => o.value)')
@@ -107,8 +115,11 @@ def audit(label, query='', host_mode='', options=None, prepare=None):
                 except Exception as error:
                     problems.append(f'{name}: could not be clicked ({str(error).splitlines()[0][:120]})')
                     continue
-                page.wait_for_timeout(700)
-                after = frame.evaluate(SNAPSHOT)
+                after = before
+                deadline = time.monotonic() + 5
+                while after == before and time.monotonic() < deadline:
+                    page.wait_for_timeout(100)
+                    after = frame.evaluate(SNAPSHOT)
                 clicked.append(name)
                 if after == before:
                     problems.append(f'{name}: enabled but nothing happened')
