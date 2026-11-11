@@ -147,6 +147,10 @@ def restore(frame, page, before):
         page.wait_for_timeout(200)
         for dialog in frame.evaluate('[...document.querySelectorAll("dialog")].filter(d => d.open).map(d => d.id)'):
             frame.evaluate('id => { try { document.getElementById(id).close(); } catch {} }', dialog)
+    inline = frame.locator('#story-list textarea:visible')
+    if inline.count():
+        inline.first.press('Escape')
+        wait(frame, '!document.querySelector("#story-list textarea")')
     if frame.evaluate('document.body.classList.contains("presenting")'):
         frame.locator('#present-exit').click()
     for panel, closer in (('more-panel', '#more'), ('check-panel', '#check-close')):
