@@ -123,7 +123,7 @@ If the matsugit tools are not connected, or the panel stays empty, the commands
 open the same workspace in your browser instead, with
 `python3 -m matsugit open <file>` from the checkout. You can run it yourself too.
 The address is private to you and works on this computer only; the server stops
-a minute after you close the tab. In the browser, Ask AI copies the request
+five minutes after you close the tab. In the browser, Ask AI copies the request
 for you to paste into Cursor's chat; everything else is the same.
 
 ## Skill-only alternative

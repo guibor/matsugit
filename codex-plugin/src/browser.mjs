@@ -7,7 +7,7 @@
 // - every address carries a random token that only the person who ran it gets;
 // - requests naming another host (DNS rebinding) or coming from another origin
 //   are refused, so other web pages cannot reach the document;
-// - it stops by itself a minute after the last tab closes.
+// - it stops by itself five minutes after the last tab closes.
 // Usage: node browser.mjs [file] — prints one JSON line {url, path} when ready.
 import http from 'node:http';
 import path from 'node:path';
@@ -17,7 +17,8 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const IDLE = Number(process.env.MATSUGIT_BROWSER_IDLE_MS) || 60_000;
+// Hidden tabs may have timers throttled to one minute; allow several beats.
+const IDLE = Number(process.env.MATSUGIT_BROWSER_IDLE_MS) || 5 * 60_000;
 const UNUSED = Number(process.env.MATSUGIT_BROWSER_UNUSED_MS) || 10 * 60_000;
 const BODY_LIMIT = 16 * 1024 * 1024;
 
@@ -38,10 +39,15 @@ export function startServer(serverPath = path.join(here, 'server.mjs')) {
       message.error ? waiter.reject(Object.assign(Error(message.error.message), {rpc: message.error})) : waiter.resolve(message.result);
     }
   });
+  let closed = false;
+  const rejectPending = error => { closed = true; for (const waiter of pending.values()) waiter.reject(error); pending.clear(); };
+  child.on('error', rejectPending);
+  child.stdin.on('error', rejectPending);
   const exited = new Promise(resolve => child.on('exit', resolve));
-  exited.then(() => { for (const waiter of pending.values()) waiter.reject(Error('The matsugit server stopped.')); pending.clear(); });
+  exited.then(() => rejectPending(Error('The matsugit server stopped.')));
   const send = message => child.stdin.write(JSON.stringify({jsonrpc: '2.0', ...message}) + '\n');
   const request = (method, params) => new Promise((resolve, reject) => {
+    if (closed || child.exitCode !== null) return reject(Error('The matsugit server stopped.'));
     const id = next++; pending.set(id, {resolve, reject}); send({id, method, params});
   });
   const ready = request('initialize', {protocolVersion: '2025-06-18', capabilities: {},
@@ -101,6 +107,10 @@ const HOST_POLICY = "default-src 'none'; script-src 'unsafe-inline'; style-src '
 
 export async function serve({file, serverPath, port = 0, onIdle = () => process.exit(0)} = {}) {
   const mcp = startServer(serverPath);
+  const terminate = () => { mcp.close(); process.exit(0); };
+  process.once('SIGTERM', terminate);
+  process.once('SIGINT', terminate);
+  try {
   await mcp.ready;
   const absolute = file ? path.resolve(file) : null;
   if (absolute && !fs.existsSync(absolute)) { mcp.close(); throw Error('No such file: ' + absolute); }
@@ -157,13 +167,21 @@ export async function serve({file, serverPath, port = 0, onIdle = () => process.
     }
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
-  const stop = () => { clearInterval(timer); server.close(); mcp.close(); };
+  const stop = () => {
+    clearInterval(timer); server.close(); server.closeAllConnections(); mcp.close();
+    process.removeListener('SIGTERM', terminate); process.removeListener('SIGINT', terminate);
+  };
   const timer = setInterval(() => {
     const now = Date.now();
     if (seen ? now - seen > IDLE : now - started > UNUSED) { stop(); onIdle(); }
   }, Math.min(5000, IDLE / 2));
   mcp.exited.then(() => { stop(); onIdle(); });
   return {url: `http://127.0.0.1:${server.address().port}/${token}/`, path: absolute, stop};
+  } catch (error) {
+    mcp.close();
+    process.removeListener('SIGTERM', terminate); process.removeListener('SIGINT', terminate);
+    throw error;
+  }
 }
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {

@@ -135,7 +135,7 @@ python3 -m matsugit open deck.md     # no file: the sample deck
 Everything works there, side by side, except that Ask AI copies the request
 for you to paste into the chat. The agent can keep editing the file; the tab
 takes its changes in. It runs on your computer only, behind a private address,
-and stops a minute after you close the tab.
+and stops five minutes after you close the tab.
 See the [[file:docs/cursor.md][Cursor guide]] and the [[file:docs/codex.org][workspace guide]] for setup details, including a
 skill-only option with no server.
 

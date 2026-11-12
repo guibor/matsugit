@@ -70,7 +70,7 @@ use an already approved private preview mechanism and verify the URL.
 To edit with the live workspace without a plugin (another agent, a terminal,
 or a host that does not show MCP Apps), run `python3 -m matsugit open deck.md`
 from the checkout. It needs Node 22+ in addition to the above, serves the same
-workspace on this computer only, behind a private address, and stops a minute
+workspace on this computer only, behind a private address, and stops five minutes
 after the tab closes. Use `--no-browser` on a machine without a desktop.
 
 Report separately: skill discovered, renderer runnable, Quarto available,

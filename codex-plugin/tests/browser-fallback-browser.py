@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def wait(frame, expression, timeout=60):
+def wait(frame, expression, timeout=120):
     end = time.time() + timeout
     while time.time() < end:
         if frame.evaluate(expression):
@@ -61,6 +61,8 @@ with tempfile.TemporaryDirectory() as directory:
         page = browser.new_page(viewport={'width': 1440, 'height': 900})
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
+        page.on('console', lambda message: print('browser:', message.type, message.text, flush=True) if message.type == 'error' else None)
+        page.on('pageerror', lambda error: print('page error:', error, flush=True))
         page.goto(url)
         assert page.title() == 'pilot.md · matsugit'
         frame = page.frames[1]
@@ -82,8 +84,20 @@ with tempfile.TemporaryDirectory() as directory:
         time.sleep(1)
         deck.write_text(deck.read_text().replace('### A claim', '### A claim the agent sharpened'))
         wait(frame, 'matsugitWorkspace.editor.state.doc.toString().includes("the agent sharpened")', 30)
+        wait(frame, 'matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision && !matsugitWorkspace.state.rendering')
+        preview = frame.locator('#preview').element_handle().content_frame()
+        wait(preview, 'document.body.textContent.includes("the agent sharpened")')
+        frame.locator('[data-format="slides"]').click()
+        wait(frame, 'matsugitWorkspace.state.format === "slides" && !matsugitWorkspace.state.rendering')
+        preview = frame.locator('#preview').element_handle().content_frame()
+        wait(preview, 'window.Reveal?.isReady() && document.body.textContent.includes("the agent sharpened")')
 
         page.screenshot(path=str(Path(tempfile.gettempdir()) / 'matsugit-browser-fallback.png'))
+        page.set_viewport_size({'width': 390, 'height': 844})
+        page.wait_for_timeout(500)
+        assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Narrow view overflows horizontally'
+        assert frame.locator('#save').is_visible()
+        page.screenshot(path=str(Path(tempfile.gettempdir()) / 'matsugit-browser-fallback-mobile.png'))
         assert not errors, errors
         browser.close()
 

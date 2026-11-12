@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 var here = path.dirname(fileURLToPath(import.meta.url));
-var IDLE = Number(process.env.MATSUGIT_BROWSER_IDLE_MS) || 6e4;
+var IDLE = Number(process.env.MATSUGIT_BROWSER_IDLE_MS) || 5 * 6e4;
 var UNUSED = Number(process.env.MATSUGIT_BROWSER_UNUSED_MS) || 10 * 6e4;
 var BODY_LIMIT = 16 * 1024 * 1024;
 function startServer(serverPath = path.join(here, "server.mjs")) {
@@ -32,13 +32,19 @@ function startServer(serverPath = path.join(here, "server.mjs")) {
       message.error ? waiter.reject(Object.assign(Error(message.error.message), { rpc: message.error })) : waiter.resolve(message.result);
     }
   });
-  const exited = new Promise((resolve) => child.on("exit", resolve));
-  exited.then(() => {
-    for (const waiter of pending.values()) waiter.reject(Error("The matsugit server stopped."));
+  let closed = false;
+  const rejectPending = (error) => {
+    closed = true;
+    for (const waiter of pending.values()) waiter.reject(error);
     pending.clear();
-  });
+  };
+  child.on("error", rejectPending);
+  child.stdin.on("error", rejectPending);
+  const exited = new Promise((resolve) => child.on("exit", resolve));
+  exited.then(() => rejectPending(Error("The matsugit server stopped.")));
   const send = (message) => child.stdin.write(JSON.stringify({ jsonrpc: "2.0", ...message }) + "\n");
   const request = (method, params) => new Promise((resolve, reject) => {
+    if (closed || child.exitCode !== null) return reject(Error("The matsugit server stopped."));
     const id = next++;
     pending.set(id, { resolve, reject });
     send({ id, method, params });
@@ -101,105 +107,121 @@ var APP_POLICY = "default-src 'none'; script-src 'unsafe-inline' data: blob:; st
 var HOST_POLICY = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 async function serve({ file, serverPath, port = 0, onIdle = () => process.exit(0) } = {}) {
   const mcp = startServer(serverPath);
-  await mcp.ready;
-  const absolute = file ? path.resolve(file) : null;
-  if (absolute && !fs.existsSync(absolute)) {
+  const terminate = () => {
     mcp.close();
-    throw Error("No such file: " + absolute);
-  }
-  const open = () => absolute ? mcp.request("tools/call", { name: "matsugit_open", arguments: { path: absolute } }) : mcp.request("tools/call", { name: "matsugit_workspace", arguments: {} });
-  const first = await open();
-  if (first.isError) {
-    mcp.close();
-    throw Error(first.content?.map((item) => item.text).join(" ") || "The document could not be opened.");
-  }
-  const app = (await mcp.request("resources/read", { uri: "ui://matsugit/workspace-v1" })).contents[0].text;
-  const token = crypto.randomBytes(24).toString("base64url");
-  let seen = 0;
-  const started = Date.now();
-  const server = http.createServer(async (req, res) => {
-    const deny = (code, text) => {
-      res.writeHead(code, { "Content-Type": "text/plain" });
-      res.end(text);
-    };
-    const { port: actual } = server.address();
-    const hosts = [`127.0.0.1:${actual}`, `localhost:${actual}`];
-    if (!hosts.includes(req.headers.host)) return deny(403, "Forbidden");
-    const origin = req.headers.origin;
-    if (origin && !hosts.some((host) => origin === "http://" + host)) return deny(403, "Forbidden");
-    const url = new URL(req.url, "http://" + req.headers.host);
-    const prefix = `/${token}/`;
-    const given = Buffer.from(url.pathname.slice(1, 1 + token.length));
-    if (!url.pathname.startsWith("/") || given.length !== token.length || !crypto.timingSafeEqual(given, Buffer.from(token)) || url.pathname[token.length + 1] !== "/") return deny(404, "Not found");
-    const route = url.pathname.slice(prefix.length);
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Referrer-Policy", "no-referrer");
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    try {
-      if (req.method === "GET" && route === "") {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": HOST_POLICY });
-        return res.end(hostPage(token, absolute ? path.basename(absolute) : "Sample deck", Math.min(15e3, Math.floor(IDLE / 4))));
-      }
-      if (req.method === "GET" && route === "app") {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": APP_POLICY });
-        return res.end(app);
-      }
-      if (req.method !== "POST") return deny(404, "Not found");
-      if (!/^application\/json\b/.test(req.headers["content-type"] || "") && route !== "alive") return deny(415, "JSON only");
-      let size = 0;
-      const chunks = [];
-      for await (const chunk of req) {
-        size += chunk.length;
-        if (size > BODY_LIMIT) return deny(413, "Too large");
-        chunks.push(chunk);
-      }
-      const reply = (value) => {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(value));
-      };
-      if (route === "alive") {
-        seen = Date.now();
-        return reply({});
-      }
-      if (route === "result") {
-        seen = Date.now();
-        return reply(await open());
-      }
-      if (route === "rpc") {
-        const message = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-        if (!["tools/call", "resources/read"].includes(message.method)) return reply({ error: { code: -32601, message: "Method not found" } });
-        try {
-          return reply({ result: await mcp.request(message.method, message.params) });
-        } catch (error) {
-          return reply({ error: error.rpc || { code: -32603, message: error.message } });
-        }
-      }
-      deny(404, "Not found");
-    } catch (error) {
-      if (!res.headersSent) deny(500, "The request failed.");
-    }
-  });
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(port, "127.0.0.1", resolve);
-  });
-  const stop = () => {
-    clearInterval(timer);
-    server.close();
-    mcp.close();
+    process.exit(0);
   };
-  const timer = setInterval(() => {
-    const now = Date.now();
-    if (seen ? now - seen > IDLE : now - started > UNUSED) {
+  process.once("SIGTERM", terminate);
+  process.once("SIGINT", terminate);
+  try {
+    await mcp.ready;
+    const absolute = file ? path.resolve(file) : null;
+    if (absolute && !fs.existsSync(absolute)) {
+      mcp.close();
+      throw Error("No such file: " + absolute);
+    }
+    const open = () => absolute ? mcp.request("tools/call", { name: "matsugit_open", arguments: { path: absolute } }) : mcp.request("tools/call", { name: "matsugit_workspace", arguments: {} });
+    const first = await open();
+    if (first.isError) {
+      mcp.close();
+      throw Error(first.content?.map((item) => item.text).join(" ") || "The document could not be opened.");
+    }
+    const app = (await mcp.request("resources/read", { uri: "ui://matsugit/workspace-v1" })).contents[0].text;
+    const token = crypto.randomBytes(24).toString("base64url");
+    let seen = 0;
+    const started = Date.now();
+    const server = http.createServer(async (req, res) => {
+      const deny = (code, text) => {
+        res.writeHead(code, { "Content-Type": "text/plain" });
+        res.end(text);
+      };
+      const { port: actual } = server.address();
+      const hosts = [`127.0.0.1:${actual}`, `localhost:${actual}`];
+      if (!hosts.includes(req.headers.host)) return deny(403, "Forbidden");
+      const origin = req.headers.origin;
+      if (origin && !hosts.some((host) => origin === "http://" + host)) return deny(403, "Forbidden");
+      const url = new URL(req.url, "http://" + req.headers.host);
+      const prefix = `/${token}/`;
+      const given = Buffer.from(url.pathname.slice(1, 1 + token.length));
+      if (!url.pathname.startsWith("/") || given.length !== token.length || !crypto.timingSafeEqual(given, Buffer.from(token)) || url.pathname[token.length + 1] !== "/") return deny(404, "Not found");
+      const route = url.pathname.slice(prefix.length);
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Referrer-Policy", "no-referrer");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      try {
+        if (req.method === "GET" && route === "") {
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": HOST_POLICY });
+          return res.end(hostPage(token, absolute ? path.basename(absolute) : "Sample deck", Math.min(15e3, Math.floor(IDLE / 4))));
+        }
+        if (req.method === "GET" && route === "app") {
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": APP_POLICY });
+          return res.end(app);
+        }
+        if (req.method !== "POST") return deny(404, "Not found");
+        if (!/^application\/json\b/.test(req.headers["content-type"] || "") && route !== "alive") return deny(415, "JSON only");
+        let size = 0;
+        const chunks = [];
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > BODY_LIMIT) return deny(413, "Too large");
+          chunks.push(chunk);
+        }
+        const reply = (value) => {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(value));
+        };
+        if (route === "alive") {
+          seen = Date.now();
+          return reply({});
+        }
+        if (route === "result") {
+          seen = Date.now();
+          return reply(await open());
+        }
+        if (route === "rpc") {
+          const message = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          if (!["tools/call", "resources/read"].includes(message.method)) return reply({ error: { code: -32601, message: "Method not found" } });
+          try {
+            return reply({ result: await mcp.request(message.method, message.params) });
+          } catch (error) {
+            return reply({ error: error.rpc || { code: -32603, message: error.message } });
+          }
+        }
+        deny(404, "Not found");
+      } catch (error) {
+        if (!res.headersSent) deny(500, "The request failed.");
+      }
+    });
+    await new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(port, "127.0.0.1", resolve);
+    });
+    const stop = () => {
+      clearInterval(timer);
+      server.close();
+      server.closeAllConnections();
+      mcp.close();
+      process.removeListener("SIGTERM", terminate);
+      process.removeListener("SIGINT", terminate);
+    };
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (seen ? now - seen > IDLE : now - started > UNUSED) {
+        stop();
+        onIdle();
+      }
+    }, Math.min(5e3, IDLE / 2));
+    mcp.exited.then(() => {
       stop();
       onIdle();
-    }
-  }, Math.min(5e3, IDLE / 2));
-  mcp.exited.then(() => {
-    stop();
-    onIdle();
-  });
-  return { url: `http://127.0.0.1:${server.address().port}/${token}/`, path: absolute, stop };
+    });
+    return { url: `http://127.0.0.1:${server.address().port}/${token}/`, path: absolute, stop };
+  } catch (error) {
+    mcp.close();
+    process.removeListener("SIGTERM", terminate);
+    process.removeListener("SIGINT", terminate);
+    throw error;
+  }
 }
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   try {

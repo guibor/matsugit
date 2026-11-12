@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -38,6 +39,41 @@ class BrowserOpenTests(unittest.TestCase):
     def test_without_node_says_what_to_install(self):
         with mock.patch('shutil.which', return_value=None), self.assertRaisesRegex(Error, 'Node 22'):
             open_in_browser(None, browser=False)
+
+    def test_old_node_is_refused_before_launch(self):
+        with mock.patch('subprocess.run', return_value=subprocess.CompletedProcess([], 0, 'v20.0.0\n', '')), \
+                mock.patch('subprocess.Popen') as popen, self.assertRaisesRegex(Error, 'Node 22'):
+            open_in_browser(None, browser=False)
+        popen.assert_not_called()
+
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_startup_timeout_stops_the_child(self):
+        with tempfile.TemporaryDirectory() as directory:
+            helper = Path(directory) / 'hung.mjs'
+            helper.write_text('setInterval(() => {}, 1000);')
+            launched = []
+            original = subprocess.Popen
+            def launch(*args, **kwargs):
+                process = original(*args, **kwargs)
+                launched.append(process)
+                return process
+            with mock.patch('matsugit.browser.helper', return_value=(shutil.which('node'), helper)), \
+                    mock.patch('matsugit.browser.START_TIMEOUT', 0.2), \
+                    mock.patch('subprocess.Popen', side_effect=launch), \
+                    self.assertRaisesRegex(Error, 'did not start in'):
+                open_in_browser(None, browser=False)
+            self.assertIsNotNone(launched[0].poll())
+            self.assertTrue(launched[0].stdout.closed)
+
+    @unittest.skipUnless(shutil.which('node'), 'needs Node')
+    def test_invalid_address_never_opens_a_browser(self):
+        with tempfile.TemporaryDirectory() as directory:
+            helper = Path(directory) / 'bad.mjs'
+            helper.write_text('console.log(JSON.stringify({url:"https://example.invalid"}));')
+            with mock.patch('matsugit.browser.helper', return_value=(shutil.which('node'), helper)), \
+                    mock.patch('webbrowser.open') as browser, self.assertRaisesRegex(Error, 'Invalid local'):
+                open_in_browser(None)
+            browser.assert_not_called()
 
     @unittest.skipUnless(shutil.which('node') and BUNDLE.is_file(), 'needs Node and the built bundle')
     def test_serves_the_workspace_on_a_private_local_address(self):

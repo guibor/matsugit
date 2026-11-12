@@ -102,8 +102,10 @@ no argument opens the sample deck. Everything works there as beside the chat,
 except Ask AI, which copies the request for the user to paste to you. Give the
 address in one line and keep editing the file on disk as usual: the open tab
 takes in your changes, merging them with the author's typing or asking them to
-review. It stops by itself a minute after the tab closes. Use `--no-browser`
-when there is no desktop (remote machine) and tell the user the address. Never
+review. It stops by itself five minutes after the tab closes. `--no-browser` prints
+the address without launching a desktop browser. On a remote machine that address
+is reachable only there; an explicitly configured private SSH tunnel is needed
+to use it from another computer. Do not present remote localhost as a usable link. Never
 offer to put this on a public address; it is for this computer only.
 
 ## Authors who do not read Markdown

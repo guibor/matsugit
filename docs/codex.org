@@ -85,8 +85,8 @@ codex plugin add matsugit@matsugit
 install) serves this workspace in your default browser: the same server and
 page as in Codex, with the browser tab as the host. Without a file it shows the
 sample deck. It listens on 127.0.0.1 only, every address carries a random
-token, other host names and cross-origin requests are refused, and it stops a
-minute after the last tab closes. The command returns at once, so an agent can
+token, other host names and cross-origin requests are refused, and it stops five
+minutes after the last tab closes. The command returns at once, so an agent can
 run it; =--foreground= keeps it attached to the terminal, =--no-browser= only
 prints the address. There is no chat in the browser, so Ask AI and the slide
 request copy the text to paste instead. The skill uses this whenever the
