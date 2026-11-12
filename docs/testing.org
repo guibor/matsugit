@@ -25,8 +25,10 @@ MATSUGIT_STANDARD_MCP=1=.
 * Package size
 
 =tests/test_package_size.py= keeps the committed tree under 8 MB (8,000,000
-bytes), the limit for a packaged plugin before zipping, and lists the largest
-files when it fails. What keeps it there:
+bytes) and lists the largest files when it fails. This is a source-tree budget,
+not a measurement of downstream ZIPs: those can include themes, review evidence
+and older renderer releases. Measure their expanded payload separately.
+What keeps this tree small:
 - The workspace page is not committed separately: it lives inside
   =codex-plugin/bundle/server.mjs=. =node codex-plugin/app-html.mjs > app.html=
   writes it out for inspection; tests and the demo read it the same way.

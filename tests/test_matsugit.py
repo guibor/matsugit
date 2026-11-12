@@ -10,7 +10,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlsplit, unquote
 from unittest.mock import patch
 
-from matsugit.core import Error, ResourceHTML, config, git, inside, normalize, read_json, render, run, write_json
+from matsugit.core import Error, ResourceHTML, config, expand_runtime, git, inside, normalize, read_json, render, run, write_json
 from matsugit.publish import check_destination, identity, preflight, publish, setup_ci
 
 
@@ -77,6 +77,22 @@ class CoreTests(unittest.TestCase):
         target.mkdir()
         with self.assertRaisesRegex(Error, "unowned"):
             check_destination(target, self.source)
+
+    def test_ci_setup_from_expanded_plugin_runtime(self):
+        import matsugit.publish as publishing
+        package = self.root / 'snapshot/matsugit'
+        shutil.copytree(Path(publishing.__file__).parent, package,
+                        ignore=shutil.ignore_patterns('__pycache__'))
+        expand_runtime(package / 'runtime')
+        self.assertFalse((package / 'runtime/mathjax-tex-svg.js.gz').exists())
+        for provider in ('github', 'gitlab'):
+            with self.subTest(provider=provider):
+                repo = self.root / provider
+                repo.mkdir()
+                with patch.object(publishing, '__file__', str(package / 'publish.py')):
+                    setup_ci(config(self.source, {'repo': str(repo)}), provider)
+                self.assertEqual((repo / '.matsugit-ci/runtime/mathjax-tex-svg.js').read_bytes(),
+                                 (package / 'runtime/mathjax-tex-svg.js').read_bytes())
 
 
 QUARTO = os.environ.get("QUARTO", shutil.which("quarto"))

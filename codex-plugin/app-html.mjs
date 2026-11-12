@@ -2,6 +2,8 @@
 // in bundle/server.mjs. Tests, the demo and screenshot provenance use this
 // instead of a second committed copy of the page.
 import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {brotliDecompressSync} from 'node:zlib';
 
 export function bundledApp(server = new URL('./bundle/server.mjs', import.meta.url)) {
@@ -12,4 +14,6 @@ export function bundledApp(server = new URL('./bundle/server.mjs', import.meta.u
 }
 
 // `node app-html.mjs > app.html` writes the page for inspection.
-if (import.meta.url === `file://${process.argv[1]}`) process.stdout.write(bundledApp());
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  process.stdout.write(bundledApp());
+}

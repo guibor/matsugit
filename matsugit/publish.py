@@ -153,6 +153,9 @@ def request_deployment(settings, provider, base):
 def setup_ci(settings, provider):
     repo = settings["repo"]
     templates = Path(__file__).parent / "templates"
+    mathjax = Path(__file__).parent / "runtime/mathjax-tex-svg.js"
+    if not mathjax.is_file():
+        mathjax = mathjax.with_suffix('.js.gz')
     workflow = ".github/workflows/matsugit-pages.yml" if provider == "github" else "matsugit.gitlab-ci.yml"
     legacy = workflow.replace('matsugit', 'folioforge')
     if (repo / legacy).exists() or (repo / '.folioforge-ci').exists():
@@ -180,7 +183,7 @@ def setup_ci(settings, provider):
         ".matsugit-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
         ".matsugit-ci/runtime/layout.css": Path(__file__).parent / "runtime/layout.css",
         ".matsugit-ci/runtime/math-config.js": Path(__file__).parent / "runtime/math-config.js",
-        ".matsugit-ci/runtime/mathjax-tex-svg.js": Path(__file__).parent / "runtime/mathjax-tex-svg.js.gz",
+        ".matsugit-ci/runtime/mathjax-tex-svg.js": mathjax,
         ".matsugit-ci/runtime/MATHJAX-LICENSE": Path(__file__).parent / "runtime/MATHJAX-LICENSE",
         ".matsugit-ci/runtime/MATHJAX-NOTICE.txt": Path(__file__).parent / "runtime/MATHJAX-NOTICE.txt",
     }

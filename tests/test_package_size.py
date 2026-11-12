@@ -1,8 +1,7 @@
 """The repository, as committed, stays under 8 MB (8,000,000 bytes).
 
-A plugin or extension packaged from it must stay under that size before it is
-zipped, so this guards the whole tracked tree, the strictest reading. When it
-fails, the message lists the largest files.
+This guards the source tree, not downstream archives that add themes or review
+evidence. When it fails, the message lists the largest files.
 """
 from pathlib import Path
 import shutil
