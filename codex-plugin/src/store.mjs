@@ -48,6 +48,17 @@ export class WorkspaceStore {
   themeRequests = new Set();
   relocations = new Map();
   constructor(root) { this.root = root; }
+  // Write the guided sample into a folder the user chose, once. If it is already
+  // there it is opened as it is: the person may have edited it.
+  tour(directory, text) {
+    if (typeof directory !== 'string' || !path.isAbsolute(directory)) throw Error('Give the absolute path of a folder for the sample deck.');
+    const folder = fs.realpathSync(directory);
+    if (!fs.statSync(folder).isDirectory()) throw Error('Choose a folder for the sample deck.');
+    const file = path.join(folder, 'matsugit-tour.md');
+    try { fs.writeFileSync(file, checkedText(text), {flag: 'wx', mode: 0o644}); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+    return file;
+  }
   open(file) {
     const target = checkedPath(file), text = readSource(target);
     // Sessions identify a file, not a panel draft. Recovery writers remain

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {checkDeck, applyFix, checkSummary, rendererFinding} from '../src/check.mjs';
+import {checkDeck, applyFix, checkSummary, rendererFinding, setupProblem} from '../src/check.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const python = process.env.MATSUGIT_PYTHON || 'python3';
@@ -113,7 +113,7 @@ test('valid syntax, examples and hidden or literal content raise no findings', (
   ];
   for (const source of clean) assert.deepEqual(checkDeck(source), [], JSON.stringify(source));
   for (const file of ['examples/charts-takeaways.md', 'examples/decision-demo.md', 'examples/diagrams.md', 'examples/quotes.md',
-    'skills/matsugit/assets/slide-types.md', 'skills/matsugit/assets/relationships.md', 'codex-plugin/tests/product-review.md',
+    'skills/matsugit/assets/slide-types.md', 'matsugit/templates/tour.md', 'skills/matsugit/assets/relationships.md', 'codex-plugin/tests/product-review.md',
     'codex-plugin/tests/authoring-sugar.md', 'tests/fixtures/rows.md', 'tests/fixtures/render-parity.md'])
     assert.deepEqual(checkDeck(fs.readFileSync(path.join(root, file), 'utf8')), [], file);
 });
@@ -198,4 +198,19 @@ test('continuation fixes preserve changed claims, spacing and slide attributes',
   }
   assert.ok(!checkDeck('## Plan\n\nA\n\n## Plan (continued)\n\nB\n').some(item => item.code === 'title-continued'));
   assert.ok(!checkDeck(H + '## Plan {.quote}\n\nA\n\n## Plan (continued)\n\nB\n').some(item => item.code === 'title-continued'));
+});
+
+test('a missing tool is setup to do, not a problem in the deck', () => {
+  const quarto = setupProblem('Executable not found: /usr/local/bin/quarto');
+  assert.equal(quarto.tool, 'Quarto');
+  assert.match(quarto.how, /brew install --cask quarto/);
+  assert.match(quarto.how, /ask the agent/i);
+  assert.equal(setupProblem('quarto: command not found').tool, 'Quarto');
+  assert.equal(setupProblem('The table editor needs Pandoc >=3.7.0.2 to preserve merged cells. Run matsugit setup-editor').tool, 'converter');
+  assert.equal(setupProblem('This chart needs Altair and vl-convert-python. Run matsugit setup-charts').tool, 'charts');
+  assert.equal(setupProblem('D2 backend unavailable. Run matsugit setup-diagrams (Node.js 22+ and npm required)').tool, 'diagrams');
+  assert.equal(setupProblem('Executable not found: /opt/tools/rsvg-convert').short, 'Needs rsvg-convert');
+  // Deck problems stay deck problems.
+  assert.equal(setupProblem('Use two or three columns'), null);
+  assert.equal(setupProblem('Give the chart an explicit unit, e.g. unit="people"'), null);
 });

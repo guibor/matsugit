@@ -70,7 +70,7 @@ await writeFile(path.join(out, 'merge-worker.cjs'), mergeWorker.outputFiles[0].t
 const packed = brotliCompressSync(Buffer.from(JSON.stringify({app, files, texts})), {params: {
   [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_LGWIN]: 24, [constants.BROTLI_PARAM_SIZE_HINT]: 0}});
 const runtime = packed.toString('base64');
-const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,
+const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true, loader: {'.md': 'text'},
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
   define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime)},
   legalComments: 'inline', metafile: true, plugins: [englishZod], banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});

@@ -68,7 +68,7 @@ baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 
 | File | Role |
 | --- | --- |
-| `src/server.mjs` | Registers MCP tools. Model-visible: `matsugit_open`, `matsugit_workspace`, `matsugit_check`. App-only: save, preview, recovery, merge, export/publish actions |
+| `src/server.mjs` | Registers MCP tools. Model-visible: `matsugit_open`, `matsugit_workspace` (scratch copy of the guided sample), `matsugit_tour` (writes `matsugit-tour.md` once and opens it; text from `matsugit/templates/tour.md`), `matsugit_check`. App-only: save, preview, recovery, merge, export/publish actions |
 | `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs; `expectRelocation()` / `followed()` let a session follow the one move a publication reviewed |
 | `src/runtime.mjs` | `PluginRuntime`: unpacks the embedded renderer for this server version |
 | `src/actions.mjs`, `actions.py`, `worker.py` | Export, publication and preview workers |
@@ -77,14 +77,20 @@ baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 ### Browser side
 
 `src/app.js` owns the editor (CodeMirror), state, rendering loop, saving and
-view switching. It wires together focused modules:
+view switching. On open (`load()`), it puts the cursor on the first sentence
+under the first slide's title and claim, so the first screen shows formatted
+text, not the settings block or heading marks; a block or list there keeps its
+label, and the cursor stays at the end of the title instead. A scratch copy (no
+file, not writable) says so and how to get a deck that is kept. A render that
+fails because a tool is missing (`setupProblem()`) shows setup guidance, not a
+problem in the deck. It wires together focused modules:
 
 | File | Role | Main functions |
 | --- | --- | --- |
 | `structure.mjs` | Reads headings, blocks, breaks and literals from source text | `structure()`, `frontmatterLength()`, `headingTargets()` |
 | `story-model.mjs` | Sections, slides, claims and takeaways as a tree | `storyModel()`, `moveStory()`, `insertStory()`, `titleRange()` |
 | `story.mjs` | Story view (Overview, Walkthrough) | `storyView()` |
-| `check.mjs` | **Plain-language slide check** | `checkDeck()` returns findings; `applyFix()`; `checkSummary()`; `rendererFinding()` restates renderer errors |
+| `check.mjs` | **Plain-language slide check** | `checkDeck()` returns findings; `applyFix()`; `checkSummary()`; `rendererFinding()` restates renderer errors; `setupProblem()` recognises a missing tool and says what to install |
 | `check-panel.mjs` | The Check chip and list | `checkPanel()` (Show, fix, Ask AI) |
 | `slide-rail.mjs` | Slide strip under the workspace | `slideRail()`: current slide, jump, Check markers |
 | `gallery.mjs` | **Layout picker** behind `Add` | `gallery()` draws thumbnails and inserts the chosen recipe |

@@ -103,11 +103,21 @@ copy bundled with Quarto. If setup reports it missing, run
 =python3 -m matsugit setup-editor= from a checkout to install a verified,
 isolated converter. This leaves system Pandoc unchanged.
 
+** Your first minute
+
+Start a new chat and type =/matsugit-tour= in Cursor, or ask Codex "Show me how
+matsugit works". A seven-slide sample opens beside the chat, and the slides
+themselves tell you what to try: change the first title and watch the slide,
+press Add for a layout, open Story to see the whole argument. When you're
+ready, type =/matsugit-new= with a line about what you need to present, or
+paste your notes: your own draft opens in Story within a minute.
+
 Then, in a chat about your notes or an existing file:
 
 | Say | What happens |
 |-----+--------------|
-| =/matsugit-new= (or "turn these notes into a deck") | The agent proposes one line per slide, waits for your edits, writes the file and opens it |
+| =/matsugit-tour= (or "show me how matsugit works") | A short sample deck that explains itself opens beside the chat |
+| =/matsugit-new= (or "turn these notes into a deck") | The agent drafts the deck straight away and opens it in Story, where you shape the storyline |
 | =/matsugit-slides= (or "open deck.md in matsugit") | The workspace opens beside the chat on that file |
 | =/matsugit-check= | You hear what is wrong, slide by slide, and can have it fixed |
 | =/matsugit-story= | The narrative view opens for reordering |

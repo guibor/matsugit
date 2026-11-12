@@ -131,9 +131,26 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R41. Size is not bought with minifying the server code: its source-module
   excerpts stay readable for review.
 
+** First run (0.32, branch =onboarding=)
+- R43. A first-time user sees the value within a minute, from the chat: one
+  command or one ask opens a sample deck that teaches by being used. No
+  standalone start screen; nothing appears unless the agent opens it.
+- R44. With their own material, the first draft appears without an approval
+  round trip, open in Story, where the storyline is edited directly.
+- R45. A missing tool never looks like a problem in the deck: it is named, with
+  what to install, and Check stays clear.
+- R46. The first screen shows no markup: the cursor starts on the first sentence
+  of the first slide, never on a block, which would hide its label.
+- R47. A copy with no file (the app launcher) says it is not saved and how to
+  get a deck that is kept, for as long as it is open.
+
 * Next steps
 
 Immediate, in priority order:
+0. Watch one person who has never seen matsugit run =/matsugit-tour= and then
+   =/matsugit-new= in the real Cursor and Codex apps, and time the first minute.
+   Bring tracked files back under the 8 MB guard (main measured 8.06 MB after
+   the dependency pinning commits).
 1. Try it for real: one session in the Cursor app with a real GitLab project and
    a real agent editing the open file. Everything so far is verified in the
    repository's isolated host with a local test remote and simulated builds.
@@ -177,6 +194,11 @@ Immediate, in priority order:
   chosen to keep, including another writer's).
 - 2026-11-11, read-only files. Was: Save replaced them. Now: refused until
   writable. Reason: R34.
+- 2026-11-12, new-deck flow. Was: the agent proposed one line per slide in chat
+  and waited for approval before writing. Now: it drafts straight away and opens
+  Story, where the storyline is approved by editing it. Reason: R44.
+- 2026-11-12, empty workspace. Was: a placeholder deck ("Slide title"). Now: the
+  guided sample. Reason: R43.
 - 2026-11-10, view names. Was: =Markdown= / =Render= / =Split= and =Raw= /
   =Visual=. Now: =Write= / =Preview= / =Side by side= and =Markdown= /
   =Formatted=. Tool option values are unchanged. Reason: R26.

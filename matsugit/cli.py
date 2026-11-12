@@ -62,8 +62,8 @@ def main(argv=None):
     commands.add_parser('setup-diagrams', help='Install the optional local D2 backend (Node.js 22+ and npm)')
     commands.add_parser('setup-export', help='Install isolated Chromium support for PDF and diagram export')
     template = commands.add_parser('template', help='Print or create an editable Markdown/Org starter')
-    from .authoring import TEMPLATES, ELEMENTS
-    template.add_argument('name', choices=sorted(TEMPLATES.keys() | ELEMENTS.keys()))
+    from .authoring import TEMPLATES, ELEMENTS, DECKS
+    template.add_argument('name', choices=sorted(TEMPLATES.keys() | ELEMENTS.keys() | DECKS.keys()))
     template.add_argument('--output', type=Path)
     template.add_argument('--fragment', action='store_true')
     template.add_argument('--format', choices=['markdown', 'org'], default='markdown')

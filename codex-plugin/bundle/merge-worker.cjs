@@ -1,7 +1,7 @@
 // src/merge-worker.mjs
 var import_node_worker_threads = require("node:worker_threads");
 
-// ../../matsugit-smaller-bundle/codex-plugin/node_modules/node-diff3/dist/diff3.mjs
+// node_modules/node-diff3/dist/diff3.mjs
 function LCS(buffer1, buffer2) {
   let equivalenceClasses = /* @__PURE__ */ Object.create(null);
   for (let j = 0; j < buffer2.length; j++) {

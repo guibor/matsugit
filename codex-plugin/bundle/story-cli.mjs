@@ -1,4 +1,4 @@
-// ../../matsugit-smaller-bundle/codex-plugin/node_modules/@lezer/common/dist/index.js
+// node_modules/@lezer/common/dist/index.js
 var DefaultBufferLength = 1024;
 var nextPropID = 0;
 var Range = class {
@@ -1551,7 +1551,7 @@ var StringInput = class {
 };
 var stoppedInner = new NodeProp({ perNode: true });
 
-// ../../matsugit-smaller-bundle/codex-plugin/node_modules/@lezer/highlight/dist/index.js
+// node_modules/@lezer/highlight/dist/index.js
 var nextTagID = 0;
 var Tag = class _Tag {
   /**
@@ -2175,7 +2175,7 @@ var classHighlighter = tagHighlighter([
   { tag: tags.punctuation, class: "tok-punctuation" }
 ]);
 
-// ../../matsugit-smaller-bundle/codex-plugin/node_modules/@lezer/markdown/dist/index.js
+// node_modules/@lezer/markdown/dist/index.js
 var CompositeBlock = class _CompositeBlock {
   static create(type, value, from, parentHash, end) {
     let hash = parentHash + (parentHash << 8) + type + (value << 4) | 0;

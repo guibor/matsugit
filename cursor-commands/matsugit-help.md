@@ -4,6 +4,9 @@ Use the matsugit skill. Answer for someone who is comfortable in PowerPoint and
 new to Markdown. Keep it short, concrete and free of syntax; offer to do the
 step for them. Adapt to what they already have open.
 
+If they have not used matsugit before, the best first step is the sample:
+offer `/matsugit-tour` ("a one-minute sample deck that explains itself").
+
 Cover, in this order:
 - One file is both the slides and the reading document. The theme does the
   formatting; they write the content.

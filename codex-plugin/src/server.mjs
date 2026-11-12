@@ -5,6 +5,8 @@ import {getResourcePath, OpenAIFileEntrypointInputSchema} from '@openai/mcp-exte
 import {z} from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
+// The guided sample deck: one source, shared with `matsugit template tour`.
+import tourDeck from '../../matsugit/templates/tour.md';
 import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText, readSource} from './store.mjs';
 import {checkDeck, checkSummary} from './check.mjs';
 import {PluginRuntime} from './runtime.mjs';
@@ -34,7 +36,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.31.3'});
+  const server = new McpServer({name: 'matsugit', version: '0.32.0'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -67,10 +69,21 @@ serveStdio(() => {
     _meta: {'openai/ui': {preferredDisplayMode: 'fullscreen', availableDisplayModes: ['fullscreen']},
       ui: {csp: {frameDomains: ['blob:'], resourceDomains: ['data:', 'blob:'], baseUriDomains: ['https://matsugit.invalid']}}},
   }]}));
-  server.registerTool('matsugit_workspace', {title: 'matsugit', description: 'Open an empty local Markdown workspace with document and slide previews. Does not publish.',
+  // Opened without a file (for example from the app launcher): show the guided
+  // sample rather than an empty template, so the first look already does something.
+  server.registerTool('matsugit_workspace', {title: 'matsugit', description: 'Open a scratch matsugit workspace showing the guided sample deck, with document and slide previews. Nothing is saved to a file. Does not publish. To give the user a sample they can keep, use matsugit_tour.',
     inputSchema: z.object(viewOptions), annotations: readOnly,
     _meta: {ui: {resourceUri: uri}, 'openai/ui': {entrypoints: [{type: 'global'}]}}},
-    async options => result({...options, name: 'Untitled.md', text: '---\ntitle: Untitled\nslide-layout: structured\n---\n\n# Section\n\n## Slide title\n### Main claim\n\n- Supporting evidence\n', writable: false}));
+    async options => result({layout: 'split', format: 'slides', editor: 'visual', ...options, name: 'matsugit-tour.md', text: tourDeck, writable: false}));
+  server.registerTool('matsugit_tour', {title: 'Show me how matsugit works',
+    description: 'First-time users: create a short guided sample deck (matsugit-tour.md) in the given folder and open it beside the chat. The slides themselves explain what to try: edit a title and watch the slide, Add a layout, ask the agent for changes, Story, Check, Present, Share. Use when someone is new to matsugit, asks how it works or wants to try it without notes. An existing matsugit-tour.md there is opened as it is, never overwritten. Writes only that one file; never publishes.',
+    inputSchema: z.object({directory: z.string().describe('Absolute path of the folder to put the sample in, usually the open project'), ...viewOptions}),
+    annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}, _meta: {ui: {resourceUri: uri}}},
+    guard(async ({directory, ...options}) => {
+      const data = store.open(store.tour(directory, tourDeck));
+      const {text, ...summary} = data;
+      return result({layout: 'split', format: 'slides', editor: 'visual', ...summary, ...options, tour: true}, {source: text});
+    }));
   server.registerTool('matsugit_file', {title: 'Edit with matsugit', description: 'Open the host-selected Markdown or Org file in matsugit. Source writes are version-checked by the host.',
     inputSchema: OpenAIFileEntrypointInputSchema, annotations: readOnly,
     _meta: {ui: {resourceUri: uri, visibility: ['app']}, 'openai/ui': {entrypoints: [{type: 'file', extensions: ['.md', '.markdown', '.qmd', '.org']}]}}},

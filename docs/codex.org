@@ -577,6 +577,24 @@ per render and 20 MiB of embedded HTML per output. A failed render retains the
 last successful preview and the editor text. Preview links switch between
 document and slides; external navigation is disabled inside the preview frame.
 
+* First run (0.32)
+
+- Ask "Show me how matsugit works" (Codex's suggested first prompt) or use
+  =/matsugit-tour= in Cursor. The =matsugit_tour= tool writes
+  =matsugit-tour.md= into the project folder once (an existing one is opened as
+  it is) and opens it. Its seven slides explain the product by asking you to use
+  it. Opening matsugit from the app launcher, with no file, shows the same
+  sample as a scratch copy.
+- =/matsugit-new= drafts straight away and opens the deck in Story; the
+  storyline is where you agree the argument, by editing it.
+- The workspace opens with the cursor in the first slide's text, so the
+  settings show as one line and the preview shows that slide.
+- A tool missing on the computer (Quarto, Pandoc 3.7+, chart or D2 setup) is
+  reported as setup to do, with what to install and "or ask the agent". Check
+  stays clear: it is not a problem in the deck.
+- =matsugit template tour --output matsugit-tour.md= gives the same sample from
+  the command line.
+
 * What changed in 0.30: quieter chrome
 
 - The workspace is neutral grey and ink, so the deck's own theme is the only

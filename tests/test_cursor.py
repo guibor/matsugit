@@ -34,7 +34,7 @@ class CursorTests(unittest.TestCase):
         self.assertTrue((self.base / 'commands/matsugit-slides.md').is_file())
         self.assertTrue((self.base / 'commands/matsugit-story.md').is_file())
         # Goal-shaped entry points for authors who do not know the tool names.
-        for name in ('new', 'check', 'help'):
+        for name in ('new', 'check', 'help', 'tour'):
             self.assertTrue((self.base / f'commands/matsugit-{name}.md').is_file())
 
     def test_check_does_not_write(self):

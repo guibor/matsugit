@@ -363,6 +363,29 @@ export function checkSummary(findings) {
   return {problems, tips, label: problems ? `${problems} to fix` : tips ? `${tips} ${tips === 1 ? 'tip' : 'tips'}` : 'No problems'};
 }
 
+// A tool missing from this computer is not a problem in the deck. Say what to
+// install, in words a first-time user can act on, and keep Check out of it.
+// Everyone here works with an agent, so "ask the agent" is always an option.
+const SETUP = [
+  [/Executable not found:\s*\S*quarto\b|quarto: (command )?not found/i, 'Quarto', 'Slides need Quarto, a free publishing tool that is not installed on this computer yet.',
+    'Install it from quarto.org (on a Mac: brew install --cask quarto), then press Refresh. Or ask the agent: "install Quarto for matsugit".'],
+  [/Pandoc >=3\.7|setup-editor|Executable not found:\s*\S*pandoc\b/i, 'converter', 'This needs a newer document converter (Pandoc 3.7 or later).',
+    'Ask the agent: "run matsugit setup-editor". It downloads a verified copy for matsugit only and leaves the rest of the computer as it is.'],
+  [/setup-charts|Altair|vl-convert/i, 'charts', 'Charts need a one-time setup on this computer.',
+    'Ask the agent: "run matsugit setup-charts". Until then, the table shows as a table.'],
+  [/setup-diagrams|D2 needs Node/i, 'diagrams', 'D2 diagrams need a one-time setup on this computer.',
+    'Ask the agent: "run matsugit setup-diagrams" (it needs Node.js 22 or later).'],
+  [/Executable not found:\s*(\S+)/i, 'tool', 'matsugit needs a program that this computer does not have.',
+    'Ask the agent to install it, then press Refresh.'],
+];
+export function setupProblem(message) {
+  const text = String(message || '');
+  const found = SETUP.find(([pattern]) => pattern.test(text));
+  if (!found) return null;
+  const [pattern, tool, title, how] = found;
+  return {tool: tool === 'tool' ? pattern.exec(text)[1].split('/').pop() : tool, title, how, short: `Needs ${tool === 'tool' ? pattern.exec(text)[1].split('/').pop() : tool}`};
+}
+
 // The renderer speaks in Markdown terms. Say the common cases in slide words.
 const RENDERER = [
   [/Use H4 for content divisions/, 'A heading inside a slide body or layout block must use `####`. This also happens when a block above is missing its closing `:::` line.'],

@@ -16,7 +16,7 @@ import {share} from './share.mjs';
 import {slideRail} from './slide-rail.mjs';
 import {textChanges, savedEditHistory, planExternalEdit, wholeFileReview} from './external-edits.mjs';
 import {checkPanel} from './check-panel.mjs';
-import {rendererFinding} from './check.mjs';
+import {rendererFinding, setupProblem} from './check.mjs';
 import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
@@ -108,7 +108,7 @@ const text = () => editor.state.doc.toString();
 const dirty = () => text() !== state.base;
 function paintNotice() {
   const receipt = changeNotice(state, dirty());
-  const message = noticeMessage || (incomingDocument ? 'Another document is waiting. Your current draft is retained.' : receipt?.detail || '');
+  const message = noticeMessage || (incomingDocument ? 'Another document is waiting. Your current draft is retained.' : receipt?.detail || state.standingNotice || '');
   // The open Check list already says why the preview stopped; do not repeat it.
   $('notice').hidden = !message || (message === state.renderNotice && !$('check-panel').hidden);
   $('notice').dataset.kind = state.conflict ? 'review' : 'info';
@@ -632,7 +632,17 @@ async function render(manual = true) {
         state.forceFull = true; state.pendingRender = true;
         return;
       }
-// Say it in slide words, keep the last good preview visibly marked as old,
+      // A missing tool on this computer: say what to install. It is not a deck
+      // problem, so Check and its "to fix" count stay out of it.
+      const setup = setupProblem(error.message);
+      if (setup) {
+        state.renderError = null; state.renderNotice = setup.title + ' ' + setup.how;
+        notice(state.renderNotice); check.refresh();
+        $('empty-label').textContent = setup.short; $('preview-stale').hidden = !state.rendered?.[format];
+        if (refreshRequested) { refreshRequested = false; actionFeedback('refresh', 'error', setup.short); }
+        return;
+      }
+      // Say it in slide words, keep the last good preview visibly marked as old,
       // and point at the list that explains where the problem is.
       state.renderError = error.message;
       state.renderNotice = "The preview can't update yet. " + check.refresh().find(item => item.severity === 'problem').message;
@@ -936,7 +946,19 @@ async function load(data, {acceptRevision = null} = {}) {
     if (new TextEncoder().encode(source).length > 2 * 1024 * 1024 || source.includes('\0')) throw Error('Invalid source or document exceeds the 2 MiB editor limit.');
     state.base = source; state.etag = data.etag; state.readOnly = !!data.readOnly;
     state.writable = !!data.writable; replaceText(state.base, {baseline:true});
-    editor.dispatch({selection: {anchor: 0}});
+    // Start at the first heading, not inside the settings at the top: the
+    // formatted view then shows them as one quiet line, and Follow shows a slide.
+    // A restored view (below) still puts the cursor back where it was.
+    // Just below the first slide's title and claim, so no heading shows its marks.
+    const headings = structure(source, state.name.toLowerCase().endsWith('.org')).headings;
+    const slide = headings.find(h => h.level === 2) || headings[0], claim = slide && headings[headings.indexOf(slide) + 1];
+    let start = !slide ? 0 : claim?.level === 3 && !source.slice(slide.to, claim.from).trim() ? claim.to : slide.to;
+    // Land on the first sentence under the title, so the first screen shows formatted
+    // text rather than the marks of the line being edited. A block or list there keeps
+    // its label: the cursor then stays at the end of the title line instead.
+    const body = /^(?:[ \t]*\r?\n)*/.exec(source.slice(start))[0].length;
+    if (slide && /^[^\s:>|#`*+\-<![{\d]/.test(source.slice(start + body, start + body + 1))) start += body;
+    editor.dispatch({selection: {anchor: Math.min(start, source.length)}});
     if (!demo) {
       try {
         const recovered = await call('matsugit_recovery_begin', {...recoveryScope(), name: state.name});
@@ -958,6 +980,11 @@ async function load(data, {acceptRevision = null} = {}) {
     else applyOpenView(requestedView);
     state.loading = false;
     editor.dispatch({effects: editability.reconfigure(editable(!demo))});
+    // Opened with no file (the app launcher): say plainly that this copy is for
+    // trying things, and how to get one that is kept.
+    // It stays whenever no other notice is showing, so a finished render keeps it.
+    state.standingNotice = !state.writable && !state.session && !state.uri && !demo
+      ? 'This is a scratch copy to try things in; it is not saved. To keep a deck, ask in the chat: "Show me how matsugit works" for a sample of your own, or "Turn my notes into a deck".' : '';
     notice(state.writable && !state.etag ? 'The host supplied no file version. Saving is disabled to protect concurrent edits.' : '');
     if (state.conflict) notice('Recovered draft differs from the saved file. Both versions are retained for review.');
     else if (suppliedRecovery) notice(state.writable ? 'Recovered local draft. The source file was not changed.' : 'Recovered local copy. Download to keep it; the original file is unavailable here.');

@@ -342,12 +342,16 @@ def editor_templates():
     return entries
 
 
+# Whole decks, with their own settings. `tour` is the guided first-run sample.
+DECKS = {'tour': 'templates/tour.md'}
+
+
 def template(name, output=None, fragment=False, fmt='markdown'):
     catalogue = {**ELEMENTS, **TEMPLATES}
-    if name not in catalogue:
-        raise ValueError('Choose a template: ' + ', '.join(catalogue))
-    text = catalogue[name]
-    if not fragment:
+    if name not in catalogue and name not in DECKS:
+        raise ValueError('Choose a template: ' + ', '.join([*catalogue, *DECKS]))
+    text = (Path(__file__).parent / DECKS[name]).read_text(encoding='utf-8') if name in DECKS else catalogue[name]
+    if not fragment and name not in DECKS:
         text = ('---\ntitle: Working deck\nslide-layout: structured\n'
                 'slide-section-dividers: false\n---\n\n' + text)
     if fmt == 'org':

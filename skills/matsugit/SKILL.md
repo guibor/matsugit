@@ -73,6 +73,21 @@ When asked where a shared deck is, or for its link, call the `matsugit_links`
 tool with the file's path and give the slides, document and source links it
 returns; say if the site state is unknown or the build failed.
 
+## First time with matsugit
+
+When someone is new, asks how it works, or wants to try it without notes, call
+the `matsugit_tour` tool with the absolute path of their project folder. It
+writes a short sample deck that explains itself and opens it beside the chat.
+Reply in at most three lines: change the first title and watch the slide; try
+Add, then Compare options; then tell you what they need to present.
+
+When they have material (notes, a file, or one line about the talk), draft the
+deck straight away instead of proposing an outline first, open it with
+`matsugit_open` in layout `story` so they see and edit the storyline, and keep
+the reply to a few lines. Mark missing evidence as a visible placeholder; never
+invent it. Without the matsugit tools (skill only), use `matsugit template tour
+--output matsugit-tour.md` and a local render instead.
+
 ## Authors who do not read Markdown
 
 Many authors know PowerPoint, not Markdown. Unless they use syntax themselves:

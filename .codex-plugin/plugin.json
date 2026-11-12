@@ -1,6 +1,6 @@
 {
   "name": "matsugit",
-  "version": "0.31.3",
+  "version": "0.32.0",
   "description": "Edit Markdown and Org with matsugit document and slide previews in Codex.",
   "skills": "./skills/", "mcpServers": "./.mcp.json",
   "interface": {
@@ -9,6 +9,6 @@
     "longDescription": "A local source, rendered and split workspace with document and slide previews, presentation mode, exports and explicitly confirmed Git/CI publication. Requires Node 22+, Python 3.10+ and Quarto. Previewing never publishes.",
     "developerName": "matsugit", "category": "Productivity",
     "capabilities": ["Interactive", "Read", "Write"],
-    "defaultPrompt": "Open my Markdown document in the matsugit workspace with a split slide preview."
+    "defaultPrompt": "Show me how matsugit works with a quick sample deck."
   }
 }

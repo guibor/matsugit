@@ -58,6 +58,14 @@ action retains a copyable request and downloads offer the supported fallback;
 neither silently reports success. Actual desktop support depends on the Cursor
 version, so protocol tests alone do not establish every installed host's support.
 
+### First run
+
+`/matsugit-tour` puts a short sample deck, `matsugit-tour.md`, in the project and
+opens it; its slides say what to try. `/matsugit-new` asks one question if you
+give it nothing, then drafts your deck and opens it in Story. A missing tool
+(Quarto, the converter, chart or diagram setup) is shown as what to install,
+not as a problem in the deck.
+
 ### Add and Check
 
 The workspace opens Markdown as formatted text. `Add` picks a slide or layout by
