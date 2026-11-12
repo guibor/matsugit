@@ -1,0 +1,91 @@
+#+title: matsugit for Emacs
+
+One Emacs package for Markdown and Org: author slides, edit the story, open the
+browser workspace, edit tables, preview, export and publish. The CLI and Story
+bridge remain the rendering and narrative engines used by Codex and Cursor.
+This package does not contain a second renderer.
+
+* Install
+
+Requires Emacs 29.1+. Keep the complete matsugit checkout and add its Emacs
+directory to your configuration, substituting the actual checkout path:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "/path/to/matsugit/editors/emacs")
+(require 'matsugit)
+#+end_src
+
+The =matsugit= CLI must be installed and on Emacs' =exec-path=, or set
+=matsugit-program= to its executable. See the repository's [[file:../../README.org][setup guide]] for CLI
+prerequisites. Story needs Node 22+ and the checkout's bundled
+=codex-plugin/bundle/story-cli.mjs=. If the Lisp files are installed separately,
+set =matsugit-story-bridge= to that real file. No package is downloaded and no
+agent or browser starts merely by loading this library.
+
+Run =M-x matsugit-mode= in a Markdown or Org source buffer. To opt in for new
+buffers, add only the hooks you want:
+
+#+begin_src emacs-lisp
+(add-hook 'markdown-mode-hook #'matsugit-mode)
+(add-hook 'org-mode-hook #'matsugit-mode)
+#+end_src
+
+Spacemacs, Doom and ordinary Emacs use the same package. Distribution-specific
+leader keys, agent providers and private publishing destinations belong in
+your configuration, not here. No global keys or mode hooks are installed by
+the public package. Disabling =matsugit-mode= removes its local completion hooks.
+
+* Commands
+
+| Command | In matsugit-mode | Effect |
+|---------+------------------+--------|
+| matsugit-open-browser | C-c m b | Save source and open its editable local workspace |
+| matsugit-story | C-c m s | Edit titles, claims, takeaways and slide order in Emacs |
+| matsugit-insert | C-c m i / C-c C-/ | Insert an element; standalone / also completes |
+| matsugit-new-deck | M-x | Create a deck in an empty buffer only |
+| matsugit-insert-template | M-x | Insert a complete slide recipe |
+| matsugit-edit-table | C-c m t | Edit one table, preserving unrelated source edits |
+| matsugit-preview-document | C-c m d | Render the reading version locally |
+| matsugit-preview-slides | C-c m p | Render slides locally |
+| matsugit-preview-handout | M-x | Explicitly include presenter notes in a handout |
+| matsugit-export | C-c m e | Export locally; prefix uses a configured sync folder |
+| matsugit-select-theme | M-x | Override the theme for this buffer |
+| matsugit-select-target | M-x | Select an existing named publishing target |
+| matsugit-publish | C-c m P | Confirm a commit/push to the configured target |
+| matsugit-sync-from-git | M-x | Confirm a clean fast-forward; prefix checks only |
+
+See [[file:../../docs/emacs-story.org][Story controls]] for navigation, moves, edits, Undo and Save.
+Rendering, export and publishing save the source through normal Emacs file-change
+checks. Story and insertion commands leave edits in the source buffer until Save.
+Publishing is never implied by preview, export, opening a workspace or loading
+the package. Source visibility and notes follow the shared renderer's settings.
+
+* Configuration
+
+=matsugit-theme=, =matsugit-target= and =matsugit-target-repo= are buffer-local.
+Nil delegates to the CLI's project/host settings. Theme picker discovery uses
+=matsugit-theme-directories=, a list of directories containing theme packs.
+The package includes no organization's theme or hardcoded publishing repository.
+
+For TRAMP previews, =matsugit-remote-program= selects the CLI on the source host.
+Preview copies its complete rendered asset directory locally before opening it.
+The editable browser workspace requires a local source; it does not silently
+open a remote machine's localhost. The table editor's optional
+=matsugit-table-ssh-host= displays explicit forwarding instructions, without
+starting SSH or exposing a public service.
+
+Agent integration is optional: =matsugit-story-agent-function= receives the
+source buffer, start/end positions and request. No provider is assumed.
+=matsugit-story-preview-function= defaults to the shared slide preview command
+when not already configured.
+
+* Tests
+
+From the checkout, with Emacs 29.1+ and Node 22+:
+
+#+begin_src sh
+emacs -Q --batch -L editors/emacs -l matsugit-tests -l matsugit-story-tests -f ert-run-tests-batch-and-exit
+#+end_src
+
+Tests use synthetic sources, mock publication and leave live editor sessions
+alone. The private Spacemacs layer separately tests legacy commands and settings.

@@ -222,7 +222,7 @@ is the separate density check that does not need the Node workspace bundle.
 | Charts, diagrams, evidence callouts | [[file:docs/charts.md][Charts]], [[file:docs/diagrams.md][Diagrams]], [[file:docs/relationships.md][Evidence to action]] |
 | Presenting, exporting, publishing | [[file:docs/delivery.org][Delivery]], [[file:docs/canonical-source.org][One source and Git]] |
 | Themes | [[file:skills/matsugit/references/themes.md][Theme authoring]] |
-| Org files, Emacs | [[file:docs/org.org][Org]], [[file:docs/emacs-story.org][Emacs Story]] |
+| Org files, Emacs | [[file:docs/org.org][Org]], [[file:editors/emacs/README.org][Emacs package]], [[file:docs/emacs-story.org][Story controls]] |
 | Everything else: CLI publishing, tables, renderer updates | [[file:docs/reference.org][Reference]] |
 | Coming from Folioforge | [[file:docs/migration.org][Migration guide]] |
 | How the code is organised | [[file:design.md][Design]], [[file:prd.org][Requirements]] |

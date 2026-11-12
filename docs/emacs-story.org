@@ -2,6 +2,10 @@
 
 * Setup
 
+Story is part of the [[file:../editors/emacs/README.org][matsugit Emacs package]], alongside authoring, the browser
+workspace, tables, preview, export and publishing. The standalone library below
+remains supported for users who only want narrative editing.
+
 Requires Emacs 29+, Node 22+ and a matsugit checkout with its prebuilt
 =codex-plugin/bundle/story-cli.mjs=. No npm installation, browser, daemon or
 new Emacs package dependencies are required. Load the library once:
