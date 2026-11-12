@@ -14,6 +14,7 @@ import {RecoveryStore} from './recovery.mjs';
 import {WorkspaceActions} from './actions.mjs';
 import {TableTools} from './tables.mjs';
 import {MergeService} from './merge-service.mjs';
+import {clientOf, wantsBrowser, openInBrowser, browserResult} from './browser-launch.mjs';
 
 const uri = 'ui://matsugit/workspace-v1';
 const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
@@ -36,7 +37,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.33.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.34.0'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -74,13 +75,17 @@ serveStdio(() => {
   server.registerTool('matsugit_workspace', {title: 'matsugit', description: 'Open a scratch matsugit workspace showing the guided sample deck, with document and slide previews. Nothing is saved to a file. Does not publish. To give the user a sample they can keep, use matsugit_tour.',
     inputSchema: z.object(viewOptions), annotations: readOnly,
     _meta: {ui: {resourceUri: uri}, 'openai/ui': {entrypoints: [{type: 'global'}]}}},
-    async options => result({layout: 'split', format: 'slides', editor: 'visual', ...options, name: 'matsugit-tour.md', text: tourDeck, writable: false}));
+    guard(async (options, context) => wantsBrowser(clientOf(server, context))
+      ? result(browserResult(await openInBrowser(null), 'matsugit-tour.md'))
+      : result({layout: 'split', format: 'slides', editor: 'visual', ...options, name: 'matsugit-tour.md', text: tourDeck, writable: false})));
   server.registerTool('matsugit_tour', {title: 'Show me how matsugit works',
     description: 'First-time users: create a short guided sample deck (matsugit-tour.md) in the given folder and open it beside the chat. The slides themselves explain what to try: edit a title and watch the slide, Add a layout, ask the agent for changes, Story, Check, Present, Share. Use when someone is new to matsugit, asks how it works or wants to try it without notes. An existing matsugit-tour.md there is opened as it is, never overwritten. Writes only that one file; never publishes.',
     inputSchema: z.object({directory: z.string().describe('Absolute path of the folder to put the sample in, usually the open project'), ...viewOptions}),
     annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}, _meta: {ui: {resourceUri: uri}}},
-    guard(async ({directory, ...options}) => {
-      const data = store.open(store.tour(directory, tourDeck));
+    guard(async ({directory, ...options}, context) => {
+      const file = store.tour(directory, tourDeck);
+      if (wantsBrowser(clientOf(server, context))) return result({...browserResult(await openInBrowser(file), 'matsugit-tour.md'), tour: true});
+      const data = store.open(file);
       const {text, ...summary} = data;
       return result({layout: 'split', format: 'slides', editor: 'visual', ...summary, ...options, tour: true}, {source: text});
     }));
@@ -91,7 +96,18 @@ serveStdio(() => {
   server.registerTool('matsugit_open', {title: 'Open document in matsugit',
     description: 'Open a user-requested existing Markdown/Org file for editing and document/slides preview. Reads only the specified file. Never publishes.',
     inputSchema: z.object({path: z.string(), ...viewOptions}), annotations: readOnly, _meta: {ui: {resourceUri: uri}}},
-    guard(async ({path: file, ...options}) => { const data = store.open(file); const {text, ...summary} = data; return result({...summary, ...options}, {source: text}); }));
+    guard(async ({path: file, ...options}, context) => {
+      const data = store.open(file); const {text, ...summary} = data;
+      if (wantsBrowser(clientOf(server, context))) return result(browserResult(await openInBrowser(data.path), data.name));
+      return result({...summary, ...options}, {source: text});
+    }));
+  server.registerTool('matsugit_browser', {title: 'Open matsugit in the browser',
+    description: 'Open the matsugit workspace (the same editor with document and slide previews, Story, Check, Add, Share) in the user\'s default browser, for when this chat cannot show the matsugit panel or the user asks for a browser tab. Give an existing Markdown/Org file, or nothing for the sample deck. Private to this computer; stops a minute after the tab closes. Returns the address to tell the user. Never publishes.',
+    inputSchema: z.object({path: z.string().optional()}), annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
+    guard(async ({path: file}) => {
+      const data = file ? store.open(file) : null;
+      return result(browserResult(await openInBrowser(data ? data.path : null), data ? data.name : 'matsugit-tour.md'));
+    }));
   server.registerTool('matsugit_reconnect', {description:'Reconnect an existing panel to the same local document after a plugin restart. Read-only; does not open a second panel, save or publish.', ...appOnly,
     inputSchema:z.object({path:z.string()}), annotations:readOnly},
     guard(async ({path:file}) => { const {text, ...data} = store.open(file); return result(data); }));

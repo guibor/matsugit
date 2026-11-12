@@ -11,7 +11,7 @@ import {bundledApp} from '../app-html.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 test('portable, Codex compatibility and workspace release versions agree', () => {
-  const manifests = ['plugin.json', '.codex-plugin/plugin.json', '.cursor-plugin/plugin.json', 'codex-plugin/package.json']
+  const manifests = ['plugin.json', '.codex-plugin/plugin.json', '.cursor-plugin/plugin.json', '.claude-plugin/plugin.json', 'codex-plugin/package.json']
     .map(name => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')));
   assert.equal(new Set(manifests.map(manifest => manifest.version)).size, 1);
 });

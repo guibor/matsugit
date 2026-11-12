@@ -12,7 +12,7 @@ thing you share. No text boxes to nudge, no second copy drifting out of date.
 theme and a [[file:examples/automotive-story.md][synthetic example deck]]. Waiting time is shortened; this is not
 a timing benchmark or a recording of native Cursor/Codex chrome./
 
-Created by [[https://github.com/guibor][MDF (guibor)]]. [[file:LICENSE][MIT licensed]]. Runs inside Cursor and Codex.
+Created by [[https://github.com/guibor][MDF (guibor)]]. [[file:LICENSE][MIT licensed]]. Runs inside Cursor, Codex and Claude.
 
 * Why people switch
 
@@ -98,6 +98,21 @@ codex plugin marketplace add guibor/matsugit
 codex plugin add matsugit@matsugit
 #+end_src
 
+*Claude Code.* In Claude Code:
+#+begin_src text
+/plugin marketplace add guibor/matsugit
+/plugin install matsugit@matsugit
+#+end_src
+Claude Code has no panel beside the chat, so the workspace opens in your
+browser instead, on its own, with the same split view and buttons. See the
+[[file:docs/claude.md][Claude guide]].
+
+*Claude Desktop.* It shows the panel in the conversation. From a checkout:
+#+begin_src sh
+python3 -m matsugit setup-claude-desktop
+#+end_src
+Then quit and reopen Claude Desktop.
+
 The formatted editor needs Pandoc 3.7.0.2 or newer, which can be newer than the
 copy bundled with Quarto. If setup reports it missing, run
 =python3 -m matsugit setup-editor= from a checkout to install a verified,
@@ -105,8 +120,9 @@ isolated converter. This leaves system Pandoc unchanged.
 
 ** Your first minute
 
-Start a new chat and type =/matsugit-tour= in Cursor, or ask Codex "Show me how
-matsugit works". A seven-slide sample opens beside the chat, and the slides
+Start a new chat and type =/matsugit-tour= in Cursor or Claude Code, or ask
+Codex or Claude Desktop "Show me how matsugit works". A seven-slide sample opens
+beside the chat (in Claude Code, in your browser), and the slides
 themselves tell you what to try: change the first title and watch the slide,
 press Add for a layout, open Story to see the whole argument. When you're
 ready, type =/matsugit-new= with a line about what you need to present, or
@@ -124,7 +140,8 @@ Then, in a chat about your notes or an existing file:
 | =/matsugit-help= | What to ask for and what each button does |
 
 The workspace is opened by the agent, on a file, inside the chat. It is not a
-separate app to launch. The slash commands are Cursor's; in Codex ask in words.
+separate app to launch. The slash commands are Cursor's and Claude Code's;
+in Codex and Claude Desktop ask in words.
 
 *No plugin, another agent, or nothing appears?* The same workspace opens in
 your browser. The agent does this by itself when it has the skill, or run it
@@ -217,6 +234,7 @@ is the separate density check that does not need the Node workspace bundle.
 |-----+------|
 | The workspace: every control, saving, concurrent edits, Share, Check | [[file:docs/codex.org][Workspace guide]] |
 | Cursor setup and commands | [[file:docs/cursor.md][Cursor guide]] |
+| Claude Code and Claude Desktop | [[file:docs/claude.md][Claude guide]] |
 | Syntax, with a "when something looks wrong" table | [[file:docs/syntax.md][Syntax cookbook]] |
 | Choosing a slide by the argument it makes | [[file:skills/matsugit/references/slide-types.md][Slide recipes]] |
 | Charts, diagrams, evidence callouts | [[file:docs/charts.md][Charts]], [[file:docs/diagrams.md][Diagrams]], [[file:docs/relationships.md][Evidence to action]] |

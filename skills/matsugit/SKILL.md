@@ -90,6 +90,11 @@ invent it. Without the matsugit tools (skill only), run `python3 -m matsugit ope
 
 ## No workspace in this chat: open it in the browser
 
+In Claude Code, which shows no panels, `matsugit_open`, `matsugit_tour` and
+`matsugit_browser` open the workspace in the user's browser by themselves and
+return `opened: "browser"` with an address: give the user that address in one
+line, and keep editing the file on disk.
+
 When the matsugit tools are missing (no plugin, another agent, a terminal) or
 opening the workspace fails or shows nothing, open the same workspace in the
 user's browser instead. From the matsugit checkout (two folders above this

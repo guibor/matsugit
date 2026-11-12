@@ -154,10 +154,21 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R50. The agent keeps editing the file on disk; the open tab takes its changes
   in the same way as beside the chat.
 
+** Claude (0.34, branch =claude-plugin=)
+- R51. Claude Code users install matsugit as a plugin with two commands and get
+  the skill, the slash commands and the workspace. Because Claude Code shows no
+  panels, opening a deck there opens the browser workspace by itself and tells
+  the user the address; no extra step for the agent or the user.
+- R52. Claude Desktop shows the workspace in the conversation after one setup
+  command, which changes nothing else in its configuration.
+- R53. Hosts that show panels keep them: the browser is used only for a host
+  known to be text-only, or when the user asks for it.
+
 * Next steps
 
 Immediate, in priority order:
-0. Watch one person who has never seen matsugit run =/matsugit-tour= and then
+0. Open a deck in Claude Desktop after =setup-claude-desktop= and check the
+   panel by eye (not yet seen in this repository's tests). Then watch one person who has never seen matsugit run =/matsugit-tour= and then
    =/matsugit-new= in the real Cursor and Codex apps, and time the first minute.
    Try =matsugit open= from an agent without the plugin (Claude Code, Codex CLI)
    and from a terminal on Windows.

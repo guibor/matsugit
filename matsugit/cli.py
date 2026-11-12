@@ -28,6 +28,9 @@ def main(argv=None):
     cursor = commands.add_parser('setup-cursor', help='Install the shared interactive workspace, skill and commands into local Cursor')
     cursor.add_argument('--checkout', type=Path)
     cursor.add_argument('--check', action='store_true')
+    desktop = commands.add_parser('setup-claude-desktop', help='Add the interactive workspace to Claude Desktop (keeps other servers; backs up the file)')
+    desktop.add_argument('--checkout', type=Path)
+    desktop.add_argument('--check', action='store_true', help='Say what would change without writing')
     targets = commands.add_parser('target', help='Configure named publishing checkouts without publishing')
     targets.add_argument('action', choices=['list', 'set', 'default'])
     targets.add_argument('name', nargs='?')
@@ -136,6 +139,10 @@ def main(argv=None):
             return 0
         if args.command == 'setup-cursor':
             from .cursor import install
+            print(install(args.checkout, check=args.check))
+            return 0
+        if args.command == 'setup-claude-desktop':
+            from .claude_desktop import install
             print(install(args.checkout, check=args.check))
             return 0
         if args.command == 'setup-export':
