@@ -12,7 +12,7 @@ class ResourceLimitTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.source = self.root / 'deck.md'
         self.source.write_text('synthetic source')
         self.output = self.root / 'output'
