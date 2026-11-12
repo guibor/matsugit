@@ -1,26 +1,29 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {gunzipSync} from 'node:zlib';
+import {brotliDecompressSync} from 'node:zlib';
 
 // Built into server.mjs, never sourced from a document or another installed version.
 export class PluginRuntime {
   roots = new Set();
   directory = null;
   constructor(archive) {
-    const {app, files} = JSON.parse(gunzipSync(Buffer.from(archive, 'base64')));
-    if (typeof app !== 'string' || !files || typeof files !== 'object') throw Error('Invalid bundled matsugit runtime.');
+    const {app, files, texts = {}} = JSON.parse(brotliDecompressSync(Buffer.from(archive, 'base64')));
+    if (typeof app !== 'string' || !files || typeof files !== 'object' || !texts || typeof texts !== 'object') throw Error('Invalid bundled matsugit runtime.');
     this.app = app;
-    this.files = Object.entries(files).map(([name, content]) => {
+    // Binary files arrive base64-encoded, text files as text.
+    const entries = [...Object.entries(files).map(([name, content]) => [name, content, 'base64']),
+      ...Object.entries(texts).map(([name, content]) => [name, content, 'utf8'])];
+    this.files = entries.map(([name, content, encoding]) => {
       if (typeof content !== 'string' || name.includes('\\') ||
           name.split('/').some(part => !part || part.startsWith('.')) ||
           !(['codex-plugin/worker.py', 'codex-plugin/actions.py'].includes(name) || name.startsWith('matsugit/'))) {
         throw Error('Invalid bundled matsugit runtime path.');
       }
-      return [name, Buffer.from(content, 'base64')];
+      return [name, Buffer.from(content, encoding)];
     });
     for (const required of ['codex-plugin/worker.py', 'matsugit/core.py', 'matsugit/preview.py']) {
-      if (!files[required]) throw Error('Incomplete bundled matsugit runtime.');
+      if (!files[required] && !texts[required]) throw Error('Incomplete bundled matsugit runtime.');
     }
   }
   intact() {

@@ -58,8 +58,8 @@ Three surfaces sit on top:
 
 ## Workspace `codex-plugin/`
 
-`build.mjs` bundles `src/` into `bundle/` (committed): `app.html` (the browser
-app with the recipe catalogue from `authoring.editor_templates()` baked in),
+`build.mjs` bundles `src/` into `bundle/` (committed): the browser app (with the recipe catalogue from `authoring.editor_templates()`
+baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 `server.mjs` (the MCP server with the Python renderer embedded) and
 `story-cli.mjs` (the Story engine for Emacs). Rebuild after changing `src/` or
 `matsugit/authoring.py`.

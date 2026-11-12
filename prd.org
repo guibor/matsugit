@@ -125,6 +125,12 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R39. A slide that continues the previous one uses a `---` break, never a
   repeated "(continued)" title. The skill says so and Check offers the fix.
 
+** Package size (branch =smaller-bundle=)
+- R40. The committed tree stays under 8 MB (8,000,000 bytes) so a plugin or
+  extension packaged from it fits a pre-zip limit. Guarded by a test.
+- R41. Size is not bought with minifying the server code: its source-module
+  excerpts stay readable for review.
+
 * Next steps
 
 Immediate, in priority order:

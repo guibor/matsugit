@@ -9,12 +9,15 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 import time
 
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).parent))
+shrink = __import__('shrink-images').shrink
 SOURCE = ROOT / 'examples/automotive-story.md'
 OUTPUT = ROOT / 'docs/images/workspace'
 
@@ -69,6 +72,7 @@ def main():
                     durations.append(duration); steps.append(label)
                     if name:
                         (OUTPUT / name).write_bytes(data)
+                        shrink(OUTPUT / name)
                     print(label, flush=True)
 
                 select_slide('Sell the journey')
@@ -126,7 +130,7 @@ def main():
     metadata = dict(plugin_version=json.loads((ROOT / 'codex-plugin/package.json').read_text())['version'],
                     theme='default', fixture=str(SOURCE.relative_to(ROOT)), synthetic=True,
                     fixture_sha256=hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
-                    app_sha256=hashlib.sha256((ROOT / 'codex-plugin/bundle/app.html').read_bytes()).hexdigest(),
+                    app_sha256=hashlib.sha256(subprocess.run(['node', str(ROOT / 'codex-plugin/app-html.mjs')], check=True, capture_output=True).stdout).hexdigest(),
                     host='isolated MCP host; real shared plugin UI, not Codex/Cursor desktop chrome',
                     steps=steps, duration_ms=sum(durations), source_unchanged=True,
                     rendering_waits_omitted=True, browser_errors=errors)

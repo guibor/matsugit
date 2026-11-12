@@ -21,7 +21,7 @@ matsugit = "matsugit.cli:main"
 folioforge = "matsugit.cli:main"
 
 [tool.setuptools.package-data]
-matsugit = ["themes/default/*", "templates/*", "editor_assets/*", "runtime/*", "diagram_runtime/*.json", "diagram_runtime/*.mjs"]
+matsugit = ["themes/default/*", "templates/*", "editor_assets/*", "runtime/*", "runtime/*.gz", "diagram_runtime/*.json", "diagram_runtime/*.mjs"]
 
 [tool.setuptools.packages.find]
 include = ["matsugit*", "folioforge*"]

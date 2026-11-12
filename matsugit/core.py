@@ -34,6 +34,17 @@ class Error(Exception):
     pass
 
 
+def expand_runtime(directory):
+    """Large runtime assets are stored compressed (name.js.gz) to keep the package
+    small. Write each one out as the file the page loads, and drop the .gz.
+    A runtime without compressed files (an installed CI copy) is left as it is."""
+    import gzip
+    for packed in sorted(Path(directory).glob('*.gz')):
+        target = packed.with_suffix('')
+        target.write_bytes(gzip.decompress(packed.read_bytes()))
+        packed.unlink()
+
+
 def run(argv, cwd=None, text=None):
     try:
         result = subprocess.run([str(a) for a in argv], cwd=cwd, input=text,
@@ -418,6 +429,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
                         "--standalone", "--wrap=none"], text=json.dumps(math_html(slide_render_ast)))
     (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
+    expand_runtime(output / "runtime")
     has_math = math_html(display_ast) != display_ast
     math_header = ('<script src="runtime/math-config.js"></script>\n'
                    '<script defer src="runtime/mathjax-tex-svg.js"></script>\n') if has_math else ''

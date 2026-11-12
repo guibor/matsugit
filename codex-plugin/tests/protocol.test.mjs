@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StdioClientTransport} from '@modelcontextprotocol/sdk/client/stdio.js';
+import {bundledApp} from '../app-html.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 test('portable, Codex compatibility and workspace release versions agree', () => {
@@ -54,7 +55,8 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.deepEqual(localExport.annotations, {readOnlyHint:false, destructiveHint:false, openWorldHint:false});
     const app = await client.readResource({uri: 'ui://matsugit/workspace-v1'});
     assert.match(app.contents[0].text, /Markdown/);
-    assert.equal(app.contents[0].text, fs.readFileSync(path.join(root, 'codex-plugin/bundle/app.html'), 'utf8'));
+    assert.equal(app.contents[0].text, bundledApp());
+    assert.match(app.contents[0].text, /<title>matsugit<\/title>/);
     assert.equal(app.contents[0].mimeType, 'text/html;profile=mcp-app');
     const opened = await client.callTool({name: 'matsugit_open', arguments: {path: file, layout: 'split', format: 'slides', editor: 'visual'}});
     assert.equal(opened.isError, undefined, JSON.stringify(opened));

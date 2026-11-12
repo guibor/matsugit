@@ -3,6 +3,7 @@
 import hashlib
 import html
 from pathlib import Path
+import gzip
 import re
 import shutil
 import tempfile
@@ -179,7 +180,7 @@ def setup_ci(settings, provider):
         ".matsugit-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
         ".matsugit-ci/runtime/layout.css": Path(__file__).parent / "runtime/layout.css",
         ".matsugit-ci/runtime/math-config.js": Path(__file__).parent / "runtime/math-config.js",
-        ".matsugit-ci/runtime/mathjax-tex-svg.js": Path(__file__).parent / "runtime/mathjax-tex-svg.js",
+        ".matsugit-ci/runtime/mathjax-tex-svg.js": Path(__file__).parent / "runtime/mathjax-tex-svg.js.gz",
         ".matsugit-ci/runtime/MATHJAX-LICENSE": Path(__file__).parent / "runtime/MATHJAX-LICENSE",
         ".matsugit-ci/runtime/MATHJAX-NOTICE.txt": Path(__file__).parent / "runtime/MATHJAX-NOTICE.txt",
     }
@@ -193,7 +194,9 @@ def setup_ci(settings, provider):
         if not path.resolve().is_relative_to(repo.resolve()):
             raise Error("CI path escapes repository")
         path.parent.mkdir(parents=True, exist_ok=True)
-        text = source.read_text(encoding="utf-8")
+        # Compressed assets are written out expanded; CI loads the plain file.
+        text = (gzip.decompress(source.read_bytes()).decode("utf-8") if source.suffix == ".gz"
+                else source.read_text(encoding="utf-8"))
         # JSON quoting is valid YAML and Python, including spaces in the directory.
         import json
         text = text.replace("__SITE_DIR__", json.dumps(settings["site_dir"]))

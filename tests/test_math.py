@@ -1,5 +1,6 @@
 """Math conversion operates on parsed nodes, never on source-text patterns."""
 from copy import deepcopy
+import gzip
 import hashlib
 from html import unescape
 import json
@@ -43,7 +44,9 @@ class MathTests(unittest.TestCase):
 
     def test_bundled_mathjax_matches_reviewed_upstream(self):
         runtime = Path(__file__).resolve().parents[1] / 'matsugit/runtime'
-        self.assertEqual(hashlib.sha256((runtime/'mathjax-tex-svg.js').read_bytes()).hexdigest(),
+        # Stored compressed; the expanded bytes must still be the reviewed upstream file.
+        expanded = gzip.decompress((runtime/'mathjax-tex-svg.js.gz').read_bytes())
+        self.assertEqual(hashlib.sha256(expanded).hexdigest(),
                          'a4354ff94fd868aea0cc6eaaa79a57fda0588646fc46ee3700a349ee0a11cbe6')
         self.assertIn('Apache License', (runtime/'MATHJAX-LICENSE').read_text())
 

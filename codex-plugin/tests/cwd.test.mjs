@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {gunzipSync} from 'node:zlib';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -74,8 +75,12 @@ console.log(JSON.stringify({theme: 'default'}));
         assert.equal(rendered.cwd, fs.realpathSync(path.dirname(rendered.output)));
         assert.equal(rendered.pwd, rendered.cwd);
         const snapshot = path.resolve(path.dirname(rendered.worker), '..');
-        const checkFile = name => assert.ok(fs.readFileSync(path.join(snapshot, name)).equals(fs.readFileSync(path.join(root, name))),
-          'Bundled runtime is stale; run npm run build: ' + name);
+        // Assets stored compressed in the repository (name.gz) are bundled expanded.
+        const checkFile = name => {
+          const packed = name.endsWith('.gz'), expected = fs.readFileSync(path.join(root, name));
+          assert.ok(fs.readFileSync(path.join(snapshot, packed ? name.slice(0, -3) : name)).equals(packed ? gunzipSync(expected) : expected),
+            'Bundled runtime is stale; run npm run build: ' + name);
+        };
         checkFile('codex-plugin/worker.py');
         for (const name of fs.readdirSync(path.join(root, 'matsugit')).filter(name => name.endsWith('.py'))) checkFile('matsugit/' + name);
         for (const assetRoot of ['matsugit/runtime', 'matsugit/themes/default']) {

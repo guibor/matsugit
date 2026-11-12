@@ -22,6 +22,26 @@ python3 codex-plugin/tests/file-trouble-browser.py
 Each also runs in the Cursor-style host with =MATSUGIT_TEST_HOST=cursor
 MATSUGIT_STANDARD_MCP=1=.
 
+* Package size
+
+=tests/test_package_size.py= keeps the committed tree under 8 MB (8,000,000
+bytes), the limit for a packaged plugin before zipping, and lists the largest
+files when it fails. What keeps it there:
+- The workspace page is not committed separately: it lives inside
+  =codex-plugin/bundle/server.mjs=. =node codex-plugin/app-html.mjs > app.html=
+  writes it out for inspection; tests and the demo read it the same way.
+- MathJax is stored as =matsugit/runtime/mathjax-tex-svg.js.gz=. Rendering
+  (=core.expand_runtime=), CI setup and the plugin bundle write out the plain
+  file; =tests/test_math.py= checks the expanded bytes against the reviewed
+  upstream hash.
+- The runtime embedded in =server.mjs= is Brotli-compressed, with text files
+  stored as text. The bundle keeps zod's English messages only (the other
+  languages are never used). The server code itself is not minified, so its
+  source-module excerpts stay readable for review.
+- Documentation screenshots are 256-colour PNGs. Run
+  =python3 codex-plugin/tests/shrink-images.py docs/images/**/*.png= after
+  adding new ones; =capture-readme.py= does it for the images it writes.
+
 * Fast checks
 The suites support macOS and Linux. macOS keeps temporary files behind a
 symlink (=/var= to =/private/var=); =tests/realtmp.py= and the Node tests
