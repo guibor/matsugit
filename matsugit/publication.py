@@ -10,6 +10,7 @@ from urllib.parse import quote, urlencode, urlsplit
 
 from .core import Error
 from .repositories import api, validate
+from .links import links, safe
 
 
 def now():
@@ -45,24 +46,42 @@ def record(source, plan, revision, environment=None):
     value.update(version=1, revision=revision, pushed_at=now(), stage='pushed',
                  environment=environment, detail='Pushed; deployment has not been verified.')
     store(source, value)
-    from .links import links
     return {**value, 'links': links(value)}
 
 
 def safe_url(value):
-    parsed = urlsplit(value or '')
-    return value if parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password else None
+    return safe(value)
+
+
+def local_links(source, value):
+    """Recover link information for older receipts, without fetching or pushing."""
+    if not value.get('source_path') or not safe(value.get('site_url'), site=True):
+        from .share import status as share_status
+        try:
+            current = share_status(source)
+            if current.get('mode') == 'sync' and (not value.get('revision') or
+                    (current.get('project_url'), current.get('branch')) ==
+                    (value.get('project_url'), value.get('branch'))):
+                for key in ('source_path', 'ci_layout', 'site_dir', 'document_url', 'slides_url',
+                            'site_url', 'provider', 'project_url', 'branch'):
+                    if not value.get(key):
+                        value[key] = current.get(key)
+        except (Error, OSError, ValueError):
+            pass
+    return {**value, 'links': links(value)}
 
 
 def status(source, check=False):
     path = receipt_path(source)
     if not path.is_file():
-        return {'stage':'local', 'detail':'No push recorded by this workspace on this computer.'}
+        return local_links(source, {'stage':'local', 'detail':'No push recorded by this workspace on this computer.'})
     if path.is_symlink() or path.stat().st_size > 65536:
         raise Error('Invalid publication state file')
     value = json.loads(path.read_text())
     if value.get('version') != 1:
         raise Error('Unknown publication state version')
+    value = local_links(source, value)
+    value.pop('links', None)
     if check:
         # A cached success is not current evidence after a failed refresh.
         value.update(stage='pushed', checked_at=now(), detail='Deployment not verified.')
@@ -70,10 +89,11 @@ def status(source, check=False):
             value.pop(key, None)
         try:
             inspect(value)
-            details(value)
         except (Error, ValueError, KeyError, TypeError) as error:
             value['check_error'] = str(error)
             value['detail'] = 'Pushed; provider status unavailable. No login or permission change was attempted.'
+        # The Pages address does not depend on permission to inspect a deployment.
+        details(value)
         if value['stage'] != 'published':
             value['stage'] = pipeline_stage(value.get('pipeline_status'))
         if value['stage'] != 'building':
@@ -83,10 +103,8 @@ def status(source, check=False):
         # Do not replace a newer push that finished while the provider was queried.
         current = json.loads(path.read_text())
         if (current.get('revision'), current.get('pushed_at')) != (value['revision'], value['pushed_at']):
-            from .links import links
-            return {**current, 'links': links(current)}
+            return local_links(source, current)
         store(source, value)
-    from .links import links
     value['links'] = links(value)
     return value
 
@@ -115,7 +133,7 @@ def inspect(value):
                 value['deployed_revision'] = deployment.get('sha')
                 if deployment.get('sha') == revision:
                     value.update(stage='published', detail='Provider reports this revision deployed.',
-                                 site_url=safe_url(states[0].get('environment_url')) or value.get('site_url'))
+                                 site_url=safe(states[0].get('environment_url'), site=True) or value.get('site_url'))
                     return
         # Branch-based Pages does not always create an Actions deployment.
         if not value.get('environment'):
@@ -156,10 +174,13 @@ def details(value):
     try:
         parsed = urlsplit(value['project_url'])
         provider, host, project = value['provider'], parsed.hostname, parsed.path.strip('/')
+        if not safe_url(value['project_url']) or parsed.query or parsed.fragment:
+            return
+        validate(provider, host, project)
         endpoint = 'repos/' + project if provider == 'github' else 'projects/' + quote(project, safe='')
         if not value.get('site_url'):
             pages = api(provider, host, endpoint + '/pages')
-            value['site_url'] = safe_url(pages.get('url' if provider == 'gitlab' else 'html_url'))
+            value['site_url'] = safe(pages.get('url' if provider == 'gitlab' else 'html_url'), site=True)
         if provider == 'gitlab' and value.get('pipeline_status') in ('running', 'pending') and value.get('pipeline_id'):
             value['build_step'] = gitlab_step(provider, host, endpoint, {'id': value['pipeline_id']})
     except Exception:

@@ -33,7 +33,7 @@ export function publicationStatus({call, state, hasUnsaved, demo, painted = () =
     painted(label, busy);
     for (const [id, url] of [['publication-pipeline',receipt?.pipeline_url], ['publication-site',receipt?.site_url]]) {
       let valid = false;
-      try { const parsed = new URL(url); valid = parsed.protocol === 'https:' && !parsed.username && !parsed.password; } catch {}
+      try { const parsed = new URL(url); valid = !/[\s\x00-\x1f]/.test(url) && (parsed.protocol === 'https:' || id === 'publication-site' && parsed.protocol === 'http:') && parsed.hostname && !parsed.username && !parsed.password; } catch {}
       $(id).hidden = !valid; if (valid) $(id).href = url;
     }
   }

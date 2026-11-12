@@ -6,12 +6,12 @@ from pathlib import PurePosixPath
 from urllib.parse import quote, urlsplit
 
 
-def safe(url):
+def safe(url, *, site=False):
     if not isinstance(url, str) or any(c.isspace() or ord(c) < 32 for c in url):
         return None
     try:
         parsed = urlsplit(url)
-        return url if parsed.scheme == 'https' and parsed.hostname and not parsed.username and not parsed.password else None
+        return url if parsed.scheme in (('https', 'http') if site else ('https',)) and parsed.hostname and not parsed.username and not parsed.password else None
     except ValueError:
         return None
 
@@ -42,7 +42,7 @@ def links(receipt):
         gitlab = receipt.get('provider') != 'github'
         result['source'] = f"{project}/{'-/' if gitlab else ''}blob/{quote(branch, safe='')}/{encoded}"
         result['edit'] = f"{project}/{'-/' if gitlab else ''}edit/{quote(branch, safe='')}/{encoded}"
-    site = safe(receipt.get('site_url'))
+    site = safe(receipt.get('site_url'), site=True)
     if site:
         result['site'] = site
     if site and path:
@@ -57,10 +57,15 @@ def links(receipt):
             inside = quote(folder.relative_to(site_dir).as_posix())
             templates = {'document': templates['document'] or '{site}/' + inside + '/index.html',
                          'slides': templates['slides'] or '{site}/' + inside + '/slides.html'}
+        elif receipt.get('ci_layout') == 'topics':
+            # The legacy Git Pages renderer mirrors source paths under public/.
+            prefix = '{site}/' + ('{dir}/' if folder != PurePosixPath('.') else '')
+            templates = {'document': templates['document'] or prefix + '{name}.html',
+                         'slides': templates['slides'] or prefix + '{name}-slides.html'}
         for key, template in templates.items():
             if template:
                 try:
-                    url = safe(template.format(**values))
+                    url = safe(template.format(**values), site=True)
                 except (KeyError, IndexError, ValueError, AttributeError):
                     url = None
                 if url:

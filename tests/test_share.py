@@ -71,6 +71,19 @@ class ShareStatusTests(unittest.TestCase):
         described, _ = share.receipt_plan({'repo': str(self.repo), 'branch': 'main', 'etag': 'a' * 64})
         self.assertEqual(described['deployment'], 'push')
 
+    def test_tracked_document_has_links_before_any_receipt_or_provider_check(self):
+        config = json.loads(self.config.read_text())
+        config['publish_targets']['docs'].update(ci_layout='topics', site_url='http://team.example.invalid/docs')
+        self.config.write_text(json.dumps(config))
+        with patch('matsugit.repositories.api', side_effect=AssertionError('No network')):
+            data = share.status(self.repo / 'deck.md')
+            from matsugit.publication import status
+            receipt = status(self.repo / 'deck.md')
+        self.assertEqual(data['links']['document'], 'http://team.example.invalid/docs/deck.html')
+        self.assertEqual(data['links']['slides'], 'http://team.example.invalid/docs/deck-slides.html')
+        self.assertEqual(receipt['links'], data['links'])
+        self.assertEqual(receipt['stage'], 'local')
+
 
 if __name__ == '__main__':
     unittest.main()

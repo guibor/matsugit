@@ -62,4 +62,8 @@ def status(source):
     result.update(mode='sync', repo=str(repo), branch=info['branch'], target=name, label=label or repo.name,
                   project_url=url, site_url=profile.get('site_url'),
                   deployment=profile.get('deployment', 'ci') if name else None)
+    from .links import describe, links
+    result.update(describe(repo, source, profile),
+                  provider=profile.get('provider') or ('github' if (url or '').startswith('https://github.com/') else 'gitlab'))
+    result['links'] = links(result)
     return result

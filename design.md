@@ -213,6 +213,13 @@ saves before taking the delivery lock, because Save is disabled while locked.
 provider independently of the dialog, so the header button and a notice report
 the site build even when Share is closed.
 
+Site addresses are independent of deployment status. `links()` derives native
+and legacy topics HTML paths immediately from the recorded target. `status()`
+can fill older receipts from the matching local checkout without a fetch. Share
+retains these links during checks, conflicts and failures; only the status may
+claim the recorded revision is live. Configured HTTP Pages addresses are allowed
+for navigation, never as provider API endpoints.
+
 ## Agent surface
 
 - `skills/matsugit/SKILL.md` routes to `references/` (syntax, recipes, themes,

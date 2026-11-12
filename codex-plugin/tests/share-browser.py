@@ -19,6 +19,10 @@ spec = importlib.util.spec_from_file_location('publish_target', Path(__file__).w
 publish_target = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publish_target)
 info = publish_target.create(Path(tempfile.mkdtemp(prefix='matsugit-share-target-')).resolve() / 'target')
+SITE = os.environ.get('MATSUGIT_TEST_SITE_URL', 'https://team.example.invalid/docs')
+configuration = json.loads(Path(info['config']).read_text())
+configuration['publish_targets']['docs']['site_url'] = SITE
+Path(info['config']).write_text(json.dumps(configuration))
 root = Path(info['repo']).parent
 env = dict(os.environ, MATSUGIT_TEST_SOURCE=info['source'], MATSUGIT_TEST_CONFIG=info['config'],
            GIT_SSH_COMMAND=info['ssh'], MATSUGIT_STANDARD_MCP='1')
@@ -91,9 +95,12 @@ try:
         assert title() == 'Sent, but the site was not asked to update', title()
         assert 'glab' in detail() and 'pipelines page' in detail() and 'Executable not found' not in detail()
         # Every place the deck can be opened: slides and document on the site, source in the project.
-        # Until the site updates, only the source is offered; it already shows the new version.
+        # Addresses are usable before CI succeeds; they may show the previous version.
         links = {row.get_attribute('data-link'): row.get_attribute('title') for row in frame.locator('#share-links .share-open').all()}
-        assert links == {'source': 'https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md'}, links
+        assert links == {'source': 'https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md',
+                         'slides': SITE + '/deck/slides.html',
+                         'document': SITE + '/deck/index.html'}, links
+        assert 'previous version' in frame.locator('#share-links').inner_text()
         frame.locator('#share-links .share-open[data-link="source"]').click()
         page.wait_for_function('(window.openedLinks || []).length === 1', timeout=5000)
         assert page.evaluate('window.openedLinks') == ['https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md']
@@ -107,13 +114,14 @@ try:
         frame.locator('#share').click()
         settled('Sent, but the site was not asked to update')
         assert 'glab' in detail()
+        assert frame.locator('#share-links .share-open[data-link="slides"]').is_visible()
         frame.locator('#share-close').click()
         # The same links stay one click away in the "..." menu.
         # All three are one click away in the "..." menu.
         frame.locator('#more').click()
         assert [b.get_attribute('data-link') for b in frame.locator('#more-published button').all()] == ['slides', 'document', 'source']
-        assert frame.locator('#more-published button[data-link="slides"]').get_attribute('title') == 'https://team.example.invalid/docs/deck/slides.html'
-        assert frame.locator('#more-published button[data-link="document"]').get_attribute('title') == 'https://team.example.invalid/docs/deck/index.html'
+        assert frame.locator('#more-published button[data-link="slides"]').get_attribute('title') == SITE + '/deck/slides.html'
+        assert frame.locator('#more-published button[data-link="document"]').get_attribute('title') == SITE + '/deck/index.html'
         frame.locator('#more-published button[data-link="source"]').click()
         page.wait_for_function('window.openedLinks.length === 2', timeout=5000)
         assert page.evaluate('window.openedLinks').pop() == 'https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md'
@@ -123,8 +131,10 @@ try:
         wait(frame, 'document.getElementById("share").textContent.trim() === "Share changes"', 20)
         frame.locator('#share').click()
         settled('You have unsaved changes')
+        assert frame.locator('#share-links .share-open[data-link="document"]').is_visible()
         frame.locator('#share-go').click()
         settled('Ready to share')
+        assert frame.locator('#share-links .share-open[data-link="slides"]').is_visible()
         assert 'team/docs' in detail()
         frame.locator('#share-go').click()
         settled('Sent')
@@ -133,9 +143,14 @@ try:
         frame.locator('#share-close').click()
 
         # Nothing new: say so instead of offering to send.
+        page.reload()
+        frame = page.frames[1]
+        wait(frame, '!!window.matsugitWorkspace?.state.rendered')
+        frame.locator('#auto').uncheck()
         frame.locator('#share').click()
         wait(frame, IDLE + ' && /^(Up to date|Sent)/.test(document.getElementById("share-title").textContent)')
         assert frame.locator('#share-go').is_hidden()
+        assert frame.locator('#share-links .share-open[data-link="slides"]').is_visible()
         frame.locator('#share-close').click()
 
         # A colleague edits the deck in the project (as the GitLab web editor would).
@@ -180,6 +195,7 @@ try:
         settled('You have unsaved changes')
         frame.locator('#share-go').click()
         settled('You and someone else changed the same part')
+        assert frame.locator('#share-links .share-open[data-link="slides"]').is_visible()
         frame.locator('#share-go').click()
         frame.locator('#merge-mine').click()
         page.screenshot(path=str(shots / 'share-choose.png'))
@@ -204,8 +220,10 @@ try:
         # A long CI build is passive: the author can close Share and keep editing.
         receipts = list(Path(ready['publication']).glob('*.json'))
         building = json.loads(receipts[0].read_text())
+        building['links'] = links
         building.update(stage='building', pipeline_status='running')
         building.pop('check_error', None)
+        building.pop('deployment_error', None)
 
         def pending_ci(route):
             request = route.request.post_data_json
@@ -221,18 +239,23 @@ try:
         page.route('**/rpc', pending_ci)
         frame.locator('#share').click()
         settled('Sent. The site is rebuilding')
+        assert frame.locator('#share-links .share-open[data-link="slides"]').is_visible()
+        assert 'not verified' in frame.locator('#share-links').inner_text()
         assert frame.locator('#share-steps li[data-state="busy"]').inner_text() == 'The site is rebuilding...'
         assert frame.locator('#share-close').is_enabled()
         frame.locator('#share-close').click()
         # The watch outlives the dialog: the header button and a message report the result.
         wait(frame, 'document.getElementById("share").textContent.trim() === "Building site" && document.getElementById("share").getAttribute("aria-busy") === "true"', 20)
-        building.update(stage='published', pipeline_status='success', site_url='https://team.example.invalid/docs')
+        building.update(stage='published', pipeline_status='success', site_url=SITE)
         wait(frame, 'document.getElementById("share").textContent.trim() === "Shared"', 30)
         assert 'Your deck is live' in frame.locator('#notice-text').inner_text()
         frame.locator('#share').click()
         settled('Live')
         assert [item.get_attribute('data-state') for item in frame.locator('#share-steps li').all()] == ['done', 'done', 'done']
-        assert frame.locator('#share-link').get_attribute('href') == 'https://team.example.invalid/docs'
+        assert frame.locator('#share-links .share-open[data-link="slides"]').get_attribute('title') == links['slides']
+        frame.locator('#share-links .share-open[data-link="slides"]').click()
+        page.wait_for_function('(window.openedLinks || []).includes(' + json.dumps(links['slides']) + ')')
+        assert 'last verified' in frame.locator('#share-links').inner_text()
         frame.locator('#share-close').click()
         edit('my wording', 'wording while CI runs')
         frame.locator('#save').click()
@@ -240,6 +263,22 @@ try:
         assert 'wording while CI runs' in Path(info['destination']).read_text()
         assert 'wording while CI runs' not in git(root / 'remotes/team/docs.git', 'show', 'main:matsugit-site/deck/source.md')
         page.unroute('**/rpc', pending_ci)
+        def unavailable_git(route):
+            request = route.request.post_data_json
+            params = request.get('params', {})
+            if (request.get('method') == 'tools/call' and params.get('name') == 'matsugit_action'
+                    and params.get('arguments', {}).get('action') == 'exchange-plan'):
+                route.fulfill(json={'result': {'content': [], 'structuredContent': {
+                    'job': 'synthetic-offline-check', 'state': 'failed', 'error': 'Network unavailable'}}})
+            else:
+                route.continue_()
+        page.route('**/rpc', unavailable_git)
+        frame.locator('#share').click()
+        settled('That did not work')
+        assert frame.locator('#share-links .share-open[data-link="slides"]').is_visible()
+        assert 'Network unavailable' in detail()
+        frame.locator('#share-close').click()
+        page.unroute('**/rpc', unavailable_git)
         for width, height in [(390, 844), (760, 800)]:
             page.set_viewport_size({'width': width, 'height': height})
             frame.locator('#share').click()

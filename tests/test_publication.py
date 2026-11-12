@@ -114,5 +114,44 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(result['stage'],'failed')
         self.assertIn('denied',result['check_error'])
 
+    def test_html_links_survive_pending_failed_and_unavailable_builds(self):
+        result = self.record(ci_layout='topics', source_path='topics/road map/source.md', site_url='http://team.example.invalid/docs')
+        expected = 'http://team.example.invalid/docs/topics/road%20map/source-slides.html'
+        self.assertEqual(result['links']['slides'], expected)
+        with patch.object(p, 'api', side_effect=Error('No existing login')):
+            self.assertEqual(p.status(self.source, check=True)['links']['slides'], expected)
+        with patch.object(p, 'api', return_value=[{'sha': self.sha, 'ref': 'main', 'status': 'failed'}]):
+            result = p.status(self.source, check=True)
+        self.assertEqual(result['stage'], 'failed')
+        self.assertEqual(result['links']['slides'], expected)
+        self.assertEqual(p.status(self.source)['links'], result['links'])
+
+    def test_site_discovery_does_not_require_build_status_access(self):
+        for provider, project, field in [('gitlab', 'https://git.example.invalid/team/docs', 'url'),
+                                         ('github', 'https://github.com/team/docs', 'html_url')]:
+            self.record(provider=provider, project_url=project, ci_layout='native', source_path='matsugit-site/deck/source.md')
+            def query(_provider, _host, endpoint):
+                if endpoint.endswith('/pages'):
+                    return {field: 'http://team.example.invalid/docs'}
+                raise Error('Build status read denied')
+            with patch.object(p, 'api', side_effect=query):
+                result = p.status(self.source, check=True)
+            self.assertEqual(result['stage'], 'pushed')
+            self.assertIn('denied', result['check_error'])
+            self.assertEqual(result['links']['document'], 'http://team.example.invalid/docs/deck/index.html')
+            with patch.object(p, 'api', side_effect=AssertionError('No network')):
+                self.assertEqual(p.status(self.source)['links'], result['links'])
+
+    def test_legacy_receipts_gain_local_links_only_for_the_same_project_and_branch(self):
+        self.record()
+        local = dict(mode='sync', project_url=self.plan['project_url'], branch='main', ci_layout='topics',
+                     source_path='topics/deck.md', site_url='http://team.example.invalid/docs')
+        with patch('matsugit.share.status', return_value=local), patch.object(p, 'api', side_effect=AssertionError('No network')):
+            result = p.status(self.source)
+        self.assertEqual(result['links']['slides'], 'http://team.example.invalid/docs/topics/deck-slides.html')
+        for key, wrong in [('branch', 'other'), ('project_url', 'https://git.example.invalid/team/other')]:
+            with patch('matsugit.share.status', return_value={**local, key: wrong}):
+                self.assertNotIn('slides', p.status(self.source)['links'])
+
 
 if __name__ == '__main__': unittest.main()

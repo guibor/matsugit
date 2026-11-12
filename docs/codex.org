@@ -640,7 +640,7 @@ review preserves your draft and lets you choose, including when a short line
 you deleted reappears. Version checks cover workspace writes, not unrelated
 external editors.
 
-* Opening a shared deck (0.31)
+* Opening a shared deck (0.31.1)
 
 Once a deck is shared, its places are one click away: in the Share dialog and
 under =...= > =Shared deck=.
@@ -649,10 +649,19 @@ under =...= > =Shared deck=.
   the site address is known: from the target's =site_url=, or asked of GitLab or
   GitHub (with your existing =glab= / =gh= login) the first time the build is
   checked. For a project built by matsugit's own CI the address of each deck
-  follows from its folder. A project with its own renderer (the =topics=
-  layout) needs the pattern once, for example
-  =matsugit target set docs --slides-url "{site}/{slug}/slides.html" --document-url "{site}/{slug}/"=
-  (placeholders: =site=, =dir=, =slug=, =path=, =name=).
+  follows from its folder. The legacy Git Pages =topics= layout uses the same
+  paths as Emacs: =topics/example/deck.md= becomes =topics/example/deck.html=
+  and =topics/example/deck-slides.html=. Custom =document_url= and =slides_url=
+  templates still override these defaults (placeholders: =site=, =dir=, =slug=,
+  =path=, =name=).
+- Links do not wait for a successful build. They stay visible when checking,
+  editing, resolving conflicts, and reopening Share, including after a CI
+  failure. Until deployment is verified, they may show the previous version or
+  return 404 on a first publication. Their labels say so; a URL is not proof
+  that the new version is live.
+- A configured =site_url= also works offline, without =gh= or =glab=. HTTP
+  Pages sites are supported for navigation; provider API requests still use
+  HTTPS. Unknown Pages addresses are not guessed.
 - *Source* opens the Markdown file in the project on GitLab or GitHub. It is
   right as soon as the push succeeds, before the site rebuilds.
 - Links open in your browser through Codex or Cursor; =Copy link= is beside each.

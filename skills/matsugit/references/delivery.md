@@ -63,6 +63,16 @@ button. A push may trigger existing CI. Additional deployment is a separate
 checkbox. The source must first be saved; stale plans and dirty target checkouts
 are refused. Configuration and previews never enable hosting or change CI rules.
 
+**Share** keeps Slides, Document and Source links available before CI finishes
+and when reopened, including after failed checks. Use `matsugit_links` to return
+these addresses to the user; distinguish a known address from a verified live
+revision. Before deployment, HTML links can show an older version or return 404.
+If the Pages base URL is unknown, configure the target's `site_url` from the
+actual hosting address, or let a read-only status check discover it with existing
+`gh`/`glab` authentication. Never invent a host or log in implicitly. Both the
+native and legacy topics layouts derive per-document URLs; custom `document_url`
+and `slides_url` templates override the defaults.
+
 Choose **Source to CI** for server rendering, or **Rendered outputs** for a local
 build before pushing. Configure `matsugit target set docs --build ci`; then
 `matsugit publish-plan deck.md --target docs` previews the destination. Source CI

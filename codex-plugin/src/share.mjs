@@ -20,9 +20,12 @@ export const shareLabel = label => BUTTON[label] || 'Share';
 // The places a shared deck can be opened, most useful first.
 export function publishedLinks(receipt) {
   const links = receipt?.links || {}, host = receipt?.provider === 'github' ? 'GitHub' : 'GitLab';
+  const siteDetail = receipt?.stage === 'published' ? 'last verified version'
+    : receipt?.stage === 'failed' || receipt?.deployment_error ? 'previous version, if available'
+    : 'build not verified; may show an older version';
   return [
-    links.slides && {key: 'slides', label: 'Slides', detail: 'on the site', url: links.slides},
-    links.document && {key: 'document', label: 'Document', detail: 'on the site', url: links.document},
+    links.slides && {key: 'slides', label: 'Slides', detail: siteDetail, url: links.slides},
+    links.document && {key: 'document', label: 'Document', detail: siteDetail, url: links.document},
     !links.slides && !links.document && links.site && {key: 'site', label: 'Site', detail: 'the project\'s website', url: links.site},
     links.source && {key: 'source', label: 'Source', detail: `on ${host}`, url: links.source},
     !links.source && links.project && {key: 'project', label: 'Project', detail: `on ${host}`, url: links.project},
@@ -33,11 +36,11 @@ const STEP_LABEL = {waiting: 'Waiting for the build to start...', starting: 'The
 export function plainBlocked(reasons) {
   return [...new Set(reasons.map(reason => BLOCKED.find(([pattern]) => pattern.test(reason))?.[1] || reason))];
 }
-const safe = url => { try { const parsed = new URL(url); return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? url : null; } catch { return null; } };
+const safe = url => { try { const parsed = new URL(url); return typeof url === 'string' && !/[\s\x00-\x1f]/.test(url) && ['https:', 'http:'].includes(parsed.protocol) && parsed.hostname && !parsed.username && !parsed.password ? url : null; } catch { return null; } };
 
 export function share({call, state, text, dirty, save, run, lock, isBusy, snapshot, mergeReview, publication, reload, notice, demo, openLink = url => window.open(url, '_blank', 'noopener')}) {
   const dialog = $('share-dialog'), go = $('share-go'), progress = $('share-progress');
-  let step = null, context = null, visit = 0, showingOutcome = false, monitoring = false;
+  let step = null, context = null, contextOwner = null, visit = 0, showingOutcome = false, monitoring = false, linkSignature;
   $('share').append(createElement(Share2), document.createElement('span'));
   $('share-close').append(createElement(X)); $('share-copy').append(createElement(Copy), 'Copy link');
   $('share-close').onclick = () => dialog.close();
@@ -51,6 +54,10 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     catch { progress.textContent = 'Could not copy. Select the link above instead.'; }
   };
   const view = () => state.session || state.uri;
+  const knownLinks = () => {
+    const receipt = publication.receipt(), local = contextOwner === view() ? context : null;
+    return publishedLinks({...local, ...receipt, links: {...local?.links, ...receipt?.links}});
+  };
   // The three things sharing does, always in the same order, so the reader can
   // see what has happened and what the button will do next.
   const STEP = {save: ['Saved on this computer', 'Save your changes'], send: ['Sent to the project', 'Send to the project'],
@@ -72,6 +79,9 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   }
   // Each link opens in the browser through the host, with its own copy button.
   function paintLinks(list) {
+    const signature = JSON.stringify(list);
+    if (signature === linkSignature) return;
+    linkSignature = signature;
     const root = $('share-links');
     root.hidden = !list.length;
     root.replaceChildren(...list.map(item => {
@@ -88,7 +98,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       row.append(open, copy); return row;
     }));
   }
-  function paint({title, detail = '', action = '', next = null, link = null, linkLabel = 'Open the shared deck', pick = false, steps = null, outcome = false, links = []}) {
+  function paint({title, detail = '', action = '', next = null, link = null, linkLabel = 'Open the shared deck', pick = false, steps = null, outcome = false, links = knownLinks()}) {
     paintLinks(links);
     $('share-title').textContent = title; $('share-detail').textContent = detail;
     go.hidden = !action; go.textContent = action; step = next;
@@ -116,11 +126,11 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const receipt = publication.receipt() || {};
     const link = receipt.site_url || receipt.project_url || context?.site_url || context?.project_url;
     const label = receipt.site_url || context?.site_url ? 'Open the shared deck' : 'Open the project';
-    const steps = {save: 'done', send: 'done', project: project(), build: receipt.build_step}, links = publishedLinks(receipt);
+    const steps = {save: 'done', send: 'done', project: project(), build: receipt.build_step}, links = knownLinks();
     // The push worked but the build that updates the site could not be started.
     const deployError = receipt.deployment_error || context?.deployError;
     if (deployError && receipt.stage === 'pushed' && !receipt.pipeline_status) {
-      paint({title: 'Sent, but the site was not asked to update', outcome: true, links: links.filter(item => ['source', 'project'].includes(item.key)),
+      paint({title: 'Sent, but the site was not asked to update', outcome: true, links,
         steps: {...steps, site: 'failed'}, detail: deployError + '\n\nYour changes are safe in the project.'});
       return;
     }
@@ -128,7 +138,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       detail: 'Your changes are in the shared project. matsugit does not know whether this project has a website.'});
     else if (receipt.stage === 'published') paint({title: 'Live', outcome: true, links, link: links.length ? null : link, linkLabel: 'Open the shared deck', steps: {...steps, site: 'done'},
       detail: 'The site shows this version. You can pass the link on.'});
-    else if (receipt.stage === 'failed') paint({title: 'Sent, but the site did not rebuild', outcome: true, links: links.filter(item => ['source', 'project'].includes(item.key)), steps: {...steps, site: 'failed'},
+    else if (receipt.stage === 'failed') paint({title: 'Sent, but the site did not rebuild', outcome: true, links, steps: {...steps, site: 'failed'},
       link: receipt.pipeline_url || link, linkLabel: receipt.pipeline_url ? 'Open the failed build' : label,
       detail: 'Your changes are safe in the project. Its site build reported a failure; whoever looks after the project can see why.'});
     else if (receipt.check_error) paint({title: 'Sent', outcome: true, links, link: links.length ? null : link, linkLabel: label, steps: {...steps, site: 'unknown'},
@@ -173,7 +183,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     try {
       const info = (await run('share-status', {}, progress)).result;
       if (current !== visit) return;
-      context = info; progress.textContent = '';
+      context = info; contextOwner = view(); progress.textContent = '';
       if (info.mode === 'new') {
         const select = $('share-destination'); select.replaceChildren();
         for (const target of info.targets) {
@@ -246,7 +256,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       return;
     }
     paint({title: 'Up to date', detail: 'Everything you saved is in the shared project, and nobody else has changed this deck.', outcome: false,
-      link: context.site_url || context.project_url, linkLabel: context.site_url ? 'Open the shared deck' : 'Open the project',
+      link: knownLinks().length ? null : context.site_url || context.project_url, linkLabel: context.site_url ? 'Open the shared deck' : 'Open the project',
       steps: {save: 'done', send: 'done', site: 'unknown', project: destination(context)}});
   }
 
@@ -325,7 +335,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   if (demo) $('share').disabled = true;
   // "..." menu: the shared deck's slides, document and source, once known.
   function paintMenu() {
-    const root = $('more-published'), list = publishedLinks(publication.receipt());
+    const root = $('more-published'), list = knownLinks();
     root.hidden = !list.length;
     root.replaceChildren(Object.assign(document.createElement('span'), {textContent: 'Shared deck'}), ...list.map(item => {
       const button = document.createElement('button');
@@ -337,6 +347,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   }
   return {painted(label, busy) {
     paintMenu();
+    if (dialog.open) paintLinks(knownLinks());
     const button = $('share');
     button.disabled = demo || state.loading || state.delivering || !(state.session || state.uri);
     button.lastChild.textContent = shareLabel(label);
