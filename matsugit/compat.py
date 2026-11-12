@@ -3,9 +3,15 @@ import os
 from pathlib import Path
 
 
+def legacy_config():
+    """Work distributions can disable old settings without deleting old data."""
+    return os.environ.get('MATSUGIT_LEGACY_CONFIG', '1') != '0'
+
+
 def env(name, default=None):
     """New environment names win; existing launchers keep working."""
-    return os.environ.get(name, os.environ.get(name.replace('MATSUGIT_', 'FOLIOFORGE_'), default))
+    fallback = os.environ.get(name.replace('MATSUGIT_', 'FOLIOFORGE_'), default) if legacy_config() else default
+    return os.environ.get(name, fallback)
 
 
 def existing(new, old):
@@ -18,5 +24,9 @@ def global_config():
     explicit = env('MATSUGIT_CONFIG')
     if explicit:
         return [Path(explicit).expanduser()]
-    return [Path('~/.config/folioforge/config.json').expanduser(),
-            Path('~/.config/matsugit/config.json').expanduser()]
+    old = [Path('~/.config/folioforge/config.json').expanduser()] if legacy_config() else []
+    return [*old, Path('~/.config/matsugit/config.json').expanduser()]
+
+
+def project_configs(root):
+    return [*([root / 'folioforge.json'] if legacy_config() else []), root / 'matsugit.json']

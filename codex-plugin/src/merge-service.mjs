@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 export class MergeService {
   active = new Set();
+  constructor(worker = () => new URL('./merge-worker.mjs', import.meta.url)) { this.worker = worker; }
   async plan(input, timeout = 5000) {
     if (this.active.size >= 2) throw Error('Merge busy; try again shortly.');
     for (const key of ['base', 'local', 'incoming'])
@@ -13,9 +14,8 @@ export class MergeService {
     // worker bootstrap needs a valid cwd even though this merge never uses it.
     try { if (!fs.existsSync(process.cwd())) process.chdir(os.tmpdir()); }
     catch { process.chdir(os.tmpdir()); }
-    const bundled = typeof __MATSUGIT_MERGE_WORKER__ === 'string';
-    const worker = new Worker(bundled ? __MATSUGIT_MERGE_WORKER__ : new URL('./merge-worker.mjs', import.meta.url),
-      {eval: bundled, workerData: input, resourceLimits: {maxOldGenerationSizeMb: 128}});
+    const worker = new Worker(this.worker(),
+      {workerData: input, resourceLimits: {maxOldGenerationSizeMb: 128}});
     this.active.add(worker);
     try {
       return await new Promise((resolve, reject) => {

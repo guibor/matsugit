@@ -17,6 +17,16 @@ from .core import Error
 from .compat import env, existing
 
 MINIMUM = (3, 7, 0, 2)
+# Reviewed release pins, not checksums fetched alongside a runtime download.
+# Provenance and the update procedure are in docs/converter-downloads.md.
+PINNED_VERSION = "3.13"
+PINNED_ASSETS = {
+    ("Linux", "amd64"): ("pandoc-3.13-linux-amd64.tar.gz", "38aa33b325a2bc96a4c39409631212db55702f564250bcdbead180b3bf646389"),
+    ("Linux", "arm64"): ("pandoc-3.13-linux-arm64.tar.gz", "21e1d4ba09bd0b334590d204580fd4f6629b21be4ab6a32b26cc98982e9e0c68"),
+    ("Darwin", "amd64"): ("pandoc-3.13-x86_64-macOS.zip", "1823278715aa405aaf21b59cde5dc789346aa8d4fc307467f9a9ee84162bedc5"),
+    ("Darwin", "arm64"): ("pandoc-3.13-arm64-macOS.zip", "f436d18bebbfb3ddd326597686dacab9fac5dc23bd060495020f35a28a43a7c3"),
+    ("Windows", "amd64"): ("pandoc-3.13-windows-x86_64.zip", "23e1f2e978a3df80db8bf65c9c59534f41a23140480cfb4f783a882ab7dc6a4e"),
+}
 
 
 def tools_dir():
@@ -63,34 +73,22 @@ def install_converter():
         pass
     arch = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(platform.machine().lower())
     system = platform.system()
-    if not arch or system not in {"Linux", "Darwin", "Windows"} or (system == 'Windows' and arch != 'amd64'):
+    if (system, arch) not in PINNED_ASSETS:
         raise Error("Install Pandoc >=3.7.0.2 for this platform, then rerun matsugit setup-editor")
-    request = urllib.request.Request("https://api.github.com/repos/jgm/pandoc/releases/latest",
-                                     headers={"User-Agent": "matsugit", "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(request, timeout=30) as response:
-        release = json.load(response)
-    suffix = (f"linux-{arch}.tar.gz" if system == "Linux" else
-              'windows-x86_64.zip' if system == 'Windows' else
-              f"{'x86_64' if arch == 'amd64' else arch}-macOS.zip")
-    assets = [a for a in release["assets"] if a["name"].endswith(suffix)]
-    if len(assets) != 1:
-        raise Error("No unambiguous official Pandoc binary found for this machine")
-    asset = assets[0]
-    digest = asset.get("digest", "")
-    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest or ""):
-        raise Error("Official release lacks a SHA-256 digest; refusing an unverified install")
-    url = asset["browser_download_url"]
-    if not url.startswith("https://github.com/jgm/pandoc/releases/download/"):
-        raise Error("Unexpected download location")
+    name, digest = PINNED_ASSETS[system, arch]
+    url = f"https://github.com/jgm/pandoc/releases/download/{PINNED_VERSION}/{name}"
+    member = (f"pandoc-{PINNED_VERSION}/pandoc.exe" if system == 'Windows' else
+              f"pandoc-{PINNED_VERSION}-{'x86_64' if arch == 'amd64' else arch}/bin/pandoc"
+              if system == 'Darwin' else f"pandoc-{PINNED_VERSION}/bin/pandoc")
     root = tools_dir()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     executable = 'pandoc.exe' if system == 'Windows' else 'pandoc'
     target = root / executable
     if target.exists() and not (root / "pandoc-install.json").is_file():
         raise Error(f"Refusing to replace unmanaged converter: {target}")
-    print(f"Installing isolated {asset['name']} (SHA-256 verified)", flush=True)
+    print(f"Installing isolated {name} (checking packaged SHA-256 pin)", flush=True)
     with tempfile.TemporaryDirectory(dir=root, prefix="install-") as temp:
-        archive = Path(temp) / asset["name"]
+        archive = Path(temp) / name
         sha = hashlib.sha256()
         count = 0
         with urllib.request.urlopen(url, timeout=30) as response, archive.open("wb") as stream:
@@ -100,26 +98,29 @@ def install_converter():
                     raise Error("Converter download exceeded the size limit")
                 sha.update(chunk)
                 stream.write(chunk)
-        if "sha256:" + sha.hexdigest() != digest:
+        if sha.hexdigest() != digest:
             raise Error("Pandoc checksum mismatch; nothing installed")
         binary = Path(temp) / executable
         if system == "Linux":
             with tarfile.open(archive) as bundle:
-                members = [m for m in bundle.getmembers() if m.name.endswith("/bin/pandoc") and m.isfile()]
+                members = [m for m in bundle.getmembers() if m.name == member and m.isfile()]
                 if len(members) != 1:
                     raise Error("Unexpected archive layout")
                 with bundle.extractfile(members[0]) as src, binary.open("wb") as dest:
                     shutil.copyfileobj(src, dest)
         else:
             with zipfile.ZipFile(archive) as bundle:
-                names = [n for n in bundle.namelist() if n.endswith(
-                    '/pandoc.exe' if system == 'Windows' else '/bin/pandoc')]
+                names = [n for n in bundle.namelist() if n == member]
                 if len(names) != 1:
                     raise Error("Unexpected archive layout")
                 with bundle.open(names[0]) as src, binary.open("wb") as dest:
                     shutil.copyfileobj(src, dest)
         binary.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
-        subprocess.run([str(binary), "--version"], check=True, capture_output=True, timeout=10)
+        result = subprocess.run([str(binary), "--version"], check=True, capture_output=True,
+                                text=True, encoding="utf-8", timeout=10)
+        if result.stdout.splitlines()[:1] != [f"pandoc {PINNED_VERSION}"]:
+            raise Error("Pandoc version differs from the packaged pin; nothing installed")
         os.replace(binary, target)
-        (root / "pandoc-install.json").write_text(json.dumps({"asset": asset["name"], "digest": digest}) + "\n")
+        (root / "pandoc-install.json").write_text(json.dumps({"version": PINNED_VERSION,
+            "asset": name, "digest": "sha256:" + digest}) + "\n")
     print("Table editor ready: " + " ".join(converter()))

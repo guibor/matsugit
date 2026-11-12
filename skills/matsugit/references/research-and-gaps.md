@@ -1,7 +1,10 @@
 # Research and capability gaps
 
-Reviewed 2026-10-31 against matsugit 0.7.0. This is a capability audit and design
-direction, not promised syntax or a delivery schedule. The public examples below
+Historical review: 2026-10-31 against matsugit 0.7.0. The table below records that
+version, not current feature support. In particular, PDF/PPTX export and D2 have
+since been added; use [delivery](delivery.md), [diagrams](diagrams.md) and the
+connected tool schemas for current behavior. This is design context, not promised
+syntax or a delivery schedule. The public examples below
 inform composition; no reference slides, logos or private source files are
 bundled with this skill.
 
@@ -36,7 +39,7 @@ Reuse composition ideas; do not infer a right to redistribute third-party decks.
 
 ## What is already native, composable, or missing?
 
-| Capability | Today | Honest fallback / next step |
+| Capability | At version 0.7.0 | Historical fallback / next step |
 | --- | --- | --- |
 | Title, claim, exhibit, source, takeaway | Native | Choose a recipe, not another theme-specific parser |
 | Full exhibit, 65/35 split, table above implication | Composable with columns/rows | No new primitive needed |

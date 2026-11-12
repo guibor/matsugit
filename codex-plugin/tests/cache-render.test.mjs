@@ -36,6 +36,11 @@ test('real renderer survives cache removal and keeps save/conflict and increment
       // The worker has started; cache replacement must not break its imports/assets.
       fs.rmSync(path.join(directory, 'plugin'), {recursive: true});
       assert.match((await client.readResource({uri: 'ui://matsugit/workspace-v1'})).contents[0].text, /Markdown/);
+      const merged = await call('matsugit_merge', {base: original,
+        local: original.replace('Before the update.', 'Author edit.'),
+        incoming: original.replace('# Section', '# Agent section')});
+      assert.equal(merged.structuredContent.merge.conflicts, 0);
+      assert.match(merged.structuredContent.merge.segments.map(s => s.text).join(''), /Author edit/);
       async function ready(job) {
         for (let i = 0; i < 1200; i++) {
           const status = (await call('matsugit_preview_status', {session, job})).structuredContent;

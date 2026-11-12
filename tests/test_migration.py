@@ -72,6 +72,18 @@ class MigrationTests(unittest.TestCase):
         os.environ['MATSUGIT_TOOLS_DIR'] = str(self.home / 'custom')
         self.assertEqual(tools_dir(), self.home / 'custom')
 
+    def test_work_profile_can_disable_legacy_settings_without_deleting_data(self):
+        self.write('.config/folioforge/config.json', {'custom': 'legacy global'})
+        self.write('folioforge.json', {'theme': 'legacy project'})
+        self.write('matsugit.json', {'theme': 'current'})
+        os.environ.update(MATSUGIT_LEGACY_CONFIG='0', FOLIOFORGE_DEFAULT_THEME='old')
+        settings = config(self.source)
+        self.assertEqual(settings['theme'], 'current')
+        self.assertNotIn('custom', settings)
+        self.assertIsNone(env('MATSUGIT_DEFAULT_THEME'))
+        self.assertTrue((self.home / 'folioforge.json').is_file())
+        self.assertTrue((self.home / '.config/folioforge/config.json').is_file())
+
     def test_legacy_python_imports_are_the_same_modules(self):
         for module in ('core', 'cli', 'authoring', 'charts', 'converter', 'publish', 'updates'):
             self.assertIs(importlib.import_module('folioforge.' + module),

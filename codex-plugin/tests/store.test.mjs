@@ -3,7 +3,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {WorkspaceStore, checkedPath, checkedText, MAX_SOURCE} from '../src/store.mjs';
+import {WorkspaceStore, checkedPath, checkedText, readSource, MAX_SOURCE} from '../src/store.mjs';
+
+test('source reads remain bounded when the file grows after its size check', t => {
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-read-limit-'));
+  const file = path.join(directory, 'note.md');
+  try {
+    fs.writeFileSync(file, 'x'.repeat(MAX_SOURCE + 2));
+    const info = fs.statSync(file);
+    t.mock.method(fs, 'statSync', () => Object.assign(Object.create(info), {size: 1}));
+    t.mock.method(fs, 'fstatSync', () => Object.assign(Object.create(info), {size: 1}));
+    t.mock.method(fs, 'readFileSync', () => { throw Error('unbounded read'); });
+    assert.throws(() => readSource(file), /2 MiB editor limit/);
+  } finally { t.mock.restoreAll(); fs.rmSync(directory, {recursive: true, force: true}); }
+});
 
 test('opening and saving only the selected file, with conflicts and permissions preserved', () => {
   const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-store-test-'));

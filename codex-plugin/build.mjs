@@ -59,17 +59,20 @@ for (const name of (await readdir(path.join(root, '../matsugit'))).sort().filter
 }
 await includeTree('matsugit/runtime');
 await includeTree('matsugit/diagram_runtime');
+await includeTree('matsugit/dependencies');
 await includeTree('matsugit/themes/default');
+const mergeWorker = await build({entryPoints: [path.join(root, 'src/merge-worker.mjs')], bundle: true,
+  write: false, platform: 'node', format: 'cjs', target: 'node22', legalComments: 'inline', metafile: true, plugins: [englishZod]});
+texts['codex-plugin/merge-worker.cjs'] = mergeWorker.outputFiles[0].text;
+await writeFile(path.join(out, 'merge-worker.cjs'), mergeWorker.outputFiles[0].text);
 // Brotli at full quality: about a quarter smaller than gzip here, and the output
 // carries no OS or time stamp, so macOS and Linux builds match byte for byte.
 const packed = brotliCompressSync(Buffer.from(JSON.stringify({app, files, texts})), {params: {
   [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_LGWIN]: 24, [constants.BROTLI_PARAM_SIZE_HINT]: 0}});
 const runtime = packed.toString('base64');
-const mergeWorker = await build({entryPoints: [path.join(root, 'src/merge-worker.mjs')], bundle: true,
-  write: false, platform: 'node', format: 'cjs', target: 'node22', legalComments: 'inline', metafile: true, plugins: [englishZod]});
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true,
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
-  define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime), __MATSUGIT_MERGE_WORKER__: JSON.stringify(mergeWorker.outputFiles[0].text)},
+  define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime)},
   legalComments: 'inline', metafile: true, plugins: [englishZod], banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
 await writeFile(path.join(out, 'THIRD-PARTY-NOTICES.txt'),
   await collectNotices([browser.metafile, server.metafile, mergeWorker.metafile, story.metafile]));

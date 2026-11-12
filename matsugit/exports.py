@@ -24,7 +24,9 @@ def setup():
     python = root / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
     if not python.exists():
         subprocess.run([sys.executable, '-m', 'venv', str(root)], check=True)
-    subprocess.run([str(python), '-m', 'pip', 'install', 'playwright>=1.40'], check=True)
+    locked = Path(__file__).parent / 'dependencies/export.txt'
+    subprocess.run([str(python), '-m', 'pip', 'install', '--require-hashes',
+                    '--only-binary=:all:', '-r', str(locked)], check=True)
     subprocess.run([str(python), '-m', 'playwright', 'install', 'chromium'], check=True)
     print(f'PDF and diagram export ready: {python}')
 

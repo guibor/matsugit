@@ -28,11 +28,19 @@ export class MissingFile extends Error {
   }
 }
 const writable = file => { try { fs.accessSync(file, fs.constants.W_OK); return true; } catch { return false; } };
-function read(file) {
+export function readSource(file) {
   if (!fs.existsSync(file)) throw new MissingFile(file);
   if (checkedPath(file) !== file) throw Error('The document path changed; reopen it before continuing.');
-  const bytes = fs.readFileSync(file);
-  return new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+  const fd = fs.openSync(file, 'r');
+  try {
+    const info = fs.fstatSync(fd);
+    if (!info.isFile() || info.size > MAX_SOURCE) throw Error('Document exceeds the 2 MiB editor limit.');
+    const bytes = Buffer.alloc(MAX_SOURCE + 1);
+    let count = 0, length;
+    while (count < bytes.length && (length = fs.readSync(fd, bytes, count, bytes.length - count, null))) count += length;
+    if (count > MAX_SOURCE) throw Error('Document exceeds the 2 MiB editor limit.');
+    return new TextDecoder('utf-8', {fatal: true}).decode(bytes.subarray(0, count));
+  } finally { fs.closeSync(fd); }
 }
 export class WorkspaceStore {
   sessions = new Map();
@@ -41,7 +49,7 @@ export class WorkspaceStore {
   relocations = new Map();
   constructor(root) { this.root = root; }
   open(file) {
-    const target = checkedPath(file), text = read(target);
+    const target = checkedPath(file), text = readSource(target);
     // Sessions identify a file, not a panel draft. Recovery writers remain
     // independent, even when several panels open this same file.
     const existing = [...this.sessions].find(([, owner]) => owner === target)?.[0];
@@ -68,7 +76,7 @@ export class WorkspaceStore {
   source(session) {
     const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
-    const text = read(file);
+    const text = readSource(file);
     return {text, etag: hash(text), writable: true, readOnly: !writable(file)};
   }
   relocated(previous, destination) {
@@ -112,7 +120,7 @@ export class WorkspaceStore {
     try {
       fs.writeFileSync(temporary, text, {flag: 'wx', mode: fs.statSync(file).mode & 0o777});
       // Check again immediately before atomic replacement. Never force overwrite.
-      if (hash(read(file)) !== etag) return {outcome: 'conflict'};
+      if (hash(readSource(file)) !== etag) return {outcome: 'conflict'};
       fs.renameSync(temporary, file);
       return {outcome: 'saved', etag: hash(text)};
     } finally { fs.rmSync(temporary, {force: true}); }

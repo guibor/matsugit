@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matsugit"
-version = "0.21.5"
+version = "0.21.6"
 description = "Editable documents and themed slides, published together through Git"
 license = {file = "LICENSE"}
 authors = [{name = "MDF (guibor)"}]
@@ -12,16 +12,16 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-charts = ["altair>=5", "vl-convert-python>=1.7", "matplotlib>=3.7"]
-lint = ["playwright>=1.40"]
-export = ["playwright>=1.40"]
+charts = ["altair==6.2.2; python_version < '3.11'", "altair==6.3.0; python_version >= '3.11'", "vl-convert-python==1.9.0.post1", "matplotlib==3.10.9; python_version < '3.11'", "matplotlib==3.11.2; python_version >= '3.11'"]
+lint = ["playwright==1.64.1"]
+export = ["playwright==1.64.1"]
 
 [project.scripts]
 matsugit = "matsugit.cli:main"
 folioforge = "matsugit.cli:main"
 
 [tool.setuptools.package-data]
-matsugit = ["themes/default/*", "templates/*", "editor_assets/*", "runtime/*", "runtime/*.gz", "diagram_runtime/*.json", "diagram_runtime/*.mjs"]
+matsugit = ["themes/default/*", "templates/*", "editor_assets/*", "runtime/*", "runtime/*.gz", "diagram_runtime/*.json", "diagram_runtime/*.mjs", "dependencies/*.txt", "dependencies/*.in", "dependencies/*.md"]
 
 [tool.setuptools.packages.find]
 include = ["matsugit*", "folioforge*"]

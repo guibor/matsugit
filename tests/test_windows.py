@@ -126,18 +126,17 @@ except Error:
         with zipfile.ZipFile(data, 'w') as archive:
             archive.writestr('pandoc-3.13/pandoc.exe', b'synthetic executable')
         payload = data.getvalue()
-        release = {'assets': [{'name': 'pandoc-3.13-windows-x86_64.zip',
-                   'digest': 'sha256:' + hashlib.sha256(payload).hexdigest(),
-                   'browser_download_url': 'https://github.com/jgm/pandoc/releases/download/3.13/test.zip'}]}
+        pinned = ('pandoc-3.13-windows-x86_64.zip', hashlib.sha256(payload).hexdigest())
         for tampered in (False, True):
             target = self.root / ('tampered' if tampered else 'valid')
             with patch.object(converter.platform, 'system', return_value='Windows'), \
                  patch.object(converter.platform, 'machine', return_value='AMD64'), \
                  patch.object(converter, 'tools_dir', return_value=target), \
                  patch.object(converter, 'converter', side_effect=[core.Error('missing'), ['pandoc.exe']]), \
-                 patch.object(converter.urllib.request, 'urlopen', side_effect=[
-                     io.BytesIO(json.dumps(release).encode()), io.BytesIO(payload + (b'x' if tampered else b''))]), \
-                 patch.object(converter.subprocess, 'run') as execute:
+                 patch.dict(converter.PINNED_ASSETS, {('Windows', 'amd64'): pinned}), \
+                 patch.object(converter.urllib.request, 'urlopen', return_value=
+                     io.BytesIO(payload + (b'x' if tampered else b''))), \
+                 patch.object(converter.subprocess, 'run', return_value=SimpleNamespace(stdout='pandoc 3.13\n')) as execute:
                 if tampered:
                     with self.assertRaisesRegex(core.Error, 'checksum mismatch'):
                         converter.install_converter()

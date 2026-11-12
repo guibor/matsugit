@@ -1,0 +1,4 @@
+# Maintainer input only. Runtime setup uses the hash-locked charts.txt.
+altair>=5
+vl-convert-python>=1.7
+matplotlib>=3.7

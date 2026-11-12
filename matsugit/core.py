@@ -9,11 +9,13 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
+import tempfile
 from urllib.parse import quote, unquote, urlsplit
 
 if __package__:
-    from .compat import env, existing, global_config
+    from .compat import env, existing, global_config, project_configs
     from .layout import metadata as display_metadata, slides as slide_layout, plain
     from .components import prepare as evidence_components
     from .canvas import prepare as canvas_components
@@ -21,7 +23,7 @@ if __package__:
     from .diagrams import prepare as diagram_components
     from .handout import prepare as handout_layout
 else:  # The standalone CI bundle imports core directly.
-    from compat import env, existing, global_config
+    from compat import env, existing, global_config, project_configs
     from layout import metadata as display_metadata, slides as slide_layout, plain
     from components import prepare as evidence_components
     from canvas import prepare as canvas_components
@@ -32,6 +34,61 @@ else:  # The standalone CI bundle imports core directly.
 
 class Error(Exception):
     pass
+
+
+def resource_limit(name, default):
+    value = os.environ.get(name, str(default))
+    if not re.fullmatch(r'[1-9][0-9]{0,11}', value):
+        raise Error(f'{name} must be a positive byte limit')
+    return int(value)
+
+
+def bounded_source(source, text=None):
+    limit = resource_limit('MATSUGIT_MAX_SOURCE_BYTES', 8 * 1024 * 1024)
+    message = f'Document exceeds the {limit} byte source limit (MATSUGIT_MAX_SOURCE_BYTES)'
+    if text is not None:
+        if len(text) > limit or len(text.encode('utf-8')) > limit:
+            raise Error(message)
+        return text
+    if not source.is_file():
+        raise Error('Document must be a regular file')
+    with source.open('rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise Error('Document must be a regular file')
+        if info.st_size > limit:
+            raise Error(message)
+        data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise Error(message)
+    return data.decode('utf-8')
+
+
+def copy_asset(source, output, limit):
+    """Hash and copy the same bounded stream; never leave a partial attachment."""
+    if not source.is_file():
+        raise Error('Attachment must be a regular file')
+    with source.open('rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
+            raise Error(f'Attachment exceeds its size or remaining total budget: {source.name}')
+        output.mkdir(exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix='.asset-', dir=output)
+        count, digest = 0, hashlib.sha256()
+        try:
+            with os.fdopen(fd, 'wb') as destination:
+                while chunk := stream.read(min(1024 * 1024, limit - count + 1)):
+                    count += len(chunk)
+                    if count > limit:
+                        raise Error(f'Attachment grew beyond its size budget: {source.name}')
+                    digest.update(chunk)
+                    destination.write(chunk)
+            prefix = digest.hexdigest()[:16] + '-'
+            name = source.name if source.name.startswith(prefix) else prefix + source.name
+            os.replace(temporary, output / name)
+            return name, count
+        finally:
+            Path(temporary).unlink(missing_ok=True)
 
 
 def expand_runtime(directory):
@@ -94,11 +151,12 @@ def config(source, overrides=None):
         root = source.parent
     settings = {}
     project = {}
-    for path in (*global_config(), root / "folioforge.json", root / "matsugit.json"):
+    project_paths = project_configs(root)
+    for path in (*global_config(), *project_paths):
         if path.is_file():
             data = read_json(path)
             settings.update(data)
-            if path in (root / 'folioforge.json', root / 'matsugit.json'):
+            if path in project_paths:
                 project.update(data)
     overrides = overrides or {}
     target = overrides.get('target') or project.get('publish_target')
@@ -266,7 +324,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
     if not fmt:
         raise Error("Supported sources: .md, .markdown, .qmd and .org")
     pandoc = settings.get('_preview_pandoc', [settings["quarto"], "pandoc"])
-    text = source.read_text(encoding="utf-8") if source_text is None else source_text
+    text = bounded_source(source, source_text)
     if fmt == "markdown":
         text = diagram_fences(text)
     if __package__:
@@ -276,8 +334,12 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
     ast = visible_sources(read(text, fmt, pandoc))
     # Keep declarative display settings, not filters/includes/executable settings.
     ast["meta"] = display_metadata(ast.get("meta", {}))
+    asset_limit = resource_limit('MATSUGIT_MAX_ASSET_BYTES', 128 * 1024 * 1024)
+    asset_budget = resource_limit('MATSUGIT_MAX_TOTAL_ASSET_BYTES', 512 * 1024 * 1024)
+    copied = {}
 
     def resource(value, canvas=False):
+        nonlocal asset_budget
         url = urlsplit(value)
         if not canvas and (url.scheme in {"https", "http", "mailto", "tel"} or value.startswith("#")):
             return value
@@ -292,10 +354,12 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
             raise Error(f"Missing or unsupported attachment: {value}")
         if canvas and (path.stat().st_size > 2 * 1024 * 1024 or url.query or url.fragment):
             raise Error('Canvas requires a self-contained HTML file of at most 2 MiB, without query/fragment')
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
-        name = path.name if path.name.startswith(digest + "-") else digest + "-" + path.name
-        (output / "assets").mkdir(exist_ok=True)
-        shutil.copyfile(path, output / "assets" / name)
+        if path not in copied:
+            limit = min(asset_limit, asset_budget, 2 * 1024 * 1024 if canvas else asset_limit)
+            name, size = copy_asset(path, output / 'assets', limit)
+            copied[path] = name
+            asset_budget -= size
+        name = copied[path]
         return "assets/" + quote(name) + ("#" + url.fragment if url.fragment else "")
 
     def visit(node):

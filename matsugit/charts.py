@@ -263,9 +263,10 @@ def setup():
     python = target / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
     if not python.is_file():
         subprocess.run([uv,'venv',str(target)] if uv else [sys.executable,'-m','venv',str(target)], check=True)
-    packages = ['altair>=5', 'vl-convert-python>=1.7', 'matplotlib>=3.7']
-    subprocess.run([uv,'pip','install','--python',str(python), *packages] if uv else
-                   [str(python),'-m','pip','install', *packages], check=True)
+    locked = Path(__file__).parent / 'dependencies/charts.txt'
+    options = ['--require-hashes', '--only-binary=:all:', '-r', str(locked)]
+    subprocess.run([uv,'pip','install','--python',str(python), *options] if uv else
+                   [str(python),'-m','pip','install', *options], check=True)
     print('Local chart backend ready:', target)
 
 

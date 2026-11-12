@@ -4,7 +4,8 @@ import {OpenAIExtensions} from '@openai/mcp-extensions/server';
 import {getResourcePath, OpenAIFileEntrypointInputSchema} from '@openai/mcp-extensions';
 import {z} from 'zod';
 import fs from 'node:fs';
-import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText} from './store.mjs';
+import path from 'node:path';
+import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText, readSource} from './store.mjs';
 import {checkDeck, checkSummary} from './check.mjs';
 import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
@@ -18,7 +19,7 @@ const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
 const actions = new WorkspaceActions(runtime, store);
 const tables = new TableTools(runtime);
-const merges = new MergeService();
+const merges = new MergeService(() => path.join(runtime.root(), 'codex-plugin/merge-worker.cjs'));
 const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
@@ -33,7 +34,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.31.2'});
+  const server = new McpServer({name: 'matsugit', version: '0.31.3'});
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -88,7 +89,7 @@ serveStdio(() => {
     guard(async ({path: file, text, format}) => {
       if ((file === undefined) === (text === undefined)) throw Error('Give either the path of a document or its text.');
       const target = file === undefined ? null : checkedPath(file);
-      const source = target ? new TextDecoder('utf-8', {fatal: true}).decode(fs.readFileSync(target)) : checkedText(text);
+      const source = target ? readSource(target) : checkedText(text);
       // Offsets and edit operations are for the editor; agents get the words.
       const findings = checkDeck(source, target ? target.toLowerCase().endsWith('.org') : format === 'org')
         .map(({from, fix, ...finding}) => ({...finding, ...(fix ? {suggestedFix: fix.label} : {})}));
