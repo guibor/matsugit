@@ -37,6 +37,7 @@ Three surfaces sit on top:
 | `core.py` | Configuration, themes, rendering | `config()` resolves settings (global, project, flags); `install_theme()` copies only manifest-listed theme files; `render()` builds both outputs |
 | `source.py` | Markdown and Org input | `read()` parses to the Pandoc AST and strips agent comments; `convert()` converts between Markdown and Org without running code |
 | `sugar.py` | Authoring short forms | `markdown()` expands `columns 2:1` lexically; `blocks()` lowers takeaway quotes and ratios in the AST |
+| `browser.py` | `matsugit open`: the browser fallback | `open_in_browser()` validates the file, starts `bundle/browser.mjs` detached, reads its one-line `{url, path}` and opens the default browser; `run()` prints the address |
 | `layout.py` | Slide structure | `slides()` groups sections and slides; `content()` enforces one claim and one takeaway per slide; `columns()` / `rows()` split regions; `metadata()` keeps only safe settings |
 | `components.py` | Semantic blocks | `prepare()` validates metrics, comparison, timeline, decision (`LIMITS`) |
 | `relationships.py` | Implication, mapping, annotated evidence | `implication()`, `mapping()`, `annotated()` |
@@ -61,7 +62,7 @@ Three surfaces sit on top:
 `build.mjs` bundles `src/` into `bundle/` (committed): the browser app (with the recipe catalogue from `authoring.editor_templates()`
 baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 `server.mjs` (the MCP server with the Python renderer embedded) and
-`story-cli.mjs` (the Story engine for Emacs). Rebuild after changing `src/` or
+`story-cli.mjs` (the Story engine for Emacs) and `browser.mjs` (the browser fallback). Rebuild after changing `src/` or
 `matsugit/authoring.py`.
 
 ### Server side (Node)
@@ -69,6 +70,7 @@ baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 | File | Role |
 | --- | --- |
 | `src/server.mjs` | Registers MCP tools. Model-visible: `matsugit_open`, `matsugit_workspace` (scratch copy of the guided sample), `matsugit_tour` (writes `matsugit-tour.md` once and opens it; text from `matsugit/templates/tour.md`), `matsugit_check`. App-only: save, preview, recovery, merge, export/publish actions |
+| `src/browser.mjs` | The browser fallback, used when no chat host shows the app. `startServer()` runs `server.mjs` over stdio as Cursor would; `serve()` opens the file (`matsugit_open`, or `matsugit_workspace` for the sample), then serves a host page and the app on 127.0.0.1 under a random token, refuses other `Host` headers and origins, relays only `tools/call` and `resources/read`, and stops a minute after the last heartbeat; `hostPage()` answers the app's host messages (no chat, so Ask AI copies) |
 | `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs; `expectRelocation()` / `followed()` let a session follow the one move a publication reviewed |
 | `src/runtime.mjs` | `PluginRuntime`: unpacks the embedded renderer for this server version |
 | `src/actions.mjs`, `actions.py`, `worker.py` | Export, publication and preview workers |

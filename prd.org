@@ -144,13 +144,23 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 - R47. A copy with no file (the app launcher) says it is not saved and how to
   get a deck that is kept, for as long as it is open.
 
+** Browser fallback (0.33, branch =browser-fallback=)
+- R48. When the workspace cannot appear beside the chat (no plugin, another
+  agent, a terminal, or a host that fails), the same workspace opens in the
+  user's browser with one command, =matsugit open [file]=, which the skill runs
+  by itself. Everything works there except sending to the chat: Ask AI copies.
+- R49. The browser workspace is private: this computer only, an unguessable
+  address, other sites cannot reach it, and it stops when the tab is closed.
+- R50. The agent keeps editing the file on disk; the open tab takes its changes
+  in the same way as beside the chat.
+
 * Next steps
 
 Immediate, in priority order:
 0. Watch one person who has never seen matsugit run =/matsugit-tour= and then
    =/matsugit-new= in the real Cursor and Codex apps, and time the first minute.
-   Bring tracked files back under the 8 MB guard (main measured 8.06 MB after
-   the dependency pinning commits).
+   Try =matsugit open= from an agent without the plugin (Claude Code, Codex CLI)
+   and from a terminal on Windows.
 1. Try it for real: one session in the Cursor app with a real GitLab project and
    a real agent editing the open file. Everything so far is verified in the
    repository's isolated host with a local test remote and simulated builds.
@@ -168,6 +178,12 @@ Immediate, in priority order:
 9. Install =ci/checks.yml= as a workflow so the suites run on every push.
 
 * Requirements that changed
+
+- 2026-11-12, no workspace in the chat. Was: the agent explained
+  =matsugit setup-cursor= and stopped (or rendered static HTML), and the skill
+  said not to create another editor or web service. Now: it opens the same
+  workspace in the browser with =matsugit open=, a private local server.
+  Reason: R48.
 
 - 2026-11-10, default editor. Was: "Raw is the initial default" for the source
   pane. Now: Markdown opens in Visual; Org opens in Raw. An explicit =editor=

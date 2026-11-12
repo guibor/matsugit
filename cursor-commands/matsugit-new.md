@@ -29,6 +29,7 @@ improve it together.
    claims"). Name any placeholders they need to fill.
 
 Creating and previewing is local. It does not authorize saving over other
-files, exports or publication. If no matsugit MCP tools are available, explain
-`matsugit setup-cursor` in one sentence. Do not claim the workspace opened if
-it did not.
+files, exports or publication. If no matsugit MCP tools are available, or the workspace does not appear, open it in
+the browser instead: from the matsugit checkout run `python3 -m matsugit open <absolute path>`
+and give the user the address it prints, in one line. Do not claim the
+workspace opened if it did not.

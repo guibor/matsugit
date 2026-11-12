@@ -74,5 +74,8 @@ const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bu
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
   define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime)},
   legalComments: 'inline', metafile: true, plugins: [englishZod], banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
+// The browser fallback has no dependencies; it runs server.mjs beside it.
+await build({entryPoints: [path.join(root, 'src/browser.mjs')], bundle: true, outfile: path.join(out, 'browser.mjs'),
+  platform: 'node', format: 'esm', target: 'node22', legalComments: 'inline'});
 await writeFile(path.join(out, 'THIRD-PARTY-NOTICES.txt'),
   await collectNotices([browser.metafile, server.metafile, mergeWorker.metafile, story.metafile]));

@@ -67,6 +67,12 @@ private theme. Do not overwrite or publish an existing document. Inspect both
 Local HTML can be opened as files; no public server is needed. On a remote host,
 use an already approved private preview mechanism and verify the URL.
 
+To edit with the live workspace without a plugin (another agent, a terminal,
+or a host that does not show MCP Apps), run `python3 -m matsugit open deck.md`
+from the checkout. It needs Node 22+ in addition to the above, serves the same
+workspace on this computer only, behind a private address, and stops a minute
+after the tab closes. Use `--no-browser` on a machine without a desktop.
+
 Report separately: skill discovered, renderer runnable, Quarto available,
 render succeeded, and visual inspection performed. Do not call setup complete
 just because the skill installed. Keep generated previews and environments out

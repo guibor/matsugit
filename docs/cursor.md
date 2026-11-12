@@ -117,6 +117,15 @@ for Cursor's plugin distribution mechanism. No marketplace submission or team
 policy changes have been made. Actual availability depends on the Cursor host;
 the protocol can be tested without claiming every desktop version is supported.
 
+## When the panel does not appear: the browser
+
+If the matsugit tools are not connected, or the panel stays empty, the commands
+open the same workspace in your browser instead, with
+`python3 -m matsugit open <file>` from the checkout. You can run it yourself too.
+The address is private to you and works on this computer only; the server stops
+a minute after you close the tab. In the browser, Ask AI copies the request
+for you to paste into Cursor's chat; everything else is the same.
+
 ## Skill-only alternative
 
 matsugit also uses Cursor's native Agent Skills support. You do not need a VS Code

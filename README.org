@@ -125,6 +125,17 @@ Then, in a chat about your notes or an existing file:
 
 The workspace is opened by the agent, on a file, inside the chat. It is not a
 separate app to launch. The slash commands are Cursor's; in Codex ask in words.
+
+*No plugin, another agent, or nothing appears?* The same workspace opens in
+your browser. The agent does this by itself when it has the skill, or run it
+yourself from the checkout:
+#+begin_src sh
+python3 -m matsugit open deck.md     # no file: the sample deck
+#+end_src
+Everything works there, side by side, except that Ask AI copies the request
+for you to paste into the chat. The agent can keep editing the file; the tab
+takes its changes in. It runs on your computer only, behind a private address,
+and stops a minute after you close the tab.
 See the [[file:docs/cursor.md][Cursor guide]] and the [[file:docs/codex.org][workspace guide]] for setup details, including a
 skill-only option with no server.
 

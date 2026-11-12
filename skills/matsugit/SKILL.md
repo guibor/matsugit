@@ -85,8 +85,26 @@ When they have material (notes, a file, or one line about the talk), draft the
 deck straight away instead of proposing an outline first, open it with
 `matsugit_open` in layout `story` so they see and edit the storyline, and keep
 the reply to a few lines. Mark missing evidence as a visible placeholder; never
-invent it. Without the matsugit tools (skill only), use `matsugit template tour
---output matsugit-tour.md` and a local render instead.
+invent it. Without the matsugit tools (skill only), run `python3 -m matsugit open`
+(the sample) or open their draft the same way: see the next section.
+
+## No workspace in this chat: open it in the browser
+
+When the matsugit tools are missing (no plugin, another agent, a terminal) or
+opening the workspace fails or shows nothing, open the same workspace in the
+user's browser instead. From the matsugit checkout (two folders above this
+skill; a pip install adds `--checkout /path/to/matsugit`):
+
+    python3 -m matsugit open /absolute/path/deck.md
+
+It returns at once with a private local address and opens the default browser;
+no argument opens the sample deck. Everything works there as beside the chat,
+except Ask AI, which copies the request for the user to paste to you. Give the
+address in one line and keep editing the file on disk as usual: the open tab
+takes in your changes, merging them with the author's typing or asking them to
+review. It stops by itself a minute after the tab closes. Use `--no-browser`
+when there is no desktop (remote machine) and tell the user the address. Never
+offer to put this on a public address; it is for this computer only.
 
 ## Authors who do not read Markdown
 

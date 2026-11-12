@@ -12,5 +12,7 @@ Then reply in three short lines, no more:
    and I'll make your own deck the same way."
 
 Do not explain Markdown, list features or describe the workspace beyond that.
-If `matsugit_tour` is not available, the matsugit workspace is not connected:
-say so in one sentence and offer to set it up (`matsugit setup-cursor`).
+If `matsugit_tour` is not available, write the sample with `python3 -m matsugit
+template tour --output <project>/matsugit-tour.md` (unless it exists) and open it
+with `python3 -m matsugit open <that path>`, both from the matsugit checkout.
+Give the address it prints, then the same three lines.

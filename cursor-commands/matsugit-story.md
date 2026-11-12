@@ -13,5 +13,6 @@ Never overwrite a newer source from an old snapshot.
 
 Use the shared workspace's Save/review and Git sync controls. Opening Story
 does not authorize edits, saving, commits, pushes or publication. If the host
-cannot display MCP Apps, explain that limitation and offer `matsugit setup-cursor`
-or the native Emacs Story view; do not claim a viewer opened when it did not.
+cannot display MCP Apps, run `python3 -m matsugit open <absolute path>` from the
+matsugit checkout and give the address it prints; Story is the first button
+there. Do not claim a viewer opened when it did not.

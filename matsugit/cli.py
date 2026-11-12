@@ -70,6 +70,12 @@ def main(argv=None):
     conversion = commands.add_parser('convert', help='Convert inert slide source on stdin, retaining semantic blocks')
     conversion.add_argument('--from', dest='reader', choices=['markdown', 'org'], required=True)
     conversion.add_argument('--to', dest='writer', choices=['markdown', 'org'], required=True)
+    browse = commands.add_parser('open', help='Open the workspace in your browser when no chat host shows it')
+    browse.add_argument('source', type=Path, nargs='?', help='Markdown or Org file; omit for the sample deck')
+    browse.add_argument('--checkout', type=Path, help='Checkout containing the bundled workspace (for pip installations)')
+    browse.add_argument('--no-browser', action='store_true', help='Print the private address without opening a browser')
+    browse.add_argument('--foreground', action='store_true', help='Keep running here until Ctrl-C')
+    browse.add_argument('--json', action='store_true')
     plain = commands.add_parser('check', help='Explain slide-structure problems in plain language (reads text only)')
     plain.add_argument('source', type=Path)
     plain.add_argument('--checkout', type=Path, help='Checkout containing the bundled workspace (for pip installations)')
@@ -177,6 +183,10 @@ def main(argv=None):
             from .converter import converter
             print(convert(sys.stdin.read(), args.reader, args.writer, converter()), end='')
             return 0
+        if args.command == 'open':
+            from .browser import run
+            return run(args.source, checkout=args.checkout, browser=not args.no_browser,
+                       foreground=args.foreground, as_json=args.json)
         if args.command == 'check':
             from .check import check, report
             data = check(args.source, args.checkout)
