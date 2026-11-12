@@ -81,6 +81,11 @@ def no_quarto(page, frame):
     assert frame.locator('#notice-check').is_hidden()
     assert frame.locator('#check-label').inner_text() == 'No problems'
     assert frame.locator('#empty-label').inner_text() == 'Needs Quarto'
+    # Check has no setup finding, so opening it must not hide the only guidance.
+    frame.locator('#check-status').click()
+    assert frame.locator('#notice').is_visible()
+    assert 'Slides need Quarto' in frame.locator('#notice-text').inner_text()
+    frame.locator('#check-close').click()
     page.screenshot(path=str(shots / 'first-run-no-quarto.png'))
 
 

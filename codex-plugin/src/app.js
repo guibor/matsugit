@@ -110,7 +110,7 @@ function paintNotice() {
   const receipt = changeNotice(state, dirty());
   const message = noticeMessage || (incomingDocument ? 'Another document is waiting. Your current draft is retained.' : receipt?.detail || state.standingNotice || '');
   // The open Check list already says why the preview stopped; do not repeat it.
-  $('notice').hidden = !message || (message === state.renderNotice && !$('check-panel').hidden);
+  $('notice').hidden = !message || (!!state.renderError && message === state.renderNotice && !$('check-panel').hidden);
   $('notice').dataset.kind = state.conflict ? 'review' : 'info';
   $('notice-title').hidden = !receipt;
   $('notice-title').textContent = receipt?.title || '';

@@ -110,7 +110,7 @@ matsugit works". A seven-slide sample opens beside the chat, and the slides
 themselves tell you what to try: change the first title and watch the slide,
 press Add for a layout, open Story to see the whole argument. When you're
 ready, type =/matsugit-new= with a line about what you need to present, or
-paste your notes: your own draft opens in Story within a minute.
+paste your notes: your own draft opens in Story, ready to edit.
 
 Then, in a chat about your notes or an existing file:
 

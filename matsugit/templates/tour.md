@@ -13,7 +13,8 @@ slide-section-dividers: false
 Click into this title on the left and write something of your own. There is
 nothing to drag or resize: you write the words, and the theme lays them out.
 
-Undo always works, and nothing is saved to the file until you press Save.
+Use Undo to take back your edits. For a deck with a file, press Save to keep
+them, or enable Save automatically under More options.
 
 > [!TAKEAWAY]
 > You write the argument. The theme does the formatting.
