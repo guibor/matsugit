@@ -36,6 +36,7 @@ import {storyView} from './story.mjs';
 import {slideAgent} from './slide-agent.mjs';
 import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
+import {setupCheck} from './setup-check.mjs';
 
 const $ = id => document.getElementById(id);
 const app = new App({name: 'matsugit', version});
@@ -116,6 +117,7 @@ function paintNotice() {
   $('notice-title').textContent = receipt?.title || '';
   $('notice-text').textContent = message;
   $('notice-check').hidden = !state.renderError || noticeMessage !== state.renderNotice;
+  $('notice-setup').hidden = !state.setupIssue || message !== state.renderNotice;
   // The file vanished from disk: offer the two ways to keep the text.
   const missing = state.fileMissing && !!state.session;
   $('notice-recreate').hidden = !missing; $('notice-download').hidden = !missing;
@@ -190,6 +192,9 @@ $('more').onclick = () => moreMenu($('more-panel').hidden);
 $('more-panel').addEventListener('click', event => { if (event.target.closest('button')) moreMenu(false); });
 document.addEventListener('pointerdown', event => { if (!$('more-wrap').contains(event.target)) moreMenu(false); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('more-panel').hidden) { moreMenu(false); $('more').focus(); } });
+const setupDiagnostics = setupCheck({call});
+$('setup-check').onclick = () => { moreMenu(false); setupDiagnostics.open($('more')); };
+$('notice-setup').onclick = () => setupDiagnostics.open($('notice-setup'));
 // Autosave: write the draft to its file shortly after typing stops. It uses
 // the same version-checked Save, so a newer file is never overwritten; it
 // waits while a table edit, merge, review or share is in progress.
@@ -620,7 +625,7 @@ async function render(manual = true) {
         themeCatalog.default = job.theme;
         updateThemePicker($('theme'), themeCatalog);
       }
-      state.renderError = null; $('preview-stale').hidden = true; check.refresh();
+      state.setupIssue = false; state.renderError = null; $('preview-stale').hidden = true; check.refresh();
       if (!state.conflict) notice();
       completed = true;
     }
@@ -635,6 +640,7 @@ async function render(manual = true) {
       // A missing tool on this computer: say what to install. It is not a deck
       // problem, so Check and its "to fix" count stay out of it.
       const setup = setupProblem(error.message);
+      state.setupIssue = !!setup;
       if (setup) {
         state.renderError = null; state.renderNotice = setup.title + ' ' + setup.how;
         notice(state.renderNotice); check.refresh();
@@ -926,7 +932,7 @@ async function load(data, {acceptRevision = null} = {}) {
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
   themeCatalog = {}; themeSequence++;
   updateThemePicker($('theme'), themeCatalog, ''); $('theme').title = 'Theme';
-  state.renderError = null; state.renderNotice = null; $('preview-stale').hidden = true;
+  state.setupIssue = false; state.renderError = null; state.renderNotice = null; $('preview-stale').hidden = true;
   // Newcomers meet formatted text first. Org stays in source; an explicit
   // open option or a restored session still chooses its own mode below.
   changeEditorMode('visual');
@@ -1426,7 +1432,7 @@ window.matsugitWorkspace = {editor, state, load, render, save, reload, flushReco
 async function boot() {
 if (demo) {
   await load(demo);
-  for (const id of ['open','save','undo','redo','refresh','auto','theme','insert','recover']) $(id).disabled = true;
+  for (const id of ['open','save','undo','redo','refresh','auto','theme','insert','recover','setup-check']) $(id).disabled = true;
 } else {
   app.addEventListener('toolinput', ({arguments: args}) => {
     if (args?.file && args.file.resourceUri !== state.uri) load(args);

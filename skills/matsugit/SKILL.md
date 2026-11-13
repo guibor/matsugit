@@ -62,6 +62,13 @@ assume that the file contains all of their current typing.
   from a copy you read earlier in the conversation.
 - Change only the lines you need with a targeted edit. Do not rewrite the whole
   file to change one slide.
+- When `matsugit_read_slide` and `matsugit_edit_slide` are available, prefer
+  them for a requested slide edit. Read the slide, verify its title/section and
+  source, then submit exact old/new passages using the returned `edit_id`.
+  `preview_only: true` shows the proposed slide without saving. A changed file
+  rejects the write: reread and review, never bypass it with a whole-file write.
+  The snapshot covers saved text only; unsaved panel drafts still combine or
+  require the author's conflict review. Use Story for adding/moving slides.
 - Keep each edit to the slide or passage you were asked about, so it does not
   touch lines the author is likely to be typing in.
 - The workspace combines your change with theirs when they are on different
@@ -74,6 +81,12 @@ tool with the file's path and give the slides, document and source links it
 returns; say if the site state is unknown or the build failed.
 
 ## First time with matsugit
+
+If a preview or editor cannot start, call `matsugit_doctor` (or run
+`python3 -m matsugit doctor` from the checkout). It checks local prerequisites
+without installing anything, opening a login or changing settings. Report the
+required missing tool and the suggested next step; do not download optional
+tools or repeat installation merely because a check is unavailable.
 
 When someone is new, asks how it works, or wants to try it without notes, call
 the `matsugit_tour` tool with the absolute path of their project folder. It

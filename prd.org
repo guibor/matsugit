@@ -166,6 +166,17 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 
 * Next steps
 
+Current hardening work (branch =codex/trust-and-first-use=):
+- Scoped agent edits use the existing Story parser and version-checked save
+  path. They reject changed saved revisions, ambiguous replacements and edits
+  that alter slide boundaries. Unsaved panel drafts still use existing review.
+- Read-only setup diagnostics share one report between the CLI, agent tool and
+  workspace. Missing optional tools never block core readiness. No installs,
+  logins, credential discovery or publication occur during a check.
+- Keep the renderer and save/recovery semantics unchanged in this increment;
+  native-host acceptance, broader incremental rendering and release/update UX
+  remain follow-up work, not claimed complete by these checks.
+
 Immediate, in priority order:
 0. Open a deck in Claude Desktop after =setup-claude-desktop= and check the
    panel by eye (not yet seen in this repository's tests). Then watch one person who has never seen matsugit run =/matsugit-tour= and then

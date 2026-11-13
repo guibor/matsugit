@@ -45,8 +45,9 @@ What keeps this tree small:
   JavaScript); this is a build-time size optimization, not a runtime dependency.
 - The runtime embedded in =server.mjs= is Brotli-compressed, with text files
   stored as text. The bundle keeps zod's English messages only (the other
-  languages are never used). The server code itself is not minified, so its
-  source-module excerpts stay readable for review.
+  languages are never used). The generated server compacts whitespace only;
+  identifier renaming and syntax minification are disabled. Review first-party
+  source in =codex-plugin/src/=; all license notices remain bundled.
 - Documentation screenshots are 256-colour PNGs. Run
   =python3 codex-plugin/tests/shrink-images.py docs/images/**/*.png= after
   adding new ones; =capture-readme.py= does it for the images it writes.
@@ -98,6 +99,9 @@ python3 codex-plugin/tests/story-browser.py
 python3 codex-plugin/tests/story-navigation-browser.py
 python3 codex-plugin/tests/story-layout-browser.py
 python3 codex-plugin/tests/slide-agent-browser.py
+python3 codex-plugin/tests/agent-edits-browser.py
+MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/agent-edits-browser.py
+python3 codex-plugin/tests/setup-check-browser.py
 python3 codex-plugin/tests/check-browser.py
 python3 codex-plugin/tests/slide-rail-browser.py
 #+end_src
@@ -117,6 +121,11 @@ must fail or misrender where the check says so and accept each fixed text.
 Slide AI tests use a local mock chat host, never a real agent. They check both
 messaging capabilities, selected-slide scope, Save and send, stale-draft refusal,
 uncertain delivery without retry, prompt retention and unsupported-host copying.
+Scoped-edit tests invoke the real agent tools while the author has an unsaved
+draft, then check stale revisions and same-line conflict review. Setup-check
+tests cover both host styles, narrow viewports, real diagnostics, bounded busy
+states, retry and stale replies, with no installs or document writes. These are
+simulated host envelopes, not acceptance tests inside the native desktop apps.
 Provider status tests mock GitHub/GitLab responses; real deployment
 access is not required. =ci/checks.yml= is the reviewed GitHub Actions recipe for
 pushes to main, pull requests and manual dispatch. It checks dependency

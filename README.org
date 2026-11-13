@@ -118,6 +118,11 @@ copy bundled with Quarto. If setup reports it missing, run
 =python3 -m matsugit setup-editor= from a checkout to install a verified,
 isolated converter. This leaves system Pandoc unchanged.
 
+Not sure what is missing? Choose =More > Check setup= in the workspace, ask your
+agent to check matsugit setup, or run =python3 -m matsugit doctor= from the
+checkout. The check reports required and optional tools separately. It does
+not install software, open logins, publish documents or change settings.
+
 ** Your first minute
 
 Start a new chat and type =/matsugit-tour= in Cursor or =/matsugit:matsugit-tour=
@@ -235,6 +240,7 @@ is the separate density check that does not need the Node workspace bundle.
 | For | Read |
 |-----+------|
 | The workspace: every control, saving, concurrent edits, Share, Check | [[file:docs/codex.org][Workspace guide]] |
+| Version-checked agent edits and setup diagnostics | [[file:docs/agent-editing.md][Scoped edits and setup checks]] |
 | Cursor setup and commands | [[file:docs/cursor.md][Cursor guide]] |
 | Claude Code and Claude Desktop | [[file:docs/claude.md][Claude guide]] |
 | Syntax, with a "when something looks wrong" table | [[file:docs/syntax.md][Syntax cookbook]] |

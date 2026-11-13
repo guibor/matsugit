@@ -42,6 +42,44 @@ export function readSource(file) {
     return new TextDecoder('utf-8', {fatal: true}).decode(bytes.subarray(0, count));
   } finally { fs.closeSync(fd); }
 }
+export function readDocument(file) {
+  const text = readSource(file);
+  return {text, etag:hash(text), writable:true, readOnly:!writable(file)};
+}
+// Shared file operations do not need a viewer session. Both viewer saves and
+// scoped agent edits must use the same conflict and read-only checks.
+export function saveDocument(file, text, etag, {recreate = false} = {}) {
+  checkedText(text);
+  if (recreate) {
+    const parent = path.dirname(file);
+    if (fs.realpathSync(parent) !== parent) throw Error('The document directory changed; reopen it before saving.');
+    const temporary = path.join(parent, `.matsugit-${randomUUID()}.tmp`);
+    try {
+      const fd = fs.openSync(temporary, 'wx', 0o600);
+      try { fs.writeFileSync(fd, text); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+      if (fs.realpathSync(parent) !== parent) throw Error('The document directory changed; reopen it before saving.');
+      // Atomic create-if-absent, including dangling links and racing writers.
+      fs.linkSync(temporary, file);
+      return {outcome: 'saved', etag: hash(text)};
+    } catch (error) {
+      if (error.code === 'EEXIST') return {outcome:'conflict'};
+      throw error;
+    } finally { fs.rmSync(temporary, {force:true}); }
+  }
+  const current = readDocument(file);
+  // A rename could otherwise replace a file the author marked read-only.
+  if (current.readOnly) return {outcome: 'read-only', etag: current.etag};
+  if (!etag || current.etag !== etag) return {outcome: 'conflict', etag: current.etag};
+  // Identical saves must not invalidate another editor's visited-file timestamp.
+  if (current.text === text) return {outcome: 'saved', etag: current.etag};
+  const temporary = path.join(path.dirname(file), `.matsugit-${randomUUID()}.tmp`);
+  try {
+    fs.writeFileSync(temporary, text, {flag: 'wx', mode: fs.statSync(file).mode & 0o777});
+    if (hash(readSource(file)) !== etag) return {outcome: 'conflict'};
+    fs.renameSync(temporary, file);
+    return {outcome: 'saved', etag: hash(text)};
+  } finally { fs.rmSync(temporary, {force: true}); }
+}
 export class WorkspaceStore {
   sessions = new Map();
   jobs = new Map();
@@ -87,8 +125,7 @@ export class WorkspaceStore {
   source(session) {
     const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
-    const text = readSource(file);
-    return {text, etag: hash(text), writable: true, readOnly: !writable(file)};
+    return readDocument(file);
   }
   relocated(previous, destination) {
     // Called only for the explicit reviewed relocation, never to follow an
@@ -103,38 +140,7 @@ export class WorkspaceStore {
     checkedText(text);
     const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
-    if (recreate) {
-      // Put the document back where it was, after it was moved or deleted. Only
-      // when nothing has appeared there since; never replaces an existing file.
-      const parent = path.dirname(file);
-      if (fs.realpathSync(parent) !== parent) throw Error('The document directory changed; reopen it before saving.');
-      const temporary = path.join(parent, `.matsugit-${randomUUID()}.tmp`);
-      try {
-        const fd = fs.openSync(temporary, 'wx', 0o600);
-        try { fs.writeFileSync(fd, text); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-        if (fs.realpathSync(parent) !== parent) throw Error('The document directory changed; reopen it before saving.');
-        // Atomic create-if-absent, including dangling links and racing writers.
-        fs.linkSync(temporary, file);
-        return {outcome: 'saved', etag: hash(text)};
-      } catch (error) {
-        if (error.code === 'EEXIST') return {outcome:'conflict'};
-        throw error;
-      } finally { fs.rmSync(temporary, {force:true}); }
-    }
-    const current = this.source(session);
-    // A file marked read-only on disk is left alone; the rename below would otherwise replace it.
-    if (current.readOnly) return {outcome: 'read-only', etag: current.etag};
-    if (!etag || current.etag !== etag) return {outcome: 'conflict', etag: current.etag};
-    // Identical saves must not invalidate another editor's visited-file timestamp.
-    if (current.text === text) return {outcome: 'saved', etag: current.etag};
-    const temporary = path.join(path.dirname(file), `.matsugit-${randomUUID()}.tmp`);
-    try {
-      fs.writeFileSync(temporary, text, {flag: 'wx', mode: fs.statSync(file).mode & 0o777});
-      // Check again immediately before atomic replacement. Never force overwrite.
-      if (hash(readSource(file)) !== etag) return {outcome: 'conflict'};
-      fs.renameSync(temporary, file);
-      return {outcome: 'saved', etag: hash(text)};
-    } finally { fs.rmSync(temporary, {force: true}); }
+    return saveDocument(file,text,etag,{recreate});
   }
   owner(session, hostPath) {
     if (session) {

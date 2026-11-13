@@ -15,11 +15,15 @@ import {WorkspaceActions} from './actions.mjs';
 import {TableTools} from './tables.mjs';
 import {MergeService} from './merge-service.mjs';
 import {clientOf, wantsBrowser, openInBrowser, browserResult} from './browser-launch.mjs';
+import {AgentEdits, MAX_SLIDE} from './agent-edits.mjs';
+import {SetupDiagnostics} from './diagnostics.mjs';
 
 const uri = 'ui://matsugit/workspace-v1';
 const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
 const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
+const agentEdits = new AgentEdits();
+const diagnostics = new SetupDiagnostics(() => runtime.root());
 const actions = new WorkspaceActions(runtime, store);
 const tables = new TableTools(runtime);
 const merges = new MergeService(() => path.join(runtime.root(), 'codex-plugin/merge-worker.cjs'));
@@ -38,6 +42,18 @@ const guard = fn => async (...args) => {
 };
 serveStdio(() => {
   const server = new McpServer({name: 'matsugit', version: '0.34.0'});
+  server.registerTool('matsugit_doctor', {title:'Check matsugit setup',
+    description:'Check local preview and editor prerequisites, with versions and concrete next steps. Read-only: no installs, network requests, login, document reads or settings changes.',
+    inputSchema:z.object({}), annotations:readOnly}, guard(async () => result(await diagnostics.run())));
+  server.registerTool('matsugit_read_slide', {title:'Read a slide for a scoped edit',
+    description:'Read one saved slide and obtain a short-lived edit snapshot. Use before matsugit_edit_slide. Slide numbers match Story, not continuation pages. Optional etag checks a previous workspace snapshot. Reads only the selected document; does not open a viewer or publish. Unsaved panel typing is not included.',
+    inputSchema:z.object({path:z.string(), slide:z.number().int().positive(), etag:z.string().optional()}), annotations:readOnly},
+    guard(async ({path:file,slide,etag}) => result(agentEdits.read(file,slide,etag))));
+  server.registerTool('matsugit_edit_slide', {title:'Edit a slide with a version check',
+    description:'Apply exact non-overlapping text replacements inside the slide returned by matsugit_read_slide. Requires that saved document revision to be unchanged. Each old passage must match once. Preserves all text outside the slide, rejects structural boundary changes. preview_only returns the proposed slide without writing. For a user-requested edit only; never publishes. Unsaved workspace edits still use the workspace conflict review.',
+    inputSchema:z.object({edit_id:z.string().uuid(), edits:z.array(z.object({old:z.string().min(1).max(MAX_SLIDE), new:z.string().max(MAX_SLIDE)})).min(1).max(32), preview_only:z.boolean().optional()}),
+    annotations:{readOnlyHint:false, destructiveHint:true, openWorldHint:false}},
+    guard(async ({edit_id,edits,preview_only}) => result(agentEdits.edit(edit_id,edits,preview_only))));
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));

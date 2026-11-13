@@ -11,6 +11,8 @@ from .publish import publish, setup_ci
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Render editable documents and themed slides together")
     commands = parser.add_subparsers(dest="command", required=True)
+    doctor = commands.add_parser('doctor', help='Read-only prerequisite checks; no installs or network')
+    doctor.add_argument('--json', action='store_true', help='Print schema-versioned setup diagnostics')
     sync = commands.add_parser('sync', help='Fetch/check or explicitly fast-forward the real source checkout; never push')
     sync.add_argument('source', type=Path)
     sync.add_argument('--check', action='store_true', help='Fetch and report only; leave working files untouched')
@@ -117,6 +119,11 @@ def main(argv=None):
             p.add_argument('--source-dir')
     args = parser.parse_args(argv)
     try:
+        if args.command == 'doctor':
+            from .doctor import diagnose, report
+            data = diagnose()
+            print(json.dumps(data, indent=2) if args.json else report(data))
+            return 0 if data['ready'] else 1
         if args.command == 'source-files':
             from .adopt import inventory
             print(json.dumps([str(path) for path in inventory(args.source, root=args.root)]))

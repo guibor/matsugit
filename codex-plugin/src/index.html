@@ -20,6 +20,7 @@
           <div id="more-published" hidden><span>Shared deck</span></div>
           <button id="open" title="Open Markdown file" aria-label="Open Markdown file" data-label="Open another file"></button><input id="file" type="file" accept=".md,.markdown,.qmd,.org" hidden>
           <button id="recover" title="Recover workspaces" aria-label="Recover workspaces" data-label="Recover an earlier draft"></button>
+          <button id="setup-check" title="Check setup" aria-haspopup="dialog" aria-controls="setup-dialog">Check setup</button>
           <button id="external-review" title="Review latest external changes" aria-label="Review latest external changes" data-label="Review changes made elsewhere" disabled></button>
           <button id="compact-markup" title="Use compact structural labels" aria-label="Use compact structural labels" aria-pressed="false" data-label="Show layout names instead of markup"></button>
         </div>
@@ -49,7 +50,7 @@
       <button id="refresh" title="Render preview" aria-label="Render preview"></button>
     </div>
   </nav>
-  <div id="notice" role="status" hidden><div class="notice-copy"><strong id="notice-title" hidden></strong><span id="notice-text"></span></div><div class="notice-actions"><button id="notice-check" hidden>Show problems</button><button id="notice-recreate" hidden>Save it there again</button><button id="notice-download" hidden>Download a copy</button><button id="reload" hidden>Review changes</button><button id="notice-save" hidden>Save file</button><button id="notice-dismiss" title="Dismiss update receipt" aria-label="Dismiss update receipt" hidden></button></div></div>
+  <div id="notice" role="status" hidden><div class="notice-copy"><strong id="notice-title" hidden></strong><span id="notice-text"></span></div><div class="notice-actions"><button id="notice-check" hidden>Show problems</button><button id="notice-setup" aria-haspopup="dialog" aria-controls="setup-dialog" hidden>Check setup</button><button id="notice-recreate" hidden>Save it there again</button><button id="notice-download" hidden>Download a copy</button><button id="reload" hidden>Review changes</button><button id="notice-save" hidden>Save file</button><button id="notice-dismiss" title="Dismiss update receipt" aria-label="Dismiss update receipt" hidden></button></div></div>
   <div id="recovery-banner" hidden><span id="recovery-message"></span><button id="restore-draft">Restore draft</button><button id="dismiss-recovery">Not now</button></div>
   <section id="check-panel" aria-label="Slide check" hidden>
     <div class="check-heading"><strong>Check</strong><span id="check-summary"></span><button id="check-close" title="Close check" aria-label="Close check"></button></div>
@@ -109,6 +110,15 @@
   <div id="slide-rail" role="toolbar" aria-label="Slides" hidden></div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span><span id="workspace-version"></span></footer>
 </main>
+<dialog id="setup-dialog" class="delivery-dialog" aria-labelledby="setup-title" aria-describedby="setup-status">
+  <div class="recovery-heading"><h2 id="setup-title">Check setup</h2><button type="button" id="setup-close" title="Close setup check" aria-label="Close setup check" autofocus></button></div>
+  <p id="setup-status" role="status" aria-live="polite" aria-atomic="true"></p>
+  <div id="setup-results" aria-busy="false" hidden>
+    <section id="setup-required-group" aria-labelledby="setup-required-title"><h3 id="setup-required-title">Required</h3><ul id="setup-required"></ul></section>
+    <section id="setup-optional-group" aria-labelledby="setup-optional-title"><h3 id="setup-optional-title">Optional</h3><ul id="setup-optional"></ul></section>
+  </div>
+  <div class="incoming-actions"><button type="button" id="setup-retry">Retry</button></div>
+</dialog>
 <dialog id="gallery-dialog" aria-labelledby="gallery-title">
   <div class="recovery-heading"><h2 id="gallery-title">Add to your deck</h2><button type="button" id="gallery-close" title="Close" aria-label="Close"></button></div>
   <input id="gallery-search" type="search" placeholder="Search, for example: compare, numbers, quote" aria-label="Search layouts" autocomplete="off">

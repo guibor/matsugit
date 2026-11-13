@@ -46,6 +46,7 @@ Three surfaces sit on top:
 | `diagrams.py` | D2 diagrams | `setup()`, render with a sanitised SVG result |
 | `canvas.py` | Embedded local HTML | validation of `canvas` blocks |
 | `check.py` | Plain-language check on the command line | `check()` runs the workspace's check through the bundled Node helper; `report()` |
+| `doctor.py` | Read-only setup diagnostics shared by CLI and MCP | `diagnose()` reports required/optional tools; never installs or logs in |
 | `lint.py` | CLI density checks | `inspect()` (long titles, dense slides, large tables); `rendered()` optional browser pass |
 | `authoring.py` | The recipe catalogue | `TEMPLATES`, `ELEMENTS` (recipe text); `CATALOG` (plain name, when to use, group, sketch); `editor_templates()` feeds the workspace; `template()` feeds the CLI |
 | `preview.py` | Fast preview patches | `render()` returns a full render or a small text patch |
@@ -65,6 +66,9 @@ baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 `server.mjs` (the MCP server with the Python renderer embedded) and
 `story-cli.mjs` (the Story engine for Emacs) and `browser.mjs` (the browser fallback). Rebuild after changing `src/` or
 `matsugit/authoring.py`.
+The generated server trims whitespace only: identifier renaming and syntax
+minification are disabled. First-party source and license notices remain in the
+package. This keeps the source-tree size limit without dropping capabilities.
 
 ### Server side (Node)
 
@@ -74,6 +78,8 @@ baked in) inside the server's embedded runtime, read back by `app-html.mjs`,
 | `src/browser.mjs` | The browser fallback, used when no chat host shows the app. `startServer()` runs `server.mjs` over stdio as Cursor would; `serve()` opens the file (`matsugit_open`, or `matsugit_workspace` for the sample), then serves a host page and the app on 127.0.0.1 under a random token, refuses other `Host` headers and origins, relays only `tools/call` and `resources/read`, and stops five minutes after the last heartbeat; `hostPage()` answers the app's host messages (no chat, so Ask AI copies) |
 | `src/browser-launch.mjs` | Sends the workspace to the browser when the chat cannot show it. `clientOf()` reads the client from the request envelope (2026 protocol) or the handshake; `wantsBrowser()` is true for a known text-only host (Claude Code) that does not announce `io.modelcontextprotocol/ui`, or with `MATSUGIT_BROWSER=1`; `openInBrowser()` starts or reuses `browser.mjs` for a file and opens the default browser; `browserResult()` is what the agent reads instead of a panel. Used by `matsugit_open`, `matsugit_tour`, `matsugit_workspace` and the model-visible `matsugit_browser` |
 | `src/store.mjs` | `WorkspaceStore`: open sessions, version-checked `save()`, preview jobs; `checkedPath()` / `checkedText()` guard inputs; `expectRelocation()` / `followed()` let a session follow the one move a publication reviewed |
+| `src/agent-edits.mjs` | Model-visible `matsugit_read_slide` / `matsugit_edit_slide`: bounded revision snapshots and exact replacements within one Story slide; reuse the parser and save path, reject stale or boundary-changing edits |
+| `src/diagnostics.mjs` | Model/app-visible `matsugit_doctor`: one bounded Python diagnostic process shared by concurrent requests |
 | `src/runtime.mjs` | `PluginRuntime`: unpacks the embedded renderer for this server version |
 | `src/actions.mjs`, `actions.py`, `worker.py` | Export, publication and preview workers |
 | `src/recovery.mjs`, `src/merge-service.mjs` | Private draft recovery; three-way merge |
@@ -96,6 +102,7 @@ problem in the deck. It wires together focused modules:
 | `story.mjs` | Story view (Overview, Walkthrough) | `storyView()` |
 | `check.mjs` | **Plain-language slide check** | `checkDeck()` returns findings; `applyFix()`; `checkSummary()`; `rendererFinding()` restates renderer errors; `setupProblem()` recognises a missing tool and says what to install |
 | `check-panel.mjs` | The Check chip and list | `checkPanel()` (Show, fix, Ask AI) |
+| `setup-check.mjs` | More > Check setup, separate from deck findings | `setupCheck()` renders the shared diagnostic report without executing remedies |
 | `slide-rail.mjs` | Slide strip under the workspace | `slideRail()`: current slide, jump, Check markers |
 | `gallery.mjs` | **Layout picker** behind `Add` | `gallery()` draws thumbnails and inserts the chosen recipe |
 | `insertions.mjs` | Pure source edits | `placeInsertion()` decides where a recipe goes; `wrapElement()` wraps a selection; `snippetTemplate()` marks placeholders |

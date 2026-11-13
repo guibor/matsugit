@@ -73,6 +73,9 @@ const packed = brotliCompressSync(Buffer.from(JSON.stringify({app, files, texts}
 const runtime = packed.toString('base64');
 const server = await build({entryPoints: [path.join(root, 'src/server.mjs')], bundle: true, loader: {'.md': 'text'},
   outfile: path.join(out, 'server.mjs'), platform: 'node', format: 'esm', target: 'node22',
+  // Trim generated whitespace, not names or logic. Reviewable source and all
+  // license notices stay in the package; no feature is removed for size.
+  minifyWhitespace: true, minifyIdentifiers: false, minifySyntax: false,
   define: {__MATSUGIT_RUNTIME__: JSON.stringify(runtime)},
   legalComments: 'inline', metafile: true, plugins: [englishZod], banner: {js: "import {createRequire as __createRequire} from 'node:module'; const require = __createRequire(import.meta.url);"}});
 // The browser fallback has no dependencies; it runs server.mjs beside it.
