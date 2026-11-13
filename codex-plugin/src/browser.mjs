@@ -23,7 +23,8 @@ const UNUSED = Number(process.env.MATSUGIT_BROWSER_UNUSED_MS) || 10 * 60_000;
 const BODY_LIMIT = 16 * 1024 * 1024;
 
 export function startServer(serverPath = path.join(here, 'server.mjs')) {
-  const child = spawn(process.execPath, [serverPath], {stdio: ['pipe', 'pipe', 'inherit']});
+  const child = spawn(process.execPath, [serverPath], {stdio: ['pipe', 'pipe', 'inherit'],
+    env: {...process.env, MATSUGIT_BROWSER: '0'}});
   const pending = new Map();
   let next = 1, buffer = '';
   child.stdout.setEncoding('utf8');
@@ -105,7 +106,7 @@ const APP_POLICY = "default-src 'none'; script-src 'unsafe-inline' data: blob:; 
   "img-src data: blob:; font-src data: blob:; media-src data: blob:; frame-src blob:; connect-src 'none'; base-uri https://matsugit.invalid; form-action 'none'; frame-ancestors 'self'";
 const HOST_POLICY = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
-export async function serve({file, serverPath, port = 0, onIdle = () => process.exit(0)} = {}) {
+export async function serve({file, view = {}, serverPath, port = 0, onIdle = () => process.exit(0)} = {}) {
   const mcp = startServer(serverPath);
   const terminate = () => { mcp.close(); process.exit(0); };
   process.once('SIGTERM', terminate);
@@ -114,8 +115,8 @@ export async function serve({file, serverPath, port = 0, onIdle = () => process.
   await mcp.ready;
   const absolute = file ? path.resolve(file) : null;
   if (absolute && !fs.existsSync(absolute)) { mcp.close(); throw Error('No such file: ' + absolute); }
-  const open = () => absolute ? mcp.request('tools/call', {name: 'matsugit_open', arguments: {path: absolute}})
-    : mcp.request('tools/call', {name: 'matsugit_workspace', arguments: {}});
+  const open = () => absolute ? mcp.request('tools/call', {name: 'matsugit_open', arguments: {...view, path: absolute}})
+    : mcp.request('tools/call', {name: 'matsugit_workspace', arguments: view});
   const first = await open();
   if (first.isError) { mcp.close(); throw Error(first.content?.map(item => item.text).join(' ') || 'The document could not be opened.'); }
   const app = (await mcp.request('resources/read', {uri: 'ui://matsugit/workspace-v1'})).contents[0].text;
@@ -188,7 +189,7 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(file
   try {
     // Whoever started this may stop reading once it has the address.
     process.stdout.on('error', () => {});
-    const opened = await serve({file: process.argv[2]});
+    const opened = await serve({file: process.argv[2], view: JSON.parse(process.argv[3] || '{}')});
     process.stdout.write(JSON.stringify({url: opened.url, path: opened.path}) + '\n');
   } catch (error) {
     process.stdout.write(JSON.stringify({error: error.message}) + '\n');

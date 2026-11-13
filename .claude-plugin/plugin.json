@@ -1,0 +1,19 @@
+{
+  "name": "matsugit",
+  "displayName": "matsugit",
+  "version": "0.34.0",
+  "description": "Write a deck like a document: one Markdown file is your slides, your reading document and your source. Opens the matsugit workspace in your browser from Claude Code.",
+  "author": {"name": "MDF (guibor)", "url": "https://github.com/guibor"},
+  "homepage": "https://github.com/guibor/matsugit",
+  "repository": "https://github.com/guibor/matsugit",
+  "license": "MIT",
+  "keywords": ["slides", "markdown", "presentations", "documents", "quarto"],
+  "commands": "./cursor-commands/",
+  "mcpServers": {
+    "matsugit": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/codex-plugin/bundle/server.mjs"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}"
+    }
+  }
+}

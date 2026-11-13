@@ -24,6 +24,8 @@ class PackageSizeTests(unittest.TestCase):
     def test_the_committed_server_carries_no_second_copy_of_the_page(self):
         self.assertFalse((ROOT / 'codex-plugin/bundle/app.html').exists(),
                          'The workspace page lives inside bundle/server.mjs; read it with codex-plugin/app-html.mjs')
+        self.assertFalse((ROOT / 'codex-plugin/bundle/merge-worker.cjs').exists(),
+                         'The merge worker is extracted from the same embedded runtime')
 
 
 if __name__ == '__main__':

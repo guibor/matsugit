@@ -1,0 +1,13 @@
+{
+  "name": "matsugit",
+  "description": "matsugit: Markdown decks with live document and slide previews.",
+  "owner": {"name": "MDF (guibor)", "url": "https://github.com/guibor"},
+  "plugins": [
+    {
+      "name": "matsugit",
+      "source": "./",
+      "description": "Write a deck like a document: one Markdown file is your slides, your reading document and your source.",
+      "category": "productivity"
+    }
+  ]
+}

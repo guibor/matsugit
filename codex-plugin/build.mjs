@@ -1,5 +1,5 @@
 import {build} from 'esbuild';
-import {mkdir, readFile, writeFile, readdir} from 'node:fs/promises';
+import {mkdir, readFile, writeFile, readdir, rm} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -64,7 +64,8 @@ await includeTree('matsugit/themes/default');
 const mergeWorker = await build({entryPoints: [path.join(root, 'src/merge-worker.mjs')], bundle: true,
   write: false, platform: 'node', format: 'cjs', target: 'node22', legalComments: 'inline', metafile: true, plugins: [englishZod]});
 texts['codex-plugin/merge-worker.cjs'] = mergeWorker.outputFiles[0].text;
-await writeFile(path.join(out, 'merge-worker.cjs'), mergeWorker.outputFiles[0].text);
+// The running server extracts this from its frozen runtime; do not ship it twice.
+await rm(path.join(out, 'merge-worker.cjs'), {force: true});
 // Brotli at full quality: about a quarter smaller than gzip here, and the output
 // carries no OS or time stamp, so macOS and Linux builds match byte for byte.
 const packed = brotliCompressSync(Buffer.from(JSON.stringify({app, files, texts})), {params: {

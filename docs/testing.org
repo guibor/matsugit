@@ -29,6 +29,12 @@ bytes) and lists the largest files when it fails. This is a source-tree budget,
 not a measurement of downstream ZIPs: those can include themes, review evidence
 and older renderer releases. Measure their expanded payload separately.
 What keeps this tree small:
+- Dependency lockfiles use compact JSON. This changes whitespace only, not
+  versions, integrity hashes or dependency metadata. After regenerating them:
+  =node -e 'const fs=require("fs"); for(const p of ["codex-plugin/package-lock.json","editor/package-lock.json"]) fs.writeFileSync(p,JSON.stringify(JSON.parse(fs.readFileSync(p,"utf8")))+"\n")'=
+- The merge worker is embedded in the server runtime, which extracts it before
+  use. There is no redundant =bundle/merge-worker.cjs=; the internal review ZIP
+  extracts a readable copy from that same runtime.
 - The workspace page is not committed separately: it lives inside
   =codex-plugin/bundle/server.mjs=. =node codex-plugin/app-html.mjs > app.html=
   writes it out for inspection; tests and the demo read it the same way.
