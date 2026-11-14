@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {documentState} from '../src/document-state.mjs';
+
+test('incoming edits stay pending even when the workspace draft was saved', () => {
+  const facts = documentState({dirty:false,connected:true,incoming:true});
+  assert.equal(facts.draft.label,'Update ready');
+  assert.match(facts.draft.detail,/waiting for your acceptance/);
+});
 import {restoreSlide} from '../src/history-restore.mjs';
 import {slideDiff,wordChanges} from '../src/slide-diff.mjs';
 

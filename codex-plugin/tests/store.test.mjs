@@ -5,6 +5,26 @@ import os from 'node:os';
 import path from 'node:path';
 import {WorkspaceStore, checkedPath, checkedText, readSource, MAX_SOURCE} from '../src/store.mjs';
 
+test('agent provenance is bounded and only accompanies the exact observed file revision', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(),'matsugit-agent-provenance-'));
+  const file = path.join(directory,'deck.md'), store = new WorkspaceStore(directory);
+  try {
+    fs.writeFileSync(file,'before'); const opened = store.open(file);
+    let previous = opened.etag;
+    for (let i=0;i<70;i++) {
+      const saved = store.save(opened.session,`revision ${i}`,previous);
+      store.recordAgentWrite(file,previous,saved.etag); previous = saved.etag;
+    }
+    assert.equal(store.source(opened.session).agentBases.length,64);
+    fs.writeFileSync(file,'unobserved filesystem writer');
+    const current = store.source(opened.session);
+    assert.equal(current.agentBases,undefined);
+    const saved = store.save(opened.session,'fresh scoped edit',current.etag);
+    store.recordAgentWrite(file,current.etag,saved.etag);
+    assert.deepEqual(store.source(opened.session).agentBases,[current.etag]);
+  } finally { store.close(); fs.rmSync(directory,{recursive:true,force:true}); }
+});
+
 test('source reads remain bounded when the file grows after its size check', t => {
   const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-read-limit-'));
   const file = path.join(directory, 'note.md');

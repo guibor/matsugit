@@ -75,10 +75,10 @@ assume that the file contains all of their current typing.
   require the author's conflict review. Use Story for adding/moving slides.
 - Keep each edit to the slide or passage you were asked about, so it does not
   touch lines the author is likely to be typing in.
-- The workspace combines your change with theirs when they are on different
-  lines and the recorded versions agree. Overlaps or ambiguous stale rewrites
-  require review. If the author reports
-  a "Changed elsewhere" review, wait for them to finish it before editing again.
+- The workspace offers an Update ready prompt before applying incoming edits.
+  The author accepts a clean update in one click, or combines independent edits.
+  Overlaps and ambiguous stale rewrites use comparison; both versions are kept.
+  If the author is resolving a conflict, wait for them before editing again.
 
 When asked where a shared deck is, or for its link, call the `matsugit_links`
 tool with the file's path and give the slides, document and source links it

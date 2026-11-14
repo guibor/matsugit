@@ -34,6 +34,14 @@ the formatting. Rendering uses no model tokens; an agent is optional.
   checks, recovery, and review of external changes.
 - R6. Preview never publishes. Export and publication are separate, explicit,
   reviewed actions.
+- Incoming file edits require acceptance before changing the open draft.
+  Clean updates take one click; independent two-sided edits combine on request;
+  actual overlaps open the existing comparison. Routine updates are not errors.
+- Story offers a temporary full-slide preview without losing position or edits.
+- A top-level export boundary keeps working material in the editor, workspace
+  preview and Git, but excludes it from delivered outputs, including native CI.
+- Project themes augment shared and built-in themes. Discovery and rendering
+  use the same precedence; Refresh rereads configuration without losing drafts.
 
 ** Intuitive authoring (0.26, branch =intuitive-authoring=)
 - R7. A newcomer never needs the syntax reference to add a slide or layout:

@@ -121,7 +121,8 @@ def render(settings, output, text, format='document', base=None):
     cache = output / 'chart-cache'
     if previous.get('signature') == signature and (Path(base) / 'chart-cache').is_dir():
         shutil.copytree(Path(base) / 'chart-cache', cache)
-    ast = core.normalize(settings, output, source_text=text, editable_source=False)
+    # Working material stays visible here; only delivered artifacts apply the cutoff.
+    ast = core.normalize(settings, output, source_text=text, editable_source=False, for_export=False)
     colours = core.read_json(core.inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
     display = core.canvas_components(core.evidence_components(core.chart_components(
         core.prepare_diagrams(ast, output, theme, colours, cache), output, colours, cache=cache)), output)
@@ -151,5 +152,5 @@ def render(settings, output, text, format='document', base=None):
                     _transform=lambda value, fmt: annotated if fmt == format else value)
         kind = 'full'
     core.write_json(output / 'preview.json', snapshot)
-    return {'theme': settings['theme'], 'kind': kind, 'format': format,
+    return {'theme': settings['theme'], 'themeInfo': settings.get('_resolved_theme'), 'kind': kind, 'format': format,
             'changed': len(payload['changes']) if can_patch else None}

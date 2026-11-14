@@ -1,5 +1,14 @@
 # Create a theme without creating another slide language
 
+Theme discovery combines project and shared libraries with built-in themes.
+Precedence is explicit `--themes-dir`, project `themes_dir`, shared configuration,
+the environment/default library, then built-in. Inheritance, preview, export and
+CI packaging use the same lookup. A broken higher-priority theme is an error,
+not a reason to silently choose another copy. Adding a theme does not select it
+or change defaults. Refresh reloads configuration while retaining the selection
+and draft. Theme option tooltips show their origin and directory; after rendering,
+the selector tooltip reports the directory actually used by that preview.
+
 ## Start with the visual contract
 
 Use the user's approved brand source or reference. Identify type hierarchy,

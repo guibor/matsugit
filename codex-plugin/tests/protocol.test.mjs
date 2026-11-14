@@ -24,7 +24,8 @@ test('built plugin initializes and exposes the app, file handler and versioned f
   const client = new Client({name: 'matsugit-test', version: '1.0.0'});
   const publication = path.join(directory, 'publication');
   const transport = new StdioClientTransport({command: process.execPath, args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd:launch, stderr: 'pipe',
-    env: {...process.env, MATSUGIT_PUBLICATION_STATE: publication}});
+    env: {...process.env, MATSUGIT_PUBLICATION_STATE: publication,
+      MATSUGIT_CONFIG:path.join(directory,'absent.json'), MATSUGIT_THEMES_DIR:path.join(directory,'shared-themes')}});
   let stderr = ''; transport.stderr?.on('data', part => stderr += part);
   client.onerror = error => { stderr += String(error); };
   try {
@@ -89,7 +90,9 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     fs.writeFileSync(path.join(directory, 'matsugit.json'), JSON.stringify({theme: 'alpha', themes_dir: 'themes'}));
     const catalog = await client.callTool({name: 'matsugit_themes', arguments: {session}});
     assert.equal(catalog.isError, undefined, JSON.stringify(catalog));
-    assert.deepEqual(catalog.structuredContent, {default: 'alpha', themes: ['alpha', 'beta', 'default']});
+    assert.equal(catalog.structuredContent.default, 'alpha');
+    assert.deepEqual(catalog.structuredContent.themes, ['alpha', 'beta', 'default']);
+    assert.equal(catalog.structuredContent.details.alpha.origin, 'project');
     assert.equal((await client.callTool({name: 'matsugit_themes', arguments: {session: 'expired'}})).isError, true);
     assert.deepEqual(tools.find(tool => tool.name === 'matsugit_themes')._meta.ui.visibility, ['app']);
     assert.equal(tools.find(tool => tool.name === 'matsugit_themes').annotations.readOnlyHint, true);

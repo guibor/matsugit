@@ -164,6 +164,7 @@ class RenderTests(CoreTests):
             stream.write("\n## Web edit\n\nLatest revision from browser editor.\n")
         setup_ci(config(self.source), "github")
         run([os.sys.executable, ".matsugit-ci/build.py"], cwd=self.root)
+        out = self.root / '.matsugit-ci/site/test'
         for name in ("index.html", "slides.html"):
             self.assertIn("Latest revision from browser editor", (out / name).read_text())
         self.assertIn('href="https://example.invalid/edit"', (out / "index.html").read_text())

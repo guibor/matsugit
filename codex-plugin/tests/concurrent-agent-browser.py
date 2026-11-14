@@ -53,6 +53,9 @@ try:
         agent = source.read_text()
         source.write_text(agent.replace(first_line, first_line + '\n<!-- agent note one -->', 1))
         typed(' Still typing.')
+        wait(frame, '!!matsugitWorkspace.state.incomingReady')
+        assert 'agent note one' not in frame.evaluate(TEXT)
+        frame.locator('#accept-update').click()
         wait(frame, TEXT + '.includes("agent note one") && ' + SAVED, 15)
         text = frame.evaluate(TEXT)
         assert text.endswith('Author line one. Still typing.'), text[-120:]
@@ -81,15 +84,25 @@ try:
         typed('\n\nAuthor paragraph typed after the agent read the file.')
         wait(frame, SAVED, 10)
         assert 'typed after the agent read' in source.read_text()
+        # Keep a pending local edit as well: accepting a clean file is now a
+        # deliberate one-click replacement, whereas two-sided edits are merged.
+        frame.evaluate('document.getElementById("autosave").checked=false; document.getElementById("autosave").dispatchEvent(new Event("change"))')
+        typed(' Still drafting.')
         source.write_text(stale.replace('agent note one', 'agent note one, revised'))
+        wait(frame, '!!matsugitWorkspace.state.incomingReady')
+        frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
         wait(frame, 'matsugitWorkspace.state.conflict && !matsugitWorkspace.state.merging', 15)
         page.wait_for_timeout(2200)
         assert 'typed after the agent read the file.' in frame.evaluate(TEXT)
         assert source.read_text() == stale.replace('agent note one', 'agent note one, revised')
         frame.locator('#reload').click()
         frame.locator('#merge-dialog').wait_for(state='visible')
-        assert 'typed after the agent read the file.' in frame.locator('#merge-complete').input_value()
+        # The incoming deletion overlaps our new unsaved extension. Keep our
+        # paragraph; the independent agent-note edit stays in the result.
+        frame.locator('#merge-mine').click()
+        wait(frame, 'document.getElementById("merge-complete").value.includes("typed after the agent read the file.")')
         frame.locator('#merge-apply').click()
+        frame.evaluate('document.getElementById("autosave").checked=true; document.getElementById("autosave").dispatchEvent(new Event("change"))')
         wait(frame, '!document.getElementById("merge-dialog").open && ' + SAVED, 15)
         for content in (frame.evaluate(TEXT), source.read_text()):
             assert 'typed after the agent read the file.' in content and 'agent note one, revised' in content, content[-300:]
@@ -101,12 +114,16 @@ try:
         frame.evaluate('''(() => { const e = matsugitWorkspace.editor, at = e.state.doc.toString().indexOf('And more.');
           e.dispatch({changes: {from: at, to: at + 9, insert: 'Author wording.'}}); })()''')
         wait(frame, SAVED, 10)
+        frame.evaluate('document.getElementById("autosave").checked=false; document.getElementById("autosave").dispatchEvent(new Event("change"))')
+        cursor_to_end(); typed(' Next thought.')
         source.write_text(before.replace('And more.', 'Agent wording.'))
+        wait(frame, '!!matsugitWorkspace.state.incomingReady')
+        frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
         wait(frame, 'matsugitWorkspace.state.conflict', 15)
         page.wait_for_timeout(2500)
         assert source.read_text() == before.replace('And more.', 'Agent wording.')
         assert 'Author wording.' in frame.evaluate(TEXT)
-        assert frame.locator('#save-state').inner_text().strip() == 'Changed elsewhere'
+        assert frame.locator('#save-state').inner_text().strip() == 'Review changes'
         assert frame.locator('#reload').is_visible()
         frame.locator('#reload').click()
         frame.locator('#merge-dialog').wait_for(state='visible')
@@ -115,6 +132,7 @@ try:
         assert 'Agent wording.' in frame.locator('#merge-incoming').input_value()
         frame.locator('#merge-mine').click()
         frame.locator('#merge-apply').click()
+        frame.evaluate('document.getElementById("autosave").checked=true; document.getElementById("autosave").dispatchEvent(new Event("change"))')
         wait(frame, '!document.getElementById("merge-dialog").open && ' + SAVED, 15)
         assert 'Author wording.' in source.read_text()
 
@@ -126,9 +144,15 @@ try:
         typed('\n\nKEEP-AFTER-EXTERNAL-UPDATE')
         wait(frame, SAVED, 10)
         source.write_text(source.read_text().replace('agent note one', 'agent targeted two'))
+        wait(frame, '!!matsugitWorkspace.state.incomingReady')
+        frame.locator('#accept-update').click()
         wait(frame, TEXT + '.includes("agent targeted two") && ' + SAVED, 15)
         stale_incoming = stale.replace('agent note one', 'agent stale three')
+        frame.evaluate('document.getElementById("autosave").checked=false; document.getElementById("autosave").dispatchEvent(new Event("change"))')
+        cursor_to_end(); typed(' Unsaved latest.')
         source.write_text(stale_incoming)
+        wait(frame, '!!matsugitWorkspace.state.incomingReady')
+        frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
         wait(frame, 'matsugitWorkspace.state.conflict', 15)
         page.wait_for_timeout(2200)
         assert 'KEEP-AFTER-EXTERNAL-UPDATE' in frame.evaluate(TEXT)

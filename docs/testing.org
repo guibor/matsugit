@@ -92,10 +92,21 @@ renderer. The =topics= adapter intentionally uses the destination's own renderer
 updating the plugin cannot silently update that separate deployment.
 
 * Browser safety
+
+Incoming changes are now queued for explicit acceptance, not automatically
+applied to the open draft. =scoped-agent-browser.py= covers one-click clean and
+two-sided acceptance, a conflict opening comparison, a newer write racing the
+click, neutral status, and a prompt that fits 320/390 px panels. Run it in both
+the standard and Cursor-style hosts. =story-peek-browser.py= covers the temporary
+full-slide view, working material below the export boundary, unsaved content,
+mobile slide mode, Escape and return focus/selection/scroll.
+
 #+begin_src sh
 python3 -m pip install playwright
 python3 -m playwright install chromium
 python3 codex-plugin/tests/merge-browser.py
+python3 codex-plugin/tests/scoped-agent-browser.py
+python3 codex-plugin/tests/story-peek-browser.py
 python3 codex-plugin/tests/review-status-browser.py
 python3 codex-plugin/tests/story-browser.py
 python3 codex-plugin/tests/story-navigation-browser.py

@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-history-browser-') as tmp:
             frame.locator('#save').click()
             wait(frame,'!matsugitWorkspace.state.saving && matsugitWorkspace.state.base.includes("My new content.")')
             source.write_text(source.read_text().replace('Other content.','External content.'))
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame,TEXT+'.includes("External content.") && !matsugitWorkspace.state.merging')
             after = source.read_text()
             # Real MCP restart. The existing panel reconnects, with history intact.

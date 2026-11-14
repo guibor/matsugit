@@ -136,7 +136,7 @@ def restore_org_parameters(ast, key, parameters):
     return ast
 
 
-def read(text, fmt, command):
+def read(text, fmt, command, *, for_export=False):
     if __package__:
         from .sugar import markdown, blocks as authoring_blocks
     else:
@@ -148,7 +148,14 @@ def read(text, fmt, command):
         text, parameter_key, parameters = org_block_parameters(text)
     else:
         text = markdown(text)
-    ast = strip_agent_comments(json.loads(pandoc(command, text, fmt, 'json')))
+    ast = json.loads(pandoc(command, text, fmt, 'json'))
+    if for_export:
+        if __package__:
+            from .export_boundary import exported
+        else:
+            from export_boundary import exported
+        ast = exported(ast)
+    ast = strip_agent_comments(ast)
     if fmt == 'org':
         ast = restore_org_parameters(ast, parameter_key, parameters)
         seen = set()

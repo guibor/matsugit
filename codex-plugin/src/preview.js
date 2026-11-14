@@ -63,7 +63,7 @@ export function patchedHtml(html, changes) {
 
 function navigation(format, position, token, headingKey, base, applyChanges) {
   let lastInput = 0, suppressUntil = 0, currentTarget;
-  let presenting = false;
+  let presenting = !!position.singleSlide;
   const post = data => parent.postMessage({...data, matsugitPreview: token}, '*');
   window.addEventListener('message', event => {
     if (event.source !== parent || event.data?.matsugitPreview !== token) return;
@@ -214,7 +214,18 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       if (!window.Reveal?.on) { if (++attempts < 100) setTimeout(attach, 100); return; }
       Reveal.on('slidechanged', report);
       const restore = () => {
-        const slide = position.slideId && document.getElementById(position.slideId);
+        if (position.singleSlide) {
+          // A temporary slide viewer must not turn into Reveal's mobile scroll
+          // document, which can move away from the requested slide on resize.
+          Reveal.configure({scrollActivationWidth:null});
+          Reveal.toggleScrollView?.(false);
+        }
+        let slide = position.slideId && document.getElementById(position.slideId);
+        if (position.target) {
+          const target = position.target;
+          const matches = headings().filter(el => info(el).key === target.key && info(el).level === target.level);
+          slide = (matches[target.occurrence] || matches[0])?.closest('section') || slide;
+        }
         const indices = slide ? Reveal.getIndices(slide) : position;
         Reveal.slide(indices.h || 0, indices.v || 0);
         post({matsugitReady: true});

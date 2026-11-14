@@ -116,6 +116,12 @@ def run(seed):
                 log.append(label)
 
             for step in range(STEPS):
+                if E('!!matsugitWorkspace.state.incomingReady'):
+                    clean = E('matsugitWorkspace.editor.state.doc.toString() === matsugitWorkspace.state.base')
+                    E('matsugitWorkspace.reload(false,true,null,true)')
+                    # Accepting a clean incoming version is a deliberate choice.
+                    if clean:
+                        live_me = {m for m in live_me if m in text()}
                 busy = state()
                 if busy['conflict'] or E('document.getElementById("merge-dialog").open'):
                     resolve(frame, page, log)

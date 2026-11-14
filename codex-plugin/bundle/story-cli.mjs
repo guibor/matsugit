@@ -4165,7 +4165,7 @@ function frontmatterLength(source) {
   return /^\uFEFF?(?:[ \t]*\r?\n)*---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
 }
 function structure(source, org = false) {
-  const headings = [], literals = [], markers = [], blocks = [], breaks = [];
+  const headings = [], literals = [], markers = [], blocks = [], breaks = [], exportEnds = [];
   const counts = /* @__PURE__ */ new Map();
   const add = (from, to, level, label, topLevel = true) => {
     const key = headingKey(label), identity = `${level}:${key}`;
@@ -4212,6 +4212,8 @@ function structure(source, org = false) {
   tree.iterate({ enter(node) {
     if (node.name !== "Document" && node.from < frontmatter) return false;
     if (["FencedCode", "CodeBlock", "HTMLBlock", "CommentBlock"].includes(node.name)) {
+      if (node.name === "CommentBlock" && node.node.parent?.name === "Document" && source.slice(node.from, node.to).trim() === "<!-- matsugit:export-end -->")
+        exportEnds.push({ from: node.from, to: node.to });
       literals.push({ from: node.from, to: node.to });
       return false;
     }
@@ -4283,6 +4285,7 @@ function structure(source, org = false) {
     blocks,
     breaks,
     literals,
+    exportEnd: exportEnds.find((item) => ![...blocks, ...stack.map((b) => ({ ...b, to: source.length }))].some((block) => item.from > block.from && item.from < block.to)),
     unfinished: stack.map((b) => ({ ...b, to: source.length }))
   };
 }

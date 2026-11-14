@@ -85,6 +85,7 @@ export class WorkspaceStore {
   jobs = new Map();
   themeRequests = new Set();
   relocations = new Map();
+  agentWrites = new Map();
   constructor(root) { this.root = root; }
   // Write the guided sample into a folder the user chose, once. If it is already
   // there it is opened as it is: the person may have edited it.
@@ -125,7 +126,15 @@ export class WorkspaceStore {
   source(session) {
     const file = this.followed(this.sessions.get(session));
     if (!file) throw Error('Workspace expired; reopen the document.');
-    return readDocument(file);
+    const data = readDocument(file), writes = this.agentWrites.get(file);
+    return {...data, ...(writes?.etag === data.etag ? {agentBases:writes.bases} : {})};
+  }
+  recordAgentWrite(file, before, after) {
+    if (before === after) return;
+    const previous = this.agentWrites.get(file);
+    this.agentWrites.delete(file);
+    this.agentWrites.set(file, {etag:after, bases:[before, ...(previous?.etag === before ? previous.bases : [])].slice(0,64)});
+    while (this.agentWrites.size > 64) this.agentWrites.delete(this.agentWrites.keys().next().value);
   }
   relocated(previous, destination) {
     // Called only for the explicit reviewed relocation, never to follow an
@@ -280,7 +289,7 @@ export class WorkspaceStore {
   status(id, session, hostPath) {
     const job = this.jobs.get(id);
     if (!job || job.owner !== this.owner(session, hostPath)) throw Error('Unknown preview for this document.');
-    return {job: id, state: job.state, phase: job.phase, error: job.error, theme: job.theme,
+    return {job: id, state: job.state, phase: job.phase, error: job.error, theme: job.theme, themeInfo: job.themeInfo,
       kind: job.kind, format: job.format, base: job.base, changed: job.changed};
   }
   chunk(id, format, offset, session, hostPath) {

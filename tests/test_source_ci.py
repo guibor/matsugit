@@ -134,7 +134,7 @@ class SourceCITests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         for fmt in ('markdown', 'org'):
             for name in ('index.html', 'slides.html'):
-                html = (self.repo / 'matsugit-site' / fmt / name).read_text()
+                html = (self.repo / '.matsugit-ci/site' / fmt / name).read_text()
                 self.assertIn('Caf\u00e9', html)
                 self.assertIn('Evidence', html)
                 self.assertTrue('data:image/svg+xml' in html, f'{fmt}/{name}: missing embedded evidence image')

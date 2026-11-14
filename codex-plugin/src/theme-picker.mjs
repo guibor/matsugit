@@ -11,6 +11,8 @@ export function updateThemePicker(select, catalog, selected = select.value) {
   select.replaceChildren(...themeChoices(catalog, selected).map(({value, label}) => {
     const option = select.ownerDocument.createElement('option');
     option.value = value; option.textContent = label;
+    const detail = catalog.details?.[value || catalog.default];
+    if (detail) option.title = `${detail.origin}: ${detail.path}`;
     return option;
   }));
   select.value = selected;

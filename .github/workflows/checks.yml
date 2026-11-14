@@ -57,6 +57,10 @@ jobs:
       - name: Draft safety and publication UI
         run: |
           python3 codex-plugin/tests/merge-browser.py
+          python3 codex-plugin/tests/scoped-agent-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/scoped-agent-browser.py
+          python3 codex-plugin/tests/story-peek-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/story-peek-browser.py
           python3 codex-plugin/tests/review-status-browser.py
           python3 codex-plugin/tests/story-browser.py
           python3 codex-plugin/tests/story-navigation-browser.py

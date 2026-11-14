@@ -300,6 +300,28 @@ command and a return arrow distinct from fullscreen controls. Exiting restores
 the previous view and follow setting and focuses Present. Escape remains an
 alternative; finding the return action must not depend on knowing that key.
 
+Incoming changes first populate `incomingReady`, not `conflict`. Acceptance
+rechecks the observed etag, checkpoints the draft and applies minimal edits.
+Only overlapping or ambiguous two-sided edits require the merge dialog.
+Scoped agent writes record bounded, contiguous parent hashes in the server;
+only an exact matching chain permits bypassing historical-parent ambiguity.
+This never bypasses a real draft conflict or discards protection against a later
+untracked writer. Pending updates pause autosave, and failed writes remain errors.
+
+`slide-peek.mjs` owns a temporary sandboxed slide iframe, with a separate job,
+token, cancellation and object-URL lifecycle. It renders the current draft and
+does not mutate the main preview, layout or source selection.
+
+`export_boundary.py` cuts the top-level Pandoc AST before asset processing for
+delivery only. Workspace previews and source-to-CI preparation explicitly keep
+the complete AST. Native CI writes a clean site outside the tracked source tree.
+The small standalone boundary module is also vendored into legacy CI adapters.
+
+Theme roots are ordered explicit/project, shared, then built-in; `resolve_theme`
+is shared by discovery, installation and inheritance. Invalid shadowing themes
+fail explicitly rather than silently falling through. Theme diagnostics include
+the selected origin/path, and each preview request rereads file configuration.
+
 - `python3 -m unittest discover -s tests`: renderer, layout, publication,
   catalogue, Cursor install (synthetic fixtures and local Git remotes only).
 - `npm test --prefix codex-plugin`: pure modules and the built server over MCP.

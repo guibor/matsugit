@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
             result = tool('matsugit_edit_slide', edit_id=first['edit_id'],
                           edits=[{'old': 'Original delivery.', 'new': 'Agent delivery.'}])
             assert result['outcome'] == 'saved'
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame, TEXT + '.includes("Agent delivery.") && !matsugitWorkspace.state.merging')
             assert 'My evidence.' in frame.evaluate(TEXT)
             assert 'My evidence.' not in source.read_text()
@@ -83,13 +83,16 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
                 route.fulfill(response=response)
             page.route('**/rpc',advance_while_merging)
             source.write_text(source.read_text().replace('Agent delivery.','Agent delivery.\nAnother paragraph.'))
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
+            wait(frame,'!!matsugitWorkspace.state.incomingReady && !matsugitWorkspace.state.merging')
+            assert 'Agent delivery advanced.' not in frame.evaluate(TEXT)
+            frame.locator('#accept-update').click()
             wait(frame,TEXT + '.includes("Agent delivery advanced.") && !matsugitWorkspace.state.merging')
             page.unroute_all(behavior='wait')
             assert advanced
             assert not frame.evaluate('matsugitWorkspace.state.conflict')
             source.write_text(source.read_text().replace('Agent delivery advanced.','Agent delivery.'))
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame,TEXT + '.includes("Agent delivery.") && !matsugitWorkspace.state.merging')
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving && document.getElementById("save-state").textContent === "Saved to file"')
@@ -109,7 +112,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
             type_passage('Saved human revision.', 'My unsaved choice.')
             assert tool('matsugit_edit_slide', edit_id=snapshot['edit_id'],
                         edits=[{'old': 'Saved human revision.', 'new': 'Agent alternative.'}])['outcome'] == 'saved'
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame, 'matsugitWorkspace.state.conflict && !matsugitWorkspace.state.merging')
             assert 'My unsaved choice.' in frame.evaluate(TEXT)
             assert 'Agent alternative.' in source.read_text()

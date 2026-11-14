@@ -240,7 +240,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             local = current()
             incoming = saved.replace('The final decision stays with this slide.','New supporting evidence from the agent.')
             source.write_text(incoming)
-            frame.evaluate('matsugitWorkspace.reload()'); wait(frame,'!matsugitWorkspace.state.merging')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)'); wait(frame,'!matsugitWorkspace.state.merging')
             assert frame.evaluate('matsugitWorkspace.state.conflict && matsugitWorkspace.state.ambiguousExternal')
             assert current() == local and source.read_text() == incoming
             frame.locator('#more').click()
@@ -261,7 +261,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-story-') as tmp:
             local = current()
             incoming = incoming.replace('Observe activation.', 'Observe the activation signal.')
             source.write_text(incoming)
-            frame.evaluate('matsugitWorkspace.reload()'); wait(frame,'!matsugitWorkspace.state.merging')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)'); wait(frame,'!matsugitWorkspace.state.merging')
             assert current() == local.replace('Observe activation.', 'Observe the activation signal.')
             assert source.read_text() == incoming
             assert not frame.evaluate('matsugitWorkspace.state.conflict')

@@ -1,11 +1,11 @@
 // These are independent observations, not stages of a single workflow.
 // In particular a local draft may be newer than the last verified live site.
-export function documentState({dirty, connected, conflict, receipt, fileDigest, git}) {
+export function documentState({dirty, connected, conflict, incoming, receipt, fileDigest, git}) {
   const sent = !!receipt?.revision;
   const verified = sent && receipt.stage === 'published' && receipt.deployed_revision === receipt.revision;
   return {
-    draft:{label:conflict ? 'Needs review' : dirty ? 'Draft' : connected ? 'Saved' : 'Local copy',
-      detail:conflict ? 'Both versions are retained.' : dirty ? 'Edits are not saved to the file.' : connected ? 'Matches the last file version read.' : 'No file connection.'},
+    draft:{label:conflict ? 'Needs review' : incoming ? 'Update ready' : dirty ? 'Draft' : connected ? 'Saved' : 'Local copy',
+      detail:conflict ? 'Both versions are retained.' : incoming ? 'Incoming file edits are waiting for your acceptance. Your draft is unchanged.' : dirty ? 'Edits are not saved to the file.' : connected ? 'Matches the last file version read.' : 'No file connection.'},
     commit:{label:git?.source_sha256 && fileDigest ? (git.source_sha256 === fileDigest ? 'Saved version committed' : 'Saved version differs from commit') : 'Commit state unknown',
       detail:git?.revision ? `Local file commit ${git.revision.slice(0,8)}.` : 'No verified local commit for this file.'},
     sent:{label:sent ? 'Sent' : 'Not sent from this workspace', revision:receipt?.revision || null,

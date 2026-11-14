@@ -1,0 +1,23 @@
+#+title: Working material below the export boundary
+
+Insert =End of export= from Add, or put this standalone comment between blocks:
+
+#+begin_src markdown
+<!-- matsugit:export-end -->
+#+end_src
+
+Everything below remains in the canonical Markdown file, Git, Story, and the
+workspace document/slide previews. Final document HTML, slide HTML, PDF,
+PowerPoint, ZIP and native GitPages CI outputs stop at the first boundary.
+The downloadable source inside an export also stops there. Assets referenced
+only by the omitted material are not copied into those final bundles.
+
+The marker is recognized as a top-level parsed block, not by a text search.
+Examples inside code, quotes, notes or other fenced blocks do not stop export.
+An ordinary =---= remains a slide break. Keep blank lines around the comment.
+
+The boundary is an output control, not a confidentiality boundary: Git still
+contains the full document, and separately published files may remain visible.
+Older publishing checkouts must adopt the reviewed renderer/CI update before
+they understand the marker. Native CI builds into =.matsugit-ci/site= so it
+does not publish the tracked source directory and its working assets wholesale.

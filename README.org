@@ -22,8 +22,9 @@ Created by [[https://github.com/guibor][MDF (guibor)]]. [[file:LICENSE][MIT lice
 - *The agent helps without holding the pen.* Let it draft, restructure or
   challenge a slide. Then change a number or rewrite a title yourself: that needs
   no AI call, and rendering uses no model tokens.
-- *You and the agent can edit at the same time.* Changes on different lines
-  combine by themselves. When you both touch the same sentence, you choose.
+- *You and the agent can edit at the same time.* Incoming edits wait for your
+  acceptance. One click takes a clean update or combines independent edits.
+  When you both touch the same sentence, you choose.
   Ambiguous changes pause for review rather than replacing your draft.
 - *One file, three outputs.* Slides to present, a document to read, and plain
   text that lives in Git. Export to PowerPoint or PDF when someone asks for one.

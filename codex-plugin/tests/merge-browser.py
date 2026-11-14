@@ -51,7 +51,9 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
 
             def reread():
                 wait(frame, '!matsugitWorkspace.state.merging')
-                frame.evaluate('matsugitWorkspace.reload()')
+                # Simulate accepting the pending revision; the prompt itself has
+                # dedicated coverage in scoped-agent-browser.py.
+                frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
                 wait(frame, '!matsugitWorkspace.state.merging')
 
             def full_versions():
@@ -122,7 +124,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
             reread()
             assert current() == local
             assert frame.evaluate('matsugitWorkspace.state.conflict')
-            assert frame.locator('#save-state').inner_text() == 'Changed elsewhere'
+            assert frame.locator('#save-state').inner_text() == 'Review changes'
             full_versions()
             frame.locator('#incoming-merge').click()
             frame.locator('#merge-dialog').wait_for(state='visible')

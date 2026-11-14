@@ -10,7 +10,7 @@ export function frontmatterLength(source) {
 }
 
 export function structure(source, org = false) {
-  const headings = [], literals = [], markers = [], blocks = [], breaks = [];
+  const headings = [], literals = [], markers = [], blocks = [], breaks = [], exportEnds = [];
   const counts = new Map();
   const add = (from, to, level, label, topLevel = true) => {
     const key = headingKey(label), identity = `${level}:${key}`;
@@ -54,6 +54,9 @@ export function structure(source, org = false) {
     // Lezer distinguishes HTML comments from HTML blocks. Fence examples in a
     // comment must not open a semantic block extending through the whole deck.
     if (['FencedCode', 'CodeBlock', 'HTMLBlock', 'CommentBlock'].includes(node.name)) {
+      if (node.name === 'CommentBlock' && node.node.parent?.name === 'Document' &&
+          source.slice(node.from, node.to).trim() === '<!-- matsugit:export-end -->')
+        exportEnds.push({from:node.from, to:node.to});
       literals.push({from: node.from, to: node.to}); return false;
     }
     if (node.name === 'HorizontalRule' && node.from >= frontmatter && node.node.parent?.name === 'Document')
@@ -115,6 +118,8 @@ export function structure(source, org = false) {
     counts.set(identity, heading.occurrence + 1);
   }
   return {headings: visible, markers: markers.sort((a, b) => a.from - b.from), blocks, breaks, literals,
+    exportEnd: exportEnds.find(item => ![...blocks, ...stack.map(b => ({...b, to:source.length}))]
+      .some(block => item.from > block.from && item.from < block.to)),
     unfinished: stack.map(b => ({...b, to:source.length}))};
 }
 

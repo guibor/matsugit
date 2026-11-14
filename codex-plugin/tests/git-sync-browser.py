@@ -60,7 +60,7 @@ try:
         # Saved local edits with no upstream updates are not a conflict.
         synced = source.read_text()
         source.write_text(synced + '\nMy saved edit.\n')
-        frame.evaluate('window.matsugitWorkspace.reload()')
+        frame.evaluate('window.matsugitWorkspace.reload(false,true,null,true)')
         frame.locator('#git-sync').dispatch_event('click')
         wait(frame, '!document.getElementById("git-sync-check").disabled')
         assert 'No incoming updates' in frame.locator('#git-sync-progress').inner_text()
@@ -86,7 +86,7 @@ try:
         assert frame.locator('#git-sync-apply').is_disabled()
         assert 'My saved edit.' in source.read_text()
         source.write_text(synced)  # Simulate an explicit reconciliation in this disposable checkout.
-        frame.evaluate('window.matsugitWorkspace.reload()')
+        frame.evaluate('window.matsugitWorkspace.reload(false,true,null,true)')
         unrelated = repo / 'local notes.txt'; unrelated.write_text('Keep my unrelated work\n')
         frame.locator('#git-sync-check').click()
         wait(frame, '!document.getElementById("git-sync-check").disabled')

@@ -169,6 +169,8 @@ def two_windows(source, open_page):
                 and all(frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == text for frame in (first, second)):
             break
         for frame in (first, second):
+            if frame.evaluate('!!matsugitWorkspace.state.incomingReady'):
+                frame.locator('#accept-update').click()
             if frame.evaluate('matsugitWorkspace.state.conflict'):
                 detail = frame.evaluate('JSON.stringify({base:matsugitWorkspace.state.base,draft:matsugitWorkspace.editor.state.doc.toString(),notice:document.getElementById("notice-text").textContent,ambiguous:matsugitWorkspace.state.ambiguousExternal})')
                 raise AssertionError('two windows typing on separate lines needed a review: ' + detail)

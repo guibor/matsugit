@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-save-ux-') as tmp:
             def current(): return frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
             def edit(value): frame.evaluate('(text)=>matsugitWorkspace.editor.dispatch({changes:{from:0,to:matsugitWorkspace.editor.state.doc.length,insert:text}})', value)
             def reread():
-                frame.evaluate('matsugitWorkspace.reload()')
+                frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
                 wait(frame, '!matsugitWorkspace.state.merging')
 
             clean_update = original.replace('Last evidence', 'Updated evidence')

@@ -3,6 +3,7 @@ import {Decoration, EditorView, ViewPlugin, WidgetType} from '@codemirror/view';
 import {syntaxTree} from '@codemirror/language';
 import {parser, GFM} from '@lezer/markdown';
 import {createElement, Pencil} from 'lucide';
+import {structure} from './structure.mjs';
 
 export const visualMode = StateEffect.define();
 const md = parser.configure(GFM);
@@ -121,6 +122,15 @@ class Bullet extends WidgetType {
   ignoreEvent() { return false; }
 }
 
+class ExportBoundary extends WidgetType {
+  toDOM() {
+    const el = document.createElement('div');
+    el.className = 'ff-export-boundary';
+    el.textContent = 'Export ends here';
+    return el;
+  }
+}
+
 class VisualTable extends WidgetType {
   constructor(table, actions) { super(); this.table=table; this.actions=actions; }
   eq(other) { return this.table.source === other.table.source && this.table.from === other.table.from; }
@@ -160,12 +170,14 @@ export function visualExtensions(actions) {
     if (old?.tree===tree) return old;
     const source=state.doc.toString(), tables=tableRanges(source,tree);
     const frontmatter=/^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
-    const result={tree,source,tables,frontmatter};cache.set(state.doc,result);return result;
+    const result={tree,source,tables,frontmatter,exportEnd:structure(source).exportEnd};cache.set(state.doc,result);return result;
   };
   const build = state => {
     if (actions.isOrg()) return {decorations:Decoration.none,atomic:Decoration.none};
-    const {tree,tables,frontmatter}=model(state), decorations=[];
+    const {tree,tables,frontmatter,exportEnd}=model(state), decorations=[];
     const active = node => state.selection.ranges.some(s=>s.from<=node.to && s.to>=node.from);
+    if (exportEnd && !active(exportEnd))
+      decorations.push(Decoration.replace({widget:new ExportBoundary(),block:true}).range(exportEnd.from,exportEnd.to));
     // The settings block reads as one quiet line until the cursor goes into it.
     const settingsEnd = frontmatter ? state.doc.lineAt(Math.max(0, frontmatter - 1)).to : 0;
     if (frontmatter && !active({from:0,to:settingsEnd}))

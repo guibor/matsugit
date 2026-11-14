@@ -101,10 +101,21 @@ file version. The dialog never writes to disk. **Keep editing my draft** keeps
 the conflict unresolved; reconcile or download the text before choosing a file.
 Repeated host opens cannot silently replace a draft or use a native confirmation
 dialog that an embedded host might suppress.
-Recently saved local edits count too: Save does not grant an agent permission
-to replace the editing session without review. Pristine viewers still follow
-clean external changes automatically. These checks cannot prevent another
-program from writing the file itself; the retained editor copy is independent.
+Incoming file edits show a neutral **Update ready** prompt before changing the
+open workspace. **Accept update** applies a clean file update in one click;
+**Combine changes** merges a pending draft and opens comparison for overlaps.
+**Review changes** lets the author inspect changes before accepting. Autosave
+waits while an incoming update is pending. The exact incoming revision is
+rechecked before acceptance, and the previous draft is checkpointed.
+These checks cannot prevent another program from writing the file itself;
+the retained editor copy is independent. Agent edits made through the scoped
+tools carry a verified parent revision, avoiding historical guesses. Ordinary
+filesystem edits do not claim agent attribution.
+
+Story's eye button, **Preview slide**, opens the full rendered slide in a
+temporary dialog. Close or Escape returns to the same Story position. It uses
+the current draft, including working material below an export boundary, and
+does not save, publish, change the layout or select another slide.
 
 Plugin 0.15 adds **Review latest external changes**: every external hunk, grouped
 by section/slide, can be accepted or rejected before **Preview merge** and

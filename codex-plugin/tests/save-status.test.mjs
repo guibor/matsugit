@@ -7,7 +7,11 @@ test('file status distinguishes edits, save, conflict, failed save and local cop
   assert.equal(saveStatus(file,false).label,'Saved to file');
   assert.equal(saveStatus(file,true).label,'Unsaved draft');
   assert.equal(saveStatus({...file,saving:true},true).label,'Saving...');
-  assert.equal(saveStatus({...file,conflict:true},false).label,'Changed elsewhere');
+  assert.equal(saveStatus({...file,conflict:true},false).label,'Review changes');
+  assert.equal(saveStatus({...file,externalPending:'Finish table'},true).kind,'local');
+  assert.equal(changeNotice({externalPending:'Finish table'},true).detail,'Finish table');
+  assert.equal(saveStatus({...file,incomingReady:{}},true).label,'Update ready');
+  assert.equal(changeNotice({incomingReady:{agent:true}},true).title,'Agent update ready');
   assert.equal(saveStatus({...file,saveError:'No space'},true).detail,'No space');
   assert.equal(saveStatus({},false).label,'Local copy');
   assert.equal(saveStatus({},true).label,'Unsaved copy');

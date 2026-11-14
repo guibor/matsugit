@@ -51,10 +51,10 @@ try:
         frame.evaluate('matsugitWorkspace.editor.dispatch({changes:{from:0,insert:"My unsaved text\\n"},userEvent:"input.type"})')
         edited=frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
         # Both versions insert at the same location, so this is a real conflict.
-        # Independent edits now merge automatically (covered in merge-browser.py).
+        # Independent edits combine on acceptance (covered in merge-browser.py).
         second='Agent opening\n'+incoming+'\nSecond agent edit\n'
         Path(ready['source']).write_text(second)
-        frame.evaluate('matsugitWorkspace.reload()')
+        frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==edited
         assert frame.evaluate('matsugitWorkspace.state.conflict')
         frame.locator('#undo').click()

@@ -22,6 +22,20 @@ test('a new text becomes small changes that leave untouched lines alone', () => 
 const decide = (base, local, incoming, history = savedEditHistory()) =>
   planExternalEdit({base, local, incoming, history, merge: async (...args) => mergePlan(...args)});
 
+test('a version-checked agent edit avoids historical guesses but never bypasses a draft conflict', async () => {
+  const history = savedEditHistory({limit:1});
+  history.remember('old\n'); history.remember('older\n');
+  const base = 'author saved\n\nend\n', incoming = 'agent revised\n\nend\n';
+  const options = {base,incoming,history,checkedBase:true,merge:async (...args)=>mergePlan(...args)};
+  const combined = await planExternalEdit({...options,local:base+'typing\n'});
+  assert.equal(combined.review,false);
+  assert.equal(combined.text,incoming+'typing\n');
+  history.rebase(combined.versions);
+  assert.equal(history.incomplete,true, 'a subsequent untracked writer still needs history protection');
+  assert.equal((await decide(incoming,incoming,'stale\n',history)).review,true);
+  assert.equal((await planExternalEdit({...options,local:base.replace('author saved','unsaved author')})).review,true);
+});
+
 test('same-line edit after autosave requires review, including equal-distance versions', async () => {
   const history = savedEditHistory(); history.remember('Budget: 10\n');
   const result = await decide('Budget: 20\n', 'Budget: 20\n', 'Budget: 30\n', history);

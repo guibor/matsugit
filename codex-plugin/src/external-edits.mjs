@@ -54,8 +54,12 @@ export function wholeFileReview(plan, base, local, incoming) {
 // merge runs off the UI thread. Only unanimous, conflict-free results may be
 // applied automatically. An alternative base is a review proposal, not proof
 // that the incoming writer used it. Missing history also requires review.
-export async function planExternalEdit({base, local, incoming, history, merge}) {
+export async function planExternalEdit({base, local, incoming, history, merge, checkedBase = false}) {
   const current = await merge(base, local, incoming);
+  // Only a server-observed, version-checked edit can establish its parent.
+  // Keep historical protection for a subsequent ordinary filesystem writer.
+  if (checkedBase) return current.conflicts ? {review:true, base, plan:current}
+    : {review:false, base, plan:current, text:mergeResult(current), versions:history.versions};
   if (history.incomplete) return {review: true, ambiguous: true, whole: true, base,
     plan: wholeFileReview(current, base, local, incoming)};
   if (current.conflicts) return {review: true, base, plan: current};

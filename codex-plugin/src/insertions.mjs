@@ -60,6 +60,10 @@ export function placeInsertion(source, position, name, recipe, org = false) {
   };
   const tops = model.nodes.filter(node => node.kind !== 'claim');
   const current = tops.findLast(node => node.from <= position);
+  if (name === 'export-end') {
+    const existing = structure(source, org).exportEnd;
+    return existing ? {select:existing, message:'The export boundary is selected.'} : pad(current?.end ?? source.length);
+  }
   if (recipe.group === 'slide') {
     return pad(!current ? source.length : current.kind === 'slide' ? current.end
       : current.children.find(node => node.kind === 'slide')?.from ?? current.end);

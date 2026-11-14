@@ -60,15 +60,14 @@ try:
         # A file changed by someone else is never overwritten: the draft is kept for review.
         source.write_text(source.read_text().replace('First autosaved line.', 'Changed by another program.'))
         frame.evaluate('(() => { const e = matsugitWorkspace.editor; e.dispatch({changes: {from: 0, insert: " "}}); })()')
-        wait(frame, 'matsugitWorkspace.state.conflict || ' + saved, 15)
+        wait(frame, '!!matsugitWorkspace.state.incomingReady', 15)
         page.wait_for_timeout(2500)
         on_disk = source.read_text()
         assert 'Changed by another program.' in on_disk, on_disk[-200:]
 
         # The choice is one click away, and turning it off restores explicit Save.
-        if frame.evaluate('matsugitWorkspace.state.conflict'):
-            frame.evaluate('matsugitWorkspace.state.conflict = false; matsugitWorkspace.reload(true, true)')
-            wait(frame, saved, 15)
+        frame.evaluate('matsugitWorkspace.reload(true, true)')
+        wait(frame, saved, 15)
         frame.locator('#more').click()
         assert frame.locator('#more-panel').is_visible()
         frame.locator('#autosave').uncheck()

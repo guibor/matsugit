@@ -165,6 +165,7 @@ def setup_ci(settings, provider):
         ".matsugit-ci/compat.py": Path(__file__).parent / "compat.py",
         ".matsugit-ci/core.py": Path(__file__).parent / "core.py",
         ".matsugit-ci/source.py": Path(__file__).parent / "source.py",
+        ".matsugit-ci/export_boundary.py": Path(__file__).parent / "export_boundary.py",
         ".matsugit-ci/sugar.py": Path(__file__).parent / "sugar.py",
         ".matsugit-ci/layout.py": Path(__file__).parent / "layout.py",
         ".matsugit-ci/document.py": Path(__file__).parent / "document.py",

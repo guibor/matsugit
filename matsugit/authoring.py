@@ -271,6 +271,7 @@ ELEMENTS = {
     'notes': '::: notes\nPresenter notes.\n:::\n',
     'source': '::: source\nSource, date, page or link.\n:::\n',
     'break': '\n---\n\n',
+    'export-end': '\n<!-- matsugit:export-end -->\n\n',
     'table-block': '| Measure | Value |\n| :--- | ---: |\n| Example | 0 |\n',
     'agent-comment': ':::: {.agent-comment #review-INSERT_ID status="open"}\nRequest:\nDescribe the change or question for this slide.\n\nResponse:\nPending.\n::::\n',
 }
@@ -313,6 +314,7 @@ CATALOG = {
     'source': ('part', 'Source line', 'Where the evidence comes from.', 'source'),
     'notes': ('part', 'Presenter notes', 'Hidden on slides; included in slide HTML and handouts.', 'notes'),
     'break': ('part', 'Continue on a new page', 'Same title and claim, next page.', 'break'),
+    'export-end': ('part', 'End of export', 'Keep everything below in the editor and Git, not exported files.', 'break'),
     'agent-comment': ('part', 'Note for the AI', 'A review request that never appears on slides.', 'comment'),
     'canvas': ('part', 'Interactive HTML', 'Embed a trusted local HTML file. Advanced.', 'canvas'),
 }

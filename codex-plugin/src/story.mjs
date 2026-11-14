@@ -1,4 +1,4 @@
-import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X, Sparkles, RectangleHorizontal, LayoutGrid} from 'lucide';
+import {createElement, GripVertical, ArrowUp, ArrowDown, ArrowRightLeft, ChevronLeft, ChevronRight, ChevronDown, Code, Plus, FolderPlus, X, Sparkles, RectangleHorizontal, LayoutGrid, Eye} from 'lucide';
 import {undo, redo, isolateHistory} from '@codemirror/commands';
 import {Transaction} from '@codemirror/state';
 import {storyModel, titleRange, moveStory, adjacentMove, insertStory, insertClaim} from './story-model.mjs';
@@ -12,7 +12,7 @@ function button(icon, name, run) {
   return el;
 }
 
-export function storyView({editor, state, enabled, notice, sourceView, changed, askAgent}) {
+export function storyView({editor, state, enabled, notice, sourceView, changed, askAgent, previewSlide}) {
   const panel = $('story-pane'), list = $('story-list');
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
   let hasSelection = false;
@@ -332,6 +332,12 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
         for (const takeaway of node.takeaways) field(takeaway);
       }
       const actions = document.createElement('div'); actions.className = 'story-actions';
+      if (node.kind === 'slide' && previewSlide) {
+        const peek = button(Eye, 'Preview slide', () => {
+          finishEdit(); previewSlide(storyModel(text(),org()).slides.find(slide => slide.from === node.from) || node);
+        });
+        peek.disabled = !enabled(); actions.append(peek);
+      }
       if (node.kind === 'slide' && askAgent) {
         const ai = button(Sparkles, 'Edit slide with AI', () => {
           finishEdit(); render(); askAgent(node);

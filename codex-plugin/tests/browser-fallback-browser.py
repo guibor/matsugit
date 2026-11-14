@@ -80,9 +80,12 @@ with tempfile.TemporaryDirectory() as directory:
             time.sleep(0.2)
         assert 'Edited in the browser.' in deck.read_text()
 
-        # An agent edits the file on disk: the open tab takes it in.
+        # An agent edits the file on disk: the open tab asks before taking it in.
         time.sleep(1)
         deck.write_text(deck.read_text().replace('### A claim', '### A claim the agent sharpened'))
+        wait(frame,'!!matsugitWorkspace.state.incomingReady',30)
+        assert not frame.evaluate('matsugitWorkspace.editor.state.doc.toString().includes("the agent sharpened")')
+        frame.locator('#accept-update').click()
         wait(frame, 'matsugitWorkspace.editor.state.doc.toString().includes("the agent sharpened")', 30)
         wait(frame, 'matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision && !matsugitWorkspace.state.rendering')
         preview = frame.locator('#preview').element_handle().content_frame()

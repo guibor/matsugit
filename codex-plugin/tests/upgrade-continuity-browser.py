@@ -45,7 +45,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-upgrade-test-') as tmp:
             assert 'My unsaved claim.' not in source.read_text()
             assert page.request.post(address+'/restart').ok
             source.write_text(source.read_text().replace('Original evidence.','External evidence.'))
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame,TEXT+'.includes("External evidence.") && !matsugitWorkspace.state.merging')
             assert 'My unsaved claim.' in frame.evaluate(TEXT)
             assert len(page.main_frame.child_frames) == 1

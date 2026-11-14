@@ -21,15 +21,23 @@ def wait(frame, expression, timeout=120):
 
 with tempfile.TemporaryDirectory(prefix='matsugit-theme-catalog-') as temporary:
     root = Path(temporary)
-    def theme(name):
-        directory = root / name
-        directory.mkdir()
+    def theme(name, parent=root):
+        directory = parent / name
+        directory.mkdir(parents=True)
         (directory / 'theme.json').write_text('{"extends":"default"}')
     theme('alpha')
     theme('beta')
+    project = root / 'project'
+    project.mkdir()
+    source = project / 'deck.md'
+    source.write_bytes((ROOT / 'codex-plugin/tests/workspace.md').read_bytes())
+    theme('beta', project / 'themes')
+    config_file = project / 'matsugit.json'
+    config_file.write_text('{"themes_dir":"themes"}')
     host = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')],
         stdout=subprocess.PIPE, text=True,
-        env=dict(os.environ, MATSUGIT_THEMES_DIR=temporary, MATSUGIT_DEFAULT_THEME='alpha'))
+        env=dict(os.environ, MATSUGIT_THEMES_DIR=temporary, MATSUGIT_DEFAULT_THEME='alpha',
+                 MATSUGIT_TEST_SOURCE=str(source)))
     try:
         ready = json.loads(host.stdout.readline())
         source = Path(ready['source'])
@@ -52,6 +60,17 @@ with tempfile.TemporaryDirectory(prefix='matsugit-theme-catalog-') as temporary:
             wait(frame, 'matsugitWorkspace.state.resolvedTheme === "beta" && !matsugitWorkspace.state.rendering')
             assert frame.locator('#theme').input_value() == 'beta'
             assert frame.locator('#theme option').first.inner_text() == 'alpha (default)'
+            assert frame.evaluate('matsugitWorkspace.state.resolvedThemeInfo.origin') == 'project'
+            frame.evaluate('''() => { const e = matsugitWorkspace.editor;
+                e.dispatch({changes:{from:e.state.doc.length, insert:'\\nAuthor draft retained.\\n'}}); }''')
+            draft = frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
+            config_file.unlink()
+            frame.locator('#refresh').click()
+            wait(frame, 'matsugitWorkspace.state.resolvedThemeInfo?.origin === "shared" && !matsugitWorkspace.state.rendering')
+            assert frame.locator('#theme').input_value() == 'beta'
+            assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == draft
+            assert source.read_bytes() == original
+            assert not frame.evaluate('matsugitWorkspace.state.conflict')
             theme('gamma')
             frame.locator('#refresh').click()
             wait(frame, 'document.querySelectorAll("#theme option").length === 5 && !matsugitWorkspace.state.refreshing && !matsugitWorkspace.state.rendering')

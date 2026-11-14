@@ -19,6 +19,7 @@ import {checkPanel} from './check-panel.mjs';
 import {rendererFinding, setupProblem} from './check.mjs';
 import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, ArrowLeft, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
+import {slidePeek} from './slide-peek.mjs';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} from './authoring.mjs';
 import {installRoleHelp} from './role-help.mjs';
@@ -124,12 +125,15 @@ function paintNotice() {
   const missing = state.fileMissing && !!state.session;
   $('notice-recreate').hidden = !missing; $('notice-download').hidden = !missing;
   $('notice-recreate').disabled = state.saving || state.loading || state.merging || state.delivering || tables?.pending();
-  $('reload').hidden = !state.conflict && !incomingDocument && !(state.fileReceipt && externalChange);
+  $('reload').hidden = !state.conflict && !state.incomingReady && !incomingDocument && !(state.fileReceipt && externalChange);
+  $('accept-update').hidden = !state.incomingReady || !!state.conflict;
+  $('accept-update').textContent = dirty() ? 'Combine changes' : 'Accept update';
+  $('accept-update').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
-  $('notice-save').hidden = !state.fileReceipt || state.conflict || !dirty();
+  $('notice-save').hidden = !state.fileReceipt || state.conflict || state.incomingReady || !dirty();
   $('notice-save').disabled = $('save').disabled;
-  $('notice-dismiss').hidden = !state.fileReceipt || state.conflict || !!incomingDocument;
+  $('notice-dismiss').hidden = !state.fileReceipt || state.conflict || state.incomingReady || !!incomingDocument;
 }
 const notice = (message = '') => {
   noticeMessage = message;
@@ -207,7 +211,7 @@ function scheduleAutosave() {
   if (demo || !state.autosave || state.restorePending || !state.writable || !state.etag) return;
   autosaveTimer = setTimeout(async () => {
     if (!state.autosave || state.restorePending || state.conflict || !dirty()) return;
-    if (state.loading || state.saving || state.merging || state.delivering || tables.pending()) { scheduleAutosave(); return; }
+    if (state.loading || state.saving || state.merging || state.delivering || state.incomingReady || state.externalPending || tables.pending()) { scheduleAutosave(); return; }
     await save({review: false, auto: true});
   }, 1500);
 }
@@ -222,7 +226,11 @@ const agentSlide = slideAgent({
   path:async()=>state.path || (await call('matsugit_path',state.session?{session:state.session}:{})).path,
   sender:()=>slideAgentSender(app,extensions),
 });
+const peek = slidePeek({call, snapshot:() => ({text:text(), name:state.name, session:state.session,
+  revision:state.revision, theme:$('theme').value.trim(),
+  html:state.revisions.slides === state.revision ? state.rendered?.slides : null})});
 story=storyView({editor,state,notice,changed:scheduleRecovery,
+  previewSlide:node=>peek.open(node),
   askAgent:node=>agentSlide.open(node),
   enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!tables.pending(),
   sourceView:from=>{
@@ -372,8 +380,8 @@ function refreshControls() {
   $('present').setAttribute('aria-label', $('present').title);
   $('dirty').hidden = !dirty();
   paintSaveStatus($('save-state'), saveStatus(state, dirty(), tables.pending()));
-  $('save').disabled = !!demo || state.loading || state.saving || state.merging || state.delivering || tables.pending() || !state.writable || !state.etag || (!state.conflict && !dirty());
-  $('save').title = tables.pending() ? 'Apply table edits to the draft first' : state.conflict ? 'Review changes before saving' : 'Save file';
+  $('save').disabled = !!demo || state.loading || state.saving || state.merging || state.delivering || !!state.incomingReady || tables.pending() || !state.writable || !state.etag || (!state.conflict && !dirty());
+  $('save').title = state.incomingReady ? 'Accept or review the incoming update first' : tables.pending() ? 'Apply table edits to the draft first' : state.conflict ? 'Review changes before saving' : 'Save file';
   $('save').setAttribute('aria-label', $('save').title);
   $('refresh').disabled = !!demo || state.loading || state.refreshing || state.saving || state.merging;
   $('refresh').title = state.rendering ? 'Queue latest preview' : 'Refresh from file (Shift: rebuild preview)';
@@ -383,7 +391,7 @@ function refreshControls() {
   $('filename').textContent = folder + state.name;
   $('filename').title = state.path || state.name;
   paintNotice();
-  if (!state.rendering && !state.saving) status(state.conflict ? 'External changes detected'
+  if (!state.rendering && !state.saving) status(state.conflict ? 'Review changes' : state.incomingReady ? 'Update ready'
     : state.rendered && state.renderedRevision !== state.revision ? 'Preview out of date'
     : dirty() ? 'Unsaved draft' : demo ? 'Read-only design preview' : state.etag ? 'Saved to file' : 'Local draft');
   updateModelContext();
@@ -644,6 +652,8 @@ async function render(manual = true) {
       state.lastRefresh = {kind: job.kind, changed: job.changed, format};
       if (job.kind !== 'patch') showPreview();
       state.resolvedTheme = job.theme;
+      state.resolvedThemeInfo = job.themeInfo;
+      if (job.themeInfo) $('theme').title = `Rendered theme: ${job.themeInfo.name}; ${job.themeInfo.origin}: ${job.themeInfo.path}`;
       if (!themeCatalog.default && !$('theme').value && job.theme) {
         themeCatalog.default = job.theme;
         updateThemePicker($('theme'), themeCatalog);
@@ -701,7 +711,7 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
   return {...result, text: sourceText(result)};
 }
 let activeReload = null;
-async function reload(force = false, manual = false, expectedEtag = null) {
+async function reload(force = false, manual = false, expectedEtag = null, accept = false) {
   const revision = state.revision, sequence = loadSequence;
   while (activeReload) {
     if (!manual && !force) return false;
@@ -711,13 +721,14 @@ async function reload(force = false, manual = false, expectedEtag = null) {
       return false;
     }
   }
-  const pending = reloadNow(force,manual,expectedEtag);
+  const pending = reloadNow(force,manual,expectedEtag,accept);
   activeReload = pending;
   try { return await pending; }
   finally { if (activeReload === pending) activeReload = null; }
 }
-async function reloadNow(force = false, manual = false, expectedEtag = null) {
+async function reloadNow(force = false, manual = false, expectedEtag = null, accept = false) {
   if ((!state.uri && !state.session) || state.loading || state.saving || state.merging || (state.refreshing && !manual)) return false;
+  if (!manual && (mergeReview.isOpen() || externalReview.isOpen() || $('incoming-dialog').open)) return false;
   const sequence = loadSequence;
   const read = ++readSequence;
   const revision = state.revision, table = JSON.stringify(tables.snapshot());
@@ -740,15 +751,36 @@ async function reloadNow(force = false, manual = false, expectedEtag = null) {
       if (!data.readOnly && /read-only on disk/.test(state.saveError || '')) { state.saveError = null; notice(); scheduleAutosave(); }
       refreshControls();
     }
-    if (force && expectedEtag !== null && data.etag !== expectedEtag) {
+    if ((force || accept) && expectedEtag !== null && data.etag !== expectedEtag) {
+      if (accept) {
+        state.incomingReady = {etag:data.etag,agent:!!data.agentBases?.includes(state.etag)};
+        externalChange = {base:state.base,local:text(),incoming:data.text,data,appliedText:null};
+      }
       notice('The incoming file changed again. Nothing was replaced; review the new version first.');
+      refreshControls();
       return false;
     }
     if (force && (state.revision !== revision || JSON.stringify(tables.snapshot()) !== table)) {
       notice('Your draft changed while reading the file. Nothing was replaced; review the versions again.');
       return false;
     }
-    if (!force && data.etag === state.etag) return !state.conflict;
+    if (!force && data.etag === state.etag) {
+      if (state.incomingReady || state.externalPending) { state.incomingReady = null; state.externalPending = null; notice(); refreshControls(); }
+      return !state.conflict;
+    }
+    // The file may already have been written by the other editor. Do not replace
+    // the author's open draft until they accept this exact incoming revision.
+    if (!force && !accept && data.etag !== state.etag && data.text !== text()) {
+      if (state.conflict && externalChange?.data.etag === data.etag) return false;
+      if (state.incomingReady?.etag === data.etag) return false;
+      if (externalChange?.data.etag !== data.etag) {
+        externalChange = {base:state.base,local:text(),incoming:data.text,data,appliedText:null};
+        state.conflict = false; state.ancestor = null; state.ambiguousExternal = false; mergeAttempt = null;
+      }
+      state.incomingReady = {etag:data.etag,agent:!!data.agentBases?.includes(state.etag)};
+      notice(); refreshControls(); return false;
+    }
+    if (accept || force) state.incomingReady = null;
     if (data.etag !== state.etag) {
       await checkpoint('draft',text());
       if (sequence !== loadSequence || read !== readSequence || state.saving || revision !== state.revision || table !== JSON.stringify(tables.snapshot())) return false;
@@ -758,21 +790,33 @@ async function reloadNow(force = false, manual = false, expectedEtag = null) {
     if (!force && data.text !== state.base && externalChange?.data.etag !== data.etag) {
       externalChange = {base:state.base, local:text(), incoming:data.text, data, appliedText:null};
     }
+    if (accept && !dirty() && !tables.pending()) {
+      const snapshot = mergeSnapshot();
+      state.merging = true; refreshControls();
+      try { await applyExternal(data,data.text,snapshot,savedHistory.versions); }
+      finally { state.merging = false; refreshControls(); }
+      return true;
+    }
     if ((state.conflict || dirty() || savedHistory.pending || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
-      // The author has typed here and another writer changed the file. Combine
-      // the two without asking whenever they do not touch the same lines.
+      // Acceptance permits combining independent edits, never guessing overlaps.
       const key = `${state.revision}:${data.etag}`;
-      const settled = !redoDepth(editor.state) && !tables.pending() && !incomingDocument
+      const settled = (accept || !redoDepth(editor.state)) && !tables.pending() && !incomingDocument
         && !$('incoming-dialog').open && !mergeReview.isOpen() && !externalReview.isOpen();
-      if (!settled || mergeAttempt === key) { state.conflict = true; notice(); }
+      if (!settled) {
+        state.externalPending = tables.pending() ? 'Finish the table edit to combine the incoming file changes.'
+          : redoDepth(editor.state) ? 'An update is waiting while Redo is available. Finish editing or review the versions before saving.'
+          : 'Finish the open review to combine the incoming file changes.';
+        mergeAttempt = null; notice();
+      } else if (mergeAttempt === key) { notice(); }
       else {
+        state.externalPending = null;
         mergeAttempt = key;
         const snapshot = mergeSnapshot();
         state.merging = true; refreshControls();
         let retry = false;
         try {
           const decision = await planExternalEdit({base:snapshot.base, local:snapshot.text, incoming:data.text,
-            history:savedHistory, merge:async (base, local, incoming) => {
+            history:savedHistory, checkedBase:!!data.agentBases?.includes(state.etag), merge:async (base, local, incoming) => {
               checkMergeSnapshot(snapshot);
               return (await call('matsugit_merge', {base, local, incoming})).merge;
             }});
@@ -791,6 +835,8 @@ async function reloadNow(force = false, manual = false, expectedEtag = null) {
       }
     } else {
       if (force) savedHistory.clear();
+      state.incomingReady = null;
+      state.externalPending = null;
       state.base = data.text; state.etag = data.etag; state.writable = data.writable;
       state.saveError = null; state.lastSavedAt = null;
       state.conflict = false; state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false;
@@ -800,7 +846,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null) {
       scheduleRecovery();
     }
     refreshControls();
-    return !state.conflict;
+    return !state.conflict && !state.externalPending;
   } catch (error) {
     if (sequence === loadSequence && read === readSequence) { notice(error.message); refreshControls(); }
     return false;
@@ -837,7 +883,7 @@ async function applyMerged(data, merged, snapshot, receipt = 'reviewed') {
   state.base = latest.text; state.etag = latest.etag; state.writable = latest.writable;
   state.saveError = null; state.lastSavedAt = null;
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
-  state.conflict = false; state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false; savedHistory.clear();
+  state.conflict = false; state.incomingReady = null; state.externalPending = null; state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false; savedHistory.clear();
   state.fileReceipt = receipt;
   notice();
   scheduleRecovery(); scheduleRender(); refreshControls();
@@ -860,7 +906,7 @@ async function applyExternal(data, merged, snapshot, history) {
   if (latest.etag !== data.etag || latest.text !== data.text)
     throw Object.assign(Error('The file changed again; checking the latest version.'), {retryExternal:true});
   const changes = textChanges(text(), merged);
-  if (changes.length && !wholesaleHistory) {
+  if (changes.length && !wholesaleHistory && !redoDepth(editor.state)) {
     // Outside the undo history: Undo keeps taking back the author's own edits.
     const wasLoading = state.loading;
     state.loading = true;
@@ -876,7 +922,7 @@ async function applyExternal(data, merged, snapshot, history) {
     editor.dispatch({selection: {anchor: Math.min(anchor, merged.length), head: Math.min(head, merged.length)}});
   }
   state.base = latest.text; state.etag = latest.etag; state.writable = latest.writable;
-  state.saveError = null; state.lastSavedAt = null; state.conflict = false; state.ancestor = null;
+  state.saveError = null; state.lastSavedAt = null; state.conflict = false; state.incomingReady = null; state.externalPending = null; state.ancestor = null;
   state.reviewWhole = false; state.ambiguousExternal = false;
   savedHistory.rebase(history);
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
@@ -895,7 +941,7 @@ async function refresh(forceFull = false) {
   state.refreshing = false; refreshControls();
   if (sequence !== loadSequence) { actionFeedback('refresh', ''); return; }
   if (!ready) {
-    actionFeedback('refresh', 'error', state.conflict ? 'External changes: your draft is retained' : 'Could not refresh from file');
+    actionFeedback('refresh', state.incomingReady ? 'done' : 'error', state.incomingReady ? 'File update ready to review' : state.conflict ? 'Review changes: your draft is retained' : 'Could not refresh from file');
     return;
   }
   state.forceFull ||= forceFull;
@@ -904,7 +950,12 @@ async function refresh(forceFull = false) {
 }
 async function save({review = true, auto = false} = {}) {
   if (auto && state.restorePending) return false;
+  if (state.incomingReady) { notice(); return false; }
   if ($('save').disabled) return false;
+  if (state.externalPending) {
+    if (auto) return false;
+    if (!await reload()) { if (review) await reviewForSave(); return false; }
+  }
   if (state.conflict) { if (review) await reviewForSave(); return false; }
   const value = text(), sequence = loadSequence;
   readSequence++;
@@ -917,7 +968,7 @@ async function save({review = true, auto = false} = {}) {
     if (result.outcome === 'saved') {
       if (state.base !== value) savedHistory.remember(state.base);
       state.ancestor = null;
-      state.base = value; state.etag = result.etag; state.conflict = false; state.saveError = null; state.lastSavedAt = Date.now();
+      state.base = value; state.etag = result.etag; state.conflict = false; state.externalPending = null; state.saveError = null; state.lastSavedAt = Date.now();
       state.restorePending = false;
       if (!auto || state.fileReceipt !== 'merged') state.fileReceipt = null;
       if (externalChange) externalChange.data = {text:value,etag:result.etag,writable:state.writable};
@@ -926,13 +977,12 @@ async function save({review = true, auto = false} = {}) {
       notice(historyWarning || '');
       return true;
     }
-    else if (result.outcome === 'conflict' && auto) {
-      // Another writer got there first. Nothing was written; combine and try again.
+    else if (result.outcome === 'conflict') {
+      // Another writer got there first. Nothing was written; offer their revision.
+      if (!auto) state.saveError = 'The file changed again before saving. Your draft is retained; review the latest version.';
       setTimeout(() => reload(), 0);
     }
-    else if (result.outcome === 'conflict') {
-      state.conflict = true; notice('The file changed before Save completed. Your draft is retained; review before saving.');
-    } else if (result.outcome === 'read-only') {
+    else if (result.outcome === 'read-only') {
       state.readOnly = true;
       throw Error('This file is read-only on disk, so it was not saved. Your text is safe in this window. Make the file writable, then save again.');
     } else throw Error(result.outcome === 'too-large' ? 'The file exceeds the host write limit.' : 'The host did not save the file.');
@@ -964,7 +1014,7 @@ async function load(data, {acceptRevision = null} = {}) {
   state.restorePending = false;
   state.historyError = null;
   noticeMessage = '';
-  story.reset();
+  peek.close(); story.reset();
   tables.reset();
   const suppliedRecovery = data.recovery, requestedView = data;
   const sequence = ++loadSequence;
@@ -979,7 +1029,7 @@ async function load(data, {acceptRevision = null} = {}) {
   disposeUpdates?.(); disposeUpdates = null;
   if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
   Object.assign(state, {uri: data.file?.resourceUri || null, session: data.session || null,
-    name: data.file?.name || data.name || 'Untitled.md', path:data.path || null, conflict: false, rendered: null, renderedRevision: -1,
+    name: data.file?.name || data.name || 'Untitled.md', path:data.path || null, conflict: false, incomingReady:null, externalPending:null, rendered: null, renderedRevision: -1,
     resolvedTheme: null, etag: null, writable: false, pendingRender: false, saving: false, saveError:null, lastSavedAt:null, fileReceipt:null,
     bases: {}, revisions: {}, forceFull: false,
     positions: {document: {hash: '', scroll: 0}, slides: {hash: '', scroll: 0}}});
@@ -1302,19 +1352,27 @@ $('expand-workspace').onclick = async () => {
 };
 $('save').onclick = () => save();
 $('notice-save').onclick = () => save();
+$('accept-update').onclick = async () => {
+  const incoming = state.incomingReady;
+  if (!incoming || $('accept-update').disabled) return;
+  const accepted = await reload(false,true,incoming.etag,true);
+  if (!accepted && state.conflict) await reviewForSave();
+  else if (accepted && ['source','split'].includes(state.layout)
+      && [document.body,$('accept-update')].includes(document.activeElement)) editor.focus();
+};
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
 let sharing;
-publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending(),demo,painted:(label,busy)=>sharing?.painted(label,busy)});
+publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending() || !!state.incomingReady,demo,painted:(label,busy)=>sharing?.painted(label,busy)});
 const delivering = delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
-  hasUnsaved:() => dirty() || tables.pending(), refreshControls, publication, mergeReview});
-sharing = share({call, state, text, dirty: () => dirty() || tables.pending(), save: () => save({review: false}), ...delivering,
+  hasUnsaved:() => dirty() || tables.pending() || !!state.incomingReady, refreshControls, publication, mergeReview});
+sharing = share({call, state, text, dirty: () => dirty() || tables.pending() || !!state.incomingReady, save: () => save({review: false}), ...delivering,
   mergeReview, publication, reload, notice, demo,
   // Links open in the person's browser through the host when it can; a plain new tab otherwise.
   openLink: url => app.getHostCapabilities()?.openLinks ? app.openLink({url}).catch(() => window.open(url, '_blank', 'noopener')) : window.open(url, '_blank', 'noopener')});
 publication.update();
 const changes = historyPanel({call,scope:recoveryScope,publication:()=>publication,
   snapshot:()=>({...mergeSnapshot(),org:state.name.toLowerCase().endsWith('.org'),dirty:dirty() || tables.pending(),
-    connected:!!state.etag,conflict:state.conflict,external:!!externalChange || !!incomingDocument || state.conflict}),
+    connected:!!state.etag,conflict:state.conflict,incoming:!!state.incomingReady,external:!!externalChange || !!incomingDocument || state.conflict}),
   recover:recoveryPicker,review:()=>incomingDocument ? reviewIncoming() : state.conflict ? reviewForSave() : reviewAllChanges(),
   apply:async (value,snapshot) => {
     if (state.saving || state.loading || state.merging || state.delivering) throw Error('Wait for the current operation before restoring.');
@@ -1537,7 +1595,7 @@ if (demo) {
   app.addEventListener('hostcontextchanged', hostContext);
   try { await app.connect(); hostContext(app.getHostContext()); }
   catch (error) { notice(error.message); status('Host connection unavailable'); }
-  setInterval(() => { if ((state.session || state.uri) && !state.delivering) reload(); }, 3000);
+  setInterval(() => { if ((state.session || state.uri) && !state.delivering) reload(); }, 1000);
 }
 }
 boot().catch(error => { notice(error.message); status('Workspace unavailable'); });

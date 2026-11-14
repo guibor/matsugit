@@ -101,12 +101,13 @@ class RenderParityTests(unittest.TestCase):
                     script += "runpy.run_path('.matsugit-ci/build.py',run_name='__main__')\n"
                     result = subprocess.run([sys.executable,'-c',script],cwd=repo,env=env,capture_output=True,text=True,timeout=300)
                     self.assertEqual(result.returncode,0,result.stderr[-5000:])
+                    generated = repo / '.matsugit-ci/site/demo'
                     for name in ('render.qmd','slides.qmd'):
-                        self.assertEqual((local/name).read_text(),(bundle/name).read_text(),name)
+                        self.assertEqual((local/name).read_text(),(generated/name).read_text(),name)
                     for name in ('document.css','slides.scss','theme.json'):
-                        self.assertEqual((local/'theme'/name).read_bytes(),(bundle/'theme'/name).read_bytes())
+                        self.assertEqual((local/'theme'/name).read_bytes(),(generated/'theme'/name).read_bytes())
                     for name in ('layout.css','media.css','canvas.css'):
-                        self.assertEqual((local/'runtime'/name).read_bytes(),(bundle/'runtime'/name).read_bytes())
+                        self.assertEqual((local/'runtime'/name).read_bytes(),(generated/'runtime'/name).read_bytes())
                     document, slides = (local/'render.qmd').read_text(), (local/'slides.qmd').read_text()
                     # Org can escape underscores in its Markdown representation.
                     document, slides = document.replace('\\_', '_'), slides.replace('\\_', '_')

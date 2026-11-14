@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
             mine = original.replace('Alpha original','Alpha mine')
             incoming = original.replace('Beta original','Beta agent').replace('Gamma original','Gamma agent')
             edit(mine); source.write_text(incoming)
-            frame.evaluate('matsugitWorkspace.reload()')
+            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame,'!matsugitWorkspace.state.merging')
             assert current() == mine.replace('Beta original','Beta agent').replace('Gamma original','Gamma agent')
             assert frame.locator('#publication-state').inner_text() == 'Changes not pushed'
@@ -87,7 +87,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-review-status-') as tmp:
             # Overlap plus clean edit: use the conflict resolver inside review.
             edit(expected.replace('Alpha later typing','Alpha local overlap'))
             remote = expected.replace('Alpha later typing','Alpha external overlap').replace('Beta original','Beta second agent')
-            source.write_text(remote); frame.evaluate('matsugitWorkspace.reload()')
+            source.write_text(remote); frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             frame.locator('#external-review').dispatch_event('click')
             frame.locator('#changes-dialog').wait_for(state='visible')
             frame.locator('#changes-preview').click()

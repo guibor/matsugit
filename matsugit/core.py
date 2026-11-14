@@ -150,6 +150,7 @@ def config(source, overrides=None):
     except Error:
         root = source.parent
     settings = {}
+    shared = {}
     project = {}
     project_paths = project_configs(root)
     for path in (*global_config(), *project_paths):
@@ -158,6 +159,8 @@ def config(source, overrides=None):
             settings.update(data)
             if path in project_paths:
                 project.update(data)
+            else:
+                shared.update(data)
     overrides = overrides or {}
     target = overrides.get('target') or project.get('publish_target')
     if not target and not overrides.get('repo'):
@@ -179,9 +182,17 @@ def config(source, overrides=None):
     settings["source"] = source
     settings["source_root"] = root
     settings["repo"] = (root / Path(settings.get("repo", root)).expanduser()).resolve()
-    themes = settings.get("themes_dir", env("MATSUGIT_THEMES_DIR",
-                          existing("~/.config/matsugit/themes", "~/.config/folioforge/themes")))
+    installed_themes = env("MATSUGIT_THEMES_DIR",
+                          existing("~/.config/matsugit/themes", "~/.config/folioforge/themes"))
+    themes = settings.get("themes_dir", installed_themes)
     settings["themes_dir"] = (root / Path(themes).expanduser()).resolve()
+    origin = ('override' if overrides.get('themes_dir') is not None else
+              'project' if project.get('themes_dir') is not None else 'shared')
+    # Preserve the shared library when a project supplies additional themes.
+    roots = [(origin, themes), ('project', project.get('themes_dir')),
+             ('shared', shared.get('themes_dir')), ('shared', installed_themes)]
+    settings['_theme_roots'] = [(kind, (root / Path(value).expanduser()).resolve())
+                               for kind, value in roots if value is not None]
     # Preserve existing publication paths, hence existing links and CI targets.
     site_dir = existing(settings['repo'] / 'matsugit-site', settings['repo'] / 'folioforge-site').name
     for key, default in (("theme", env("MATSUGIT_DEFAULT_THEME", "default")), ("branch", "main"), ("remote", "origin"),
@@ -232,35 +243,68 @@ class ResourceHTML(HTMLParser):
         self.output.append(f"<!--{data}-->")
 
 
+def theme_roots(settings):
+    roots, seen = [], set()
+    for origin, directory in [*settings.get('_theme_roots', [('configured', settings['themes_dir'])]),
+                              ('built-in', Path(__file__).parent / 'themes')]:
+        directory = Path(directory).resolve()
+        if directory not in seen:
+            roots.append((origin, directory))
+            seen.add(directory)
+    return roots
+
+
+def resolve_theme(settings, name):
+    """One ordered lookup for discovery, inheritance, preview and exports."""
+    if not isinstance(name, str) or not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}', name):
+        raise Error('Invalid theme name; use letters, numbers, hyphens or underscores')
+    attempted = []
+    for origin, root in theme_roots(settings):
+        attempted.append(f'{origin}: {root / name / "theme.json"}')
+        candidate = root / name
+        if not candidate.exists() and not candidate.is_symlink():
+            continue
+        try:
+            directory = inside(root, name)
+            manifest = inside(directory, 'theme.json')
+            with manifest.open(encoding='utf-8') as stream:
+                raw = stream.read(65537)
+            if len(raw.encode('utf-8')) > 65536:
+                raise Error('theme.json exceeds 64 KiB')
+            data = json.loads(raw)
+            if not isinstance(data, dict) or not (data.get('extends') or (data.get('document') and data.get('slides'))):
+                raise Error('theme.json needs document and slides, or extends')
+        except (Error, OSError, ValueError) as error:
+            raise Error(f'Theme {name!r} at {candidate} ({origin}) is invalid: {error}. '
+                        'Repair that theme and Refresh; no other theme was substituted.') from error
+        return {'name': name, 'origin': origin, 'path': str(directory)}, data
+    raise Error(f'Theme {name!r} was not found. Searched ' + '; '.join(attempted) +
+                '. Install it in a listed theme directory or correct themes_dir, then Refresh. '
+                'Your selected theme was not changed.')
+
+
 def theme_options(settings):
-    """List installed theme names without rendering or exposing their contents."""
-    names = {'default'}
-    root = settings['themes_dir']
-    if root.is_dir():
-        for candidate in root.iterdir():
-            if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}', candidate.name):
-                continue
-            try:
-                manifest = inside(root, candidate.name) / 'theme.json'
-                if (not manifest.resolve().is_relative_to(root.resolve())
-                        or not manifest.is_file() or manifest.stat().st_size > 65536):
-                    continue
-                data = read_json(manifest)
-                if data.get('extends') or (data.get('document') and data.get('slides')):
-                    names.add(candidate.name)
-            except (Error, OSError, ValueError):
-                continue
-    return {'default': settings['theme'], 'themes': sorted(names)}
+    """List names and their actual origins without rendering or reading source."""
+    candidates, details = set(), {}
+    for _, root in theme_roots(settings):
+        if root.is_dir():
+            candidates.update(p.name for p in root.iterdir())
+    for name in sorted(candidates):
+        try:
+            details[name], _ = resolve_theme(settings, name)
+        except (Error, OSError, ValueError):
+            continue
+    return {'default': settings['theme'], 'themes': sorted(details), 'details': details}
 
 
 def install_theme(settings, output):
     def resolve(name, parents=()):
         if name in parents or len(parents) >= 8:
             raise Error('Theme inheritance cycle or depth exceeds eight')
-        theme = inside(settings['themes_dir'], name)
-        if name == 'default' and not theme.exists():
-            theme = Path(__file__).parent / 'themes/default'
-        own = read_json(theme / 'theme.json')
+        location, own = resolve_theme(settings, name)
+        theme = Path(location['path'])
+        if not parents:
+            settings['_resolved_theme'] = location
         manifest, files = resolve(own['extends'], (*parents, name)) if own.get('extends') else ({}, {})
         for key in ('document', 'slides', 'charts', 'diagrams', 'powerpoint'):
             if key in own:
@@ -318,7 +362,7 @@ def mermaid_block(attributes, code):
     return {"t": "Div", "c": [[identifier, ["ff-media", "ff-diagram", *[c for c in classes if c != "mermaid"]], values], [cell]]}
 
 
-def normalize(settings, output, *, source_text=None, editable_source=True):
+def normalize(settings, output, *, source_text=None, editable_source=True, for_export=True):
     source = settings["source"]
     fmt = {".md": "markdown", ".markdown": "markdown", ".qmd": "markdown", ".org": "org"}.get(source.suffix.lower())
     if not fmt:
@@ -331,7 +375,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True):
         from .source import read, write_org, visible_sources
     else:
         from source import read, write_org, visible_sources
-    ast = visible_sources(read(text, fmt, pandoc))
+    ast = visible_sources(read(text, fmt, pandoc, for_export=for_export))
     # Keep declarative display settings, not filters/includes/executable settings.
     ast["meta"] = display_metadata(ast.get("meta", {}))
     asset_limit = resource_limit('MATSUGIT_MAX_ASSET_BYTES', 128 * 1024 * 1024)

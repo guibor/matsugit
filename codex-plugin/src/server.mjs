@@ -30,6 +30,7 @@ async function savedWithHistory(file, text, etag, options, reason = 'saved') {
   await checkpoints.run('record', file, {text:before.text, reason:'before-save'});
   const saved = saveDocument(file,text,etag,options);
   if (saved.outcome === 'saved') {
+    if (reason === 'agent-edit') store.recordAgentWrite(file,etag,saved.etag);
     try { await checkpoints.run('record', file, {text,reason}); }
     catch (error) { saved.historyWarning = 'File saved, but history could not record this version: ' + error.message; }
   }
@@ -56,7 +57,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.35.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.36.0'});
   server.registerTool('matsugit_doctor', {title:'Check matsugit setup',
     description:'Check local preview and editor prerequisites, with versions and concrete next steps. Read-only: no installs, network requests, login, document reads or settings changes.',
     inputSchema:z.object({}), annotations:readOnly}, guard(async () => result(await diagnostics.run())));
