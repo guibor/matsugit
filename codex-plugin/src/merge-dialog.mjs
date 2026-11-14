@@ -4,7 +4,8 @@ import {mergeResult} from './merge-result.mjs';
 export function mergeDialog() {
   const $ = id => document.getElementById(id), dialog = $('merge-dialog');
   let plan, conflicts = [], choices = [], position = 0, apply, busy = false, cancel, applied = false, options = {};
-  dialog.addEventListener('close', () => { if (!applied) cancel?.(); });
+  // close is queued. Rechecking may already have opened a newer review.
+  dialog.addEventListener('close', () => { if (!dialog.open && !applied) cancel?.(); });
   $('merge-previous').replaceChildren(createElement(ChevronLeft));
   $('merge-next').replaceChildren(createElement(ChevronRight));
   function controls() {

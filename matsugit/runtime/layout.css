@@ -1,4 +1,15 @@
 /* Semantic layout defaults. Theme packs can override their visual treatment. */
+/* Reading is a flowing document, not a fixed slide canvas. Slides are untouched. */
+body:not(.reveal-viewport) main :is(.columns,.rows,.ff-metrics,.ff-comparison,.ff-decision,.ff-timeline) {
+  display:block; width:auto;
+}
+body:not(.reveal-viewport) main :is(.column,.ff-region) {
+  width:auto !important; min-width:0; border-left:0; padding-left:0; margin-block:1rem;
+}
+body:not(.reveal-viewport) main .ff-metrics .ff-region > p:first-of-type strong {
+  display:inline; font-size:inherit;
+}
+body:not(.reveal-viewport) main .ff-document-claim { margin-block:0.5rem 1rem; }
 .reveal .ff-claim {
   font-size: 0.9em;
   font-weight: 400;

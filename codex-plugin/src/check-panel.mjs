@@ -17,7 +17,7 @@ function prose(text) {
   return fragment;
 }
 
-export function checkPanel({editor, isOrg, enabled, renderError, show, askAgent, toggled = () => {}, changed = () => {}}) {
+export function checkPanel({editor, isOrg, enabled, renderError, renderedFindings = () => [], show, askAgent, toggled = () => {}, changed = () => {}}) {
   const chip = $('check-status'), panel = $('check-panel'), list = $('check-list'), feedback = $('check-feedback');
   let findings = [], timer, revision = null;
   $('check-close').append(createElement(X));
@@ -31,7 +31,11 @@ export function checkPanel({editor, isOrg, enabled, renderError, show, askAgent,
     // explanation of its own, so a failed preview is never left unexplained.
     const failure = renderError();
     if (failure && !found.some(item => item.severity === 'problem')) found.unshift(rendererFinding(failure));
-    return found;
+    const measured = renderedFindings();
+    // A measured fit problem supersedes the approximate word-count tip.
+    found = found.filter(item => item.code !== 'slide-dense' || !measured.some(fit => fit.from === item.from));
+    found.push(...measured);
+    return found.sort((a,b) => Number(b.severity === 'problem') - Number(a.severity === 'problem'));
   }
   function item(finding) {
     const row = document.createElement('li'), head = document.createElement('div'), body = document.createElement('p');
@@ -75,7 +79,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, show, askAgent,
     $('check-icon').replaceChildren(createElement(summary.problems ? TriangleAlert : summary.tips ? Lightbulb : CircleCheck));
     $('check-label').textContent = summary.label;
     chip.title = summary.problems ? 'Some slides need fixing. Open the list.' : summary.tips ? 'Slides work. Open suggestions.' : 'No problems found in the slide structure';
-    $('check-summary').textContent = !findings.length ? 'No problems found. This checks structure; still look at the slides.'
+    $('check-summary').textContent = !findings.length ? 'No problems found. Fit is checked as slides are displayed; still review the whole deck.'
       : [summary.problems && `${summary.problems} to fix`, summary.tips && `${summary.tips} ${summary.tips === 1 ? 'tip' : 'tips'}`].filter(Boolean).join(', ');
     if (!panel.hidden) list.replaceChildren(...findings.map(item));
     changed(findings);

@@ -100,7 +100,11 @@ export function checkDeck(source, org = false) {
   const layout = settings['slide-layout']?.value || '';
   const structured = layout === 'structured', arranged = structured || layout === 'title-claim';
 
-  const tops = parsed.headings.filter(heading => heading.topLevel && heading.level <= 2 && !enclosing(heading.from)?.opaque);
+  // A rule directly under a colon-fence opener looks like a Setext heading to
+  // the Markdown parser, but the authored opener is not a slide title.
+  const blockStarts = new Set(blocks.map(block => block.from));
+  const tops = parsed.headings.filter(heading => heading.topLevel && heading.level <= 2
+    && !blockStarts.has(heading.from) && !enclosing(heading.from)?.opaque);
   let number = 0;
   for (const heading of tops) if (heading.level === 2) heading.number = ++number;
   const where = from => {
@@ -333,8 +337,14 @@ export function checkDeck(source, org = false) {
       'Add a claim or content. To keep title-only slides, add `slide-empty-slides: true` to the settings at the top.');
     if (scope.heading.label.length > 95) add('title-long', 'tip', scope.heading.from,
       `This title is ${scope.heading.label.length} characters long and may not fit.`, 'Shorten it and move the detail into the claim under it.');
-    const words = body.filter(line => !line.literal && !FENCE.test(line.text) && !hidden(line) && !/^\s*\|[\s|:-]*$/.test(line.text))
-      .flatMap(line => line.text.split(/\s+/)).filter(word => /[\p{L}\p{N}]/u.test(word)).length;
+    const breaks = new Set(parsed.breaks.filter(item => !enclosing(item.from)).map(item => item.from));
+    const counts = [0];
+    for (const line of body) {
+      if (breaks.has(line.from)) { counts.push(0); continue; }
+      if (line.literal || FENCE.test(line.text) || hidden(line) || /^\s*\|[\s|:-]*$/.test(line.text)) continue;
+      counts[counts.length - 1] += line.text.split(/\s+/).filter(word => /[\p{L}\p{N}]/u.test(word)).length;
+    }
+    const words = Math.max(...counts);
     if (words > 150) add('slide-dense', 'tip', scope.heading.from, `This slide has about ${words} words, which is a lot to read on one slide.`,
       'Split it with a `---` line, shorten the text, or move detail into presenter notes.');
     for (let index = 0; index < body.length; index++) {

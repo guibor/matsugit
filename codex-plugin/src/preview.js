@@ -91,7 +91,21 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       if (patch.base !== base) throw Error('Preview revision changed');
       const slides = applyChanges(document, patch.changes);
       if (format === 'slides' && window.Reveal?.isReady()) {
-        for (const slide of slides) if (slide) Reveal.syncSlide(slide);
+        for (const slide of slides) if (slide) {
+          Reveal.syncSlide(slide);
+          const title = slide.querySelector('h1,h2,h3')?.textContent;
+          const index = Reveal.getIndices(slide);
+          // The menu copies titles when it starts. Keep that copy in sync too.
+          // An explicitly authored menu title must not be replaced.
+          if (title && !slide.dataset.menuTitle && !slide.querySelector('.menu-title')) {
+            for (const item of document.querySelectorAll('.slide-menu-panel [data-slide-h]')) {
+              if (Number(item.dataset.slideH) === index.h && Number(item.dataset.slideV || 0) === (index.v || 0)) {
+                const label = item.querySelector('.slide-menu-item-title');
+                if (label) label.textContent = title;
+              }
+            }
+          }
+        }
         Reveal.layout();
       }
       base = patch.next;
@@ -118,6 +132,15 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       const other = info(item); return other.key === current.key && other.level === current.level;
     }).indexOf(el)};
   };
+  let lastFitReport = '';
+  window.addEventListener('matsugit-fit', event => {
+    if (format !== 'slides') return;
+    const report = {...event.detail, base, heading:currentHeading()};
+    const signature = JSON.stringify(report);
+    if (signature === lastFitReport) return;
+    lastFitReport = signature;
+    post({matsugitFit:report});
+  });
   for (const name of ['pointerdown', 'wheel', 'keydown', 'touchstart']) document.addEventListener(name, () => {
     lastInput = Date.now(); currentTarget = null; suppressUntil = 0;
   }, {passive: true, capture: true});

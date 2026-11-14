@@ -170,7 +170,8 @@ def two_windows(source, open_page):
             break
         for frame in (first, second):
             if frame.evaluate('matsugitWorkspace.state.conflict'):
-                raise AssertionError('two windows typing on separate lines needed a review')
+                detail = frame.evaluate('JSON.stringify({base:matsugitWorkspace.state.base,draft:matsugitWorkspace.editor.state.doc.toString(),notice:document.getElementById("notice-text").textContent,ambiguous:matsugitWorkspace.state.ambiguousExternal})')
+                raise AssertionError('two windows typing on separate lines needed a review: ' + detail)
         time.sleep(.5)
     else:
         raise AssertionError('the two windows did not converge: ' + repr(source.read_text()[-400:]))

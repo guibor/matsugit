@@ -1,4 +1,3 @@
-# Install at .github/workflows/checks.yml using workflow-authorized credentials.
 # Repository checks only. This workflow never publishes documents or deploys sites.
 name: Renderer and workspace checks
 on:
@@ -11,7 +10,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,7 +52,7 @@ jobs:
         run: python3 -m unittest discover -s tests -p test_render_parity.py -v
       - name: Install isolated browser test runtime
         run: |
-          python3 -m pip install playwright
+          python3 -m pip install --require-hashes -r matsugit/dependencies/export.txt
           python3 -m playwright install --with-deps chromium
       - name: Draft safety and publication UI
         run: |
@@ -63,3 +62,12 @@ jobs:
           python3 codex-plugin/tests/story-navigation-browser.py
           python3 codex-plugin/tests/story-layout-browser.py
           python3 codex-plugin/tests/slide-agent-browser.py
+          python3 codex-plugin/tests/history-browser.py
+          python3 codex-plugin/tests/upgrade-continuity-browser.py
+          python3 codex-plugin/tests/agent-edits-browser.py
+          python3 codex-plugin/tests/file-trouble-browser.py
+          python3 codex-plugin/tests/render-fit-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/history-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/agent-edits-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/render-fit-browser.py
+          python3 codex-plugin/tests/browser-fallback-browser.py

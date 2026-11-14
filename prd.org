@@ -126,8 +126,10 @@ the formatting. Rendering uses no model tokens; an agent is optional.
   repeated "(continued)" title. The skill says so and Check offers the fix.
 
 ** Package size (branch =smaller-bundle=)
-- R40. The committed tree stays under 8 MB (8,000,000 bytes), guarded by a test.
-  Downstream plugin archives must measure their own expanded payload.
+- R40. Keep 8 MB (8,000,000 bytes) as a secondary footprint target, not a
+  correctness or feature constraint. Report size in tests; strict enforcement
+  is opt-in for size-constrained distributions. Downstream plugin archives
+  must measure their own expanded payload.
 - R41. Size is not bought with minifying the server code: its source-module
   excerpts stay readable for review.
 
@@ -166,16 +168,24 @@ the formatting. Rendering uses no model tokens; an agent is optional.
 
 * Next steps
 
-Current hardening work (branch =codex/trust-and-first-use=):
+Reliability release (workspace 0.35.0):
 - Scoped agent edits use the existing Story parser and version-checked save
   path. They reject changed saved revisions, ambiguous replacements and edits
   that alter slide boundaries. Unsaved panel drafts still use existing review.
 - Read-only setup diagnostics share one report between the CLI, agent tool and
   workspace. Missing optional tools never block core readiness. No installs,
   logins, credential discovery or publication occur during a check.
-- Keep the renderer and save/recovery semantics unchanged in this increment;
-  native-host acceptance, broader incremental rendering and release/update UX
-  remain follow-up work, not claimed complete by these checks.
+- Changes brings together draft/file/push/live observations, private source
+  checkpoints and recent local Git commits. These are separate observations,
+  not a linear status; a draft may be newer than a verified live version.
+- Restore document or an explicitly targeted slide as one undoable draft edit.
+  A pre-restore checkpoint must succeed; automatic saving waits for explicit
+  Save. Images and themes are not restored with source text.
+- Bounded SQLite history survives process restarts and simultaneous writers;
+  approved Share moves carry history, copies do not. No history lives beside
+  the Markdown file. Git reads never fetch, checkout, reset or commit.
+- Native-host acceptance, broader incremental rendering and release/update UX
+  remain follow-up work, not claimed complete by simulated-host checks.
 
 Immediate, in priority order:
 0. Open a deck in Claude Desktop after =setup-claude-desktop= and check the
@@ -197,9 +207,17 @@ Immediate, in priority order:
 7. Move file synchronisation (save, reload, reconcile, autosave) out of
    =app.js= into its own module.
 8. A per-deck share link in place of the site or project link.
-9. Install =ci/checks.yml= as a workflow so the suites run on every push.
+9. Confirm =.github/workflows/checks.yml= succeeds on the released commit.
 
 * Requirements that changed
+
+- 2026-11-14, preserve the existing slide design and manual boundaries. One
+  authored Markdown document remains authoritative; reading and slide outputs
+  are generated independently. Actual rendered overflow is advisory in Check,
+  with Show pointing to the source. Never silently split, shorten, delete or
+  shrink text. A document-only render does not prepare the slide layout.
+  Reading cleanup preserves wording and excludes private notes by default.
+  Safe title/claim patches must preserve anchors or fall back to full rendering.
 
 - 2026-11-12, no workspace in the chat. Was: the agent explained
   =matsugit setup-cursor= and stopped (or rendered static HTML), and the skill

@@ -98,6 +98,17 @@ with tempfile.TemporaryDirectory() as directory:
         assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Narrow view overflows horizontally'
         assert frame.locator('#save').is_visible()
         page.screenshot(path=str(Path(tempfile.gettempdir()) / 'matsugit-browser-fallback-mobile.png'))
+        # The real fallback server uses the same private history, not a mock host.
+        saved = deck.read_text()
+        frame.locator('#history-open').click()
+        frame.locator('#history-items button').filter(has_text='Opened file').first.click()
+        wait(frame,'!document.getElementById("history-restore-document").disabled')
+        frame.locator('#history-restore-document').click()
+        wait(frame,'!document.getElementById("history-dialog").open')
+        assert 'Some text.' in frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
+        assert deck.read_text() == saved
+        frame.locator('#undo').click()
+        assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()') == saved
         assert not errors, errors
         browser.close()
 

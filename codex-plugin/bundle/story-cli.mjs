@@ -4445,7 +4445,8 @@ function checkDeck(source, org = false) {
   }
   const layout = settings["slide-layout"]?.value || "";
   const structured = layout === "structured", arranged = structured || layout === "title-claim";
-  const tops = parsed.headings.filter((heading2) => heading2.topLevel && heading2.level <= 2 && !enclosing(heading2.from)?.opaque);
+  const blockStarts = new Set(blocks.map((block) => block.from));
+  const tops = parsed.headings.filter((heading2) => heading2.topLevel && heading2.level <= 2 && !blockStarts.has(heading2.from) && !enclosing(heading2.from)?.opaque);
   let number2 = 0;
   for (const heading2 of tops) if (heading2.level === 2) heading2.number = ++number2;
   const where = (from) => {
@@ -4789,7 +4790,17 @@ function checkDeck(source, org = false) {
       `This title is ${scope.heading.label.length} characters long and may not fit.`,
       "Shorten it and move the detail into the claim under it."
     );
-    const words = body.filter((line) => !line.literal && !FENCE.test(line.text) && !hidden(line) && !/^\s*\|[\s|:-]*$/.test(line.text)).flatMap((line) => line.text.split(/\s+/)).filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
+    const breaks2 = new Set(parsed.breaks.filter((item) => !enclosing(item.from)).map((item) => item.from));
+    const counts = [0];
+    for (const line of body) {
+      if (breaks2.has(line.from)) {
+        counts.push(0);
+        continue;
+      }
+      if (line.literal || FENCE.test(line.text) || hidden(line) || /^\s*\|[\s|:-]*$/.test(line.text)) continue;
+      counts[counts.length - 1] += line.text.split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
+    }
+    const words = Math.max(...counts);
     if (words > 150) add(
       "slide-dense",
       "tip",

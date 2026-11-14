@@ -56,7 +56,14 @@ with tempfile.TemporaryDirectory(prefix='matsugit-merge-test-') as tmp:
 
             def full_versions():
                 frame.locator('#reload').click()
-                frame.locator('#merge-options summary').click()
+                try:
+                    frame.locator('#merge-options summary').click()
+                except Exception:
+                    print('Review state:',frame.evaluate('''() => ({open:document.getElementById('merge-dialog').open,
+                      hidden:document.getElementById('merge-options').hidden,conflict:matsugitWorkspace.state.conflict,
+                      merging:matsugitWorkspace.state.merging,notice:document.getElementById('notice-text').textContent,
+                      status:document.getElementById('merge-status').textContent})'''),flush=True)
+                    raise
                 frame.locator('#merge-versions').click()
 
             mine = original.replace('Alpha original','Alpha mine')

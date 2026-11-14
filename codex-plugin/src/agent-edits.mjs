@@ -1,14 +1,13 @@
 import {randomUUID} from 'node:crypto';
 import {checkedPath, checkedText, readDocument, saveDocument} from './store.mjs';
-import {storyModel} from './story-model.mjs';
+import {completeStoryModel} from './story-model.mjs';
 
 export const MAX_SLIDE = 64 * 1024;
 const MAX_SNAPSHOTS = 128, TTL = 10 * 60 * 1000;
 const stale = () => ({outcome:'conflict', message:'The saved document changed. Read the slide again and review the new text before editing. Nothing was written.'});
 
 function selected(source, slide, org) {
-  const model = storyModel(source, org);
-  if (model.unfinished.length) throw Error('Close unfinished blocks before requesting a scoped slide edit.');
+  const model = completeStoryModel(source, org);
   const node = model.slides[slide - 1];
   if (!Number.isInteger(slide) || slide < 1 || !node) throw Error('Choose an existing slide number from Story.');
   const text = source.slice(node.from, node.end);
@@ -39,7 +38,7 @@ export function patchSlide(source, slide, edits, org = false) {
   for (const change of [...changes].reverse()) next = next.slice(0,change.from) + change.insert + next.slice(change.to);
   if (Buffer.byteLength(next) > MAX_SLIDE) throw Error('The updated slide exceeds the 64 KiB edit limit.');
   const output = checkedText(source.slice(0,node.from) + next + source.slice(node.end));
-  const after = storyModel(output,org), target = after.slides[slide-1], delta = next.length-text.length;
+  const after = completeStoryModel(output,org), target = after.slides[slide-1], delta = next.length-text.length;
   const neighbors = m => m.nodes.filter(n => n.kind !== 'claim' && n !== m.slides[slide-1]);
   const beforeNeighbors = neighbors(model), afterNeighbors = neighbors(after);
   if (after.unfinished.length || after.slides.length !== model.slides.length || !target
@@ -80,9 +79,12 @@ export class AgentEdits {
     if (current.etag !== item.etag) { this.snapshots.delete(id); return stale(); }
     const patch = patchSlide(current.text,item.slide,edits,item.org);
     if (previewOnly) return {outcome:'preview', path:item.path, slide:item.slide, etag:item.etag, source:patch.source};
+    const finish = saved => {
+      if (saved.outcome === 'saved' || saved.outcome === 'conflict') this.snapshots.delete(id);
+      return {...saved, path:item.path, slide:item.slide, replacements:patch.replacements,
+        ...(saved.outcome === 'conflict' ? {message:stale().message} : {})};
+    };
     const saved = this.save(item.path,patch.text,item.etag);
-    if (saved.outcome === 'saved' || saved.outcome === 'conflict') this.snapshots.delete(id);
-    return {...saved, path:item.path, slide:item.slide, replacements:patch.replacements,
-      ...(saved.outcome === 'conflict' ? {message:stale().message} : {})};
+    return saved?.then ? saved.then(finish) : finish(saved);
   }
 }

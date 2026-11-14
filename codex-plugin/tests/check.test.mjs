@@ -9,6 +9,14 @@ import {checkDeck, applyFix, checkSummary, rendererFinding, setupProblem} from '
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const python = process.env.MATSUGIT_PYTHON || 'python3';
 const H = '---\ntitle: T\nslide-layout: structured\n---\n\n';
+test('density respects authored slide breaks, not rules inside code or notes', () => {
+  const passage = 'Evidence '.repeat(90);
+  assert.ok(checkDeck(H+'## Title\n\n'+passage+'\n\n'+passage).some(f=>f.code==='slide-dense'));
+  assert.ok(!checkDeck(H+'## Title\n\n'+passage+'\n\n---\n\n'+passage).some(f=>f.code==='slide-dense'));
+  for (const middle of ['```text\n---\n```', '::: notes\n---\n:::']) {
+    assert.ok(checkDeck(H+'## Title\n\n'+passage+'\n\n'+middle+'\n\n'+passage).some(f=>f.code==='slide-dense'));
+  }
+});
 const columns = parts => ':::: columns\n' + parts.map(part => `#### ${part}\ntext\n`).join('\n') + '::::\n';
 const indentedClaims = [0, 1, 2, 3].flatMap(spaces => ['\n', '\r\n'].map(newline =>
   (H + '## A\n\n' + ' '.repeat(spaces) + '### Claim\n\nBody.\n').replaceAll('\n', newline)));

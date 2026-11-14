@@ -77,5 +77,6 @@ export function publicationStatus({call, state, hasUnsaved, demo, painted = () =
     // Ask the provider once; resolves with the latest receipt either way.
     async check() { await read(true); return receipt; },
     receipt: () => receipt,
+    digest: () => digest,
   };
 }

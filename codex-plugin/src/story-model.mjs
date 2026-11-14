@@ -1,4 +1,15 @@
 import {structure} from './structure.mjs';
+import {parser} from '@lezer/markdown';
+
+export function completeStoryModel(source, org = false) {
+  if (!org) parser.parse(source).iterate({enter(node) {
+    if (node.name === 'FencedCode' && (node.node.lastChild?.name !== 'CodeMark' || node.node.firstChild?.from === node.node.lastChild?.from))
+      throw Error('Close unfinished code fences before changing slide boundaries.');
+  }});
+  const model = storyModel(source,org);
+  if (model.unfinished.length) throw Error('Close unfinished blocks before changing slide boundaries.');
+  return model;
+}
 
 // Positions, not heading text, identify nodes. Duplicate titles are ordinary.
 export function storyModel(source, org = false) {

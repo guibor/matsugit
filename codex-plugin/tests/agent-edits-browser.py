@@ -71,6 +71,26 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
             assert 'My evidence.' in frame.evaluate(TEXT)
             assert 'My evidence.' not in source.read_text()
             assert not frame.evaluate('matsugitWorkspace.state.conflict')
+            # Another writer advances the file during reconciliation. That is a
+            # stale comparison to retry, not evidence of an overlapping edit.
+            advanced = []
+            def advance_while_merging(route):
+                request = route.request.post_data_json or {}
+                response = route.fetch()
+                if request.get('params', {}).get('name') == 'matsugit_merge' and not advanced:
+                    source.write_text(source.read_text().replace('Agent delivery.','Agent delivery advanced.'))
+                    advanced.append(True)
+                route.fulfill(response=response)
+            page.route('**/rpc',advance_while_merging)
+            source.write_text(source.read_text().replace('Agent delivery.','Agent delivery.\nAnother paragraph.'))
+            frame.evaluate('matsugitWorkspace.reload()')
+            wait(frame,TEXT + '.includes("Agent delivery advanced.") && !matsugitWorkspace.state.merging')
+            page.unroute_all(behavior='wait')
+            assert advanced
+            assert not frame.evaluate('matsugitWorkspace.state.conflict')
+            source.write_text(source.read_text().replace('Agent delivery advanced.','Agent delivery.'))
+            frame.evaluate('matsugitWorkspace.reload()')
+            wait(frame,TEXT + '.includes("Agent delivery.") && !matsugitWorkspace.state.merging')
             frame.locator('#save').click()
             wait(frame, '!matsugitWorkspace.state.saving && document.getElementById("save-state").textContent === "Saved to file"')
             assert 'My evidence.' in source.read_text() and 'Agent delivery.' in source.read_text()

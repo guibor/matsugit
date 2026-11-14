@@ -9,6 +9,7 @@ import shutil
 
 from . import core
 from .layout import slides
+from .document import document
 
 
 def digest(value):
@@ -43,7 +44,7 @@ def safe_inlines(nodes):
     return True
 
 
-def annotate(ast):
+def annotate(ast, *, heading_slots=False):
     """Keep block geometry unchanged: anchors surround only inert inline runs."""
     result = deepcopy(ast)
     slots = {}
@@ -54,8 +55,8 @@ def annotate(ast):
                 visit(child)
         elif isinstance(node, dict):
             kind = node.get('t')
-            if kind in ('Plain', 'Para'):
-                content = node['c']
+            if kind in ('Plain', 'Para') or (heading_slots and kind == 'Header'):
+                content = node['c'][2] if kind == 'Header' else node['c']
                 if content and safe_inlines(content):
                     key = 'ffp-' + str(len(slots))
                     slots[key] = deepcopy(content)
@@ -124,9 +125,10 @@ def render(settings, output, text, format='document', base=None):
     colours = core.read_json(core.inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
     display = core.canvas_components(core.evidence_components(core.chart_components(
         core.prepare_diagrams(ast, output, theme, colours, cache), output, colours, cache=cache)), output)
-    from .source import visible_notes
-    target = slides(display) if format == 'slides' else visible_notes(display)
-    annotated, snapshot = annotate(target)
+    target = slides(display) if format == 'slides' else document(display)
+    # A title patch is safe only while its anchor/attributes stay identical.
+    # Auto-generated anchors, heading order and document TOCs still rebuild.
+    annotated, snapshot = annotate(target, heading_slots=format == 'slides')
     snapshot.update(signature=signature, format=format)
     can_patch = (previous.get('signature') == signature and previous.get('format') == format
                  and previous.get('shape') == snapshot['shape'])

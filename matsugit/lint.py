@@ -99,18 +99,22 @@ def rendered(directory):
             page.route('https://**',lambda r:r.abort())
             page.goto(path.as_uri())
             page.wait_for_function('window.Reveal?.isReady()',timeout=30000)
+            page.evaluate('document.fonts.ready')
+            page.evaluate('window.MathJax?.startup?.promise || Promise.resolve()')
+            # Use the exact measurement shipped with previews, exports and CI.
+            # An older export can still be checked without rebuilding it.
+            if not page.evaluate('!!window.matsugitFit'):
+                page.add_script_tag(path=str(Path(__file__).parent / 'runtime/fit.js'))
             count=page.evaluate('Reveal.getSlides().length')
             for i in range(count):
                 page.evaluate('i=>{const s=Reveal.getSlides()[i];const n=Reveal.getIndices(s);Reveal.slide(n.h,n.v)}',i)
                 page.wait_for_timeout(300)
-                result=page.evaluate('''i=>{
-                  const s=Reveal.getSlides()[i],r=s.getBoundingClientRect();
-                  const parts=[...s.querySelectorAll(':scope>h2,:scope>.ff-claim,:scope>.ff-body,:scope>.ff-takeaway')].filter(e=>e.getBoundingClientRect().height);
-                  return {title:s.querySelector('h1,h2')?.textContent||s.id,
-                    overflow:s.scrollHeight>s.clientHeight+2||s.scrollWidth>s.clientWidth+2,
-                    overlap:parts.some((e,j)=>j&&e.getBoundingClientRect().top<parts[j-1].getBoundingClientRect().bottom-1),
-                    broken:[...s.querySelectorAll('img')].some(e=>!e.complete||!e.naturalWidth)};
-                }''',i)
+                page.wait_for_function('''() => !document.querySelector('section.present pre.mermaid') &&
+                    [...Reveal.getCurrentSlide().querySelectorAll('img')].every(img => img.complete)''', timeout=30000)
+                result=page.evaluate('i=>matsugitFit.measure(Reveal.getSlides()[i])',i)
+                if not result:
+                    findings.append(dict(code='unmeasured',slide=str(i + 1),message='Slide geometry could not be measured; inspect this slide.'))
+                    continue
                 for code in ('overflow','overlap','broken'):
                     if result[code]:
                         findings.append(dict(code=code,slide=result['title'],message='Rendered '+code+' detected. Inspect the slide; do not hide overflowing content.'))

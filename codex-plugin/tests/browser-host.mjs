@@ -32,10 +32,11 @@ const inherited = path.join(temporary, 'removed-cwd');
 fs.mkdirSync(inherited);
 if (!inPlace) fs.copyFileSync(fixture || new URL('./workspace.md', import.meta.url), source);
 let client, opened, session, app;
+let initialServer = process.env.MATSUGIT_TEST_INITIAL_SERVER;
 async function start() {
 client = new Client({name: 'matsugit-browser-test', version: '1.0.0'});
 await client.connect(new StdioClientTransport({command: process.execPath,
-  args: [path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
+  args: [initialServer || path.join(root, 'codex-plugin/bundle/server.mjs')], cwd: inherited,
   env: {...process.env, PWD: inherited, MATSUGIT_CONFIG: process.env.MATSUGIT_TEST_CONFIG || path.join(temporary, 'absent.json'),
     ...(downloadMode === 'blocked' ? {HOME:temporary} : {}),
     MATSUGIT_RECOVERY_DIR: path.join(temporary, 'recovery'),
@@ -43,6 +44,7 @@ await client.connect(new StdioClientTransport({command: process.execPath,
 opened = await client.callTool({name: 'matsugit_open', arguments: {path: source, ...openOptions}});
 session = opened.structuredContent.session;
 app = (await client.readResource({uri: 'ui://matsugit/workspace-v1'})).contents[0].text;
+initialServer = null;
 }
 await start();
 if (process.platform !== 'win32') fs.rmdirSync(inherited);

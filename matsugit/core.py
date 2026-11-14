@@ -456,6 +456,8 @@ def render(settings, output, edit_url=None, *, source_text=None,
     output = Path(output).resolve()
     if not formats or any(fmt not in ('document', 'slides') for fmt in formats):
         raise Error('Unknown render format')
+    if settings.get('handout') and 'slides' not in formats:
+        raise Error('A presenter handout requires slides; omit --only document or --handout')
     if _prepared is None and output.exists() and any(output.iterdir()):
         raise Error(f"Output must be empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
@@ -468,30 +470,35 @@ def render(settings, output, edit_url=None, *, source_text=None,
             prepare_diagrams(ast, output, theme, colours), output, colours)), output)
     else:
         theme, ast, display_ast = _prepared
-    if __package__:
-        from .source import visible_notes
-    else:
-        from source import visible_notes
-    document_ast = visible_notes(display_ast)
-    document_ast = _transform(document_ast, 'document') if _transform else document_ast
     print(f"Theme: {settings['theme']}; slide layout: {plain(ast['meta'].get('slide-layout')) or 'default'}", flush=True)
     # Quarto requires .qmd for Mermaid cells, even with the inert markdown engine.
     # Keep the published editable source in Markdown; this is a generated input.
     # Enable only native Mermaid display, not programming-language execution.
-    (output / "render.qmd").write_text(
-        diagram_fences(run([*pandoc, '-f', 'json', '-t', 'markdown',
-                           '--standalone', '--wrap=none'], text=json.dumps(math_html(document_ast))), render=True), encoding="utf-8")
-    slide_ast = slide_layout(display_ast)
-    if _transform:
-        slide_ast = _transform(slide_ast, 'slides')
-    slide_render_ast = slide_ast
-    if not ast['meta'].get('slide-title-page', {'c':True})['c']:
-        # Pandoc generates its cover from title metadata; keep the reading title intact.
-        slide_render_ast = dict(slide_ast, meta={k:v for k,v in slide_ast['meta'].items()
-                                                if k not in ('title', 'subtitle')})
-    slide_source = run([*pandoc, "-f", "json", "-t", "markdown",
-                        "--standalone", "--wrap=none"], text=json.dumps(math_html(slide_render_ast)))
-    (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
+    inputs = []
+    if 'document' in formats:
+        if __package__:
+            from .document import document
+        else:
+            from document import document
+        document_ast = document(display_ast)
+        document_ast = _transform(document_ast, 'document') if _transform else document_ast
+        (output / "render.qmd").write_text(
+            diagram_fences(run([*pandoc, '-f', 'json', '-t', 'markdown',
+                               '--standalone', '--wrap=none'], text=json.dumps(math_html(document_ast))), render=True), encoding="utf-8")
+        inputs.append('render.qmd')
+    if 'slides' in formats:
+        slide_ast = slide_layout(display_ast)
+        if _transform:
+            slide_ast = _transform(slide_ast, 'slides')
+        slide_render_ast = slide_ast
+        if not ast['meta'].get('slide-title-page', {'c':True})['c']:
+            # Pandoc generates its cover from title metadata; keep the reading title intact.
+            slide_render_ast = dict(slide_ast, meta={k:v for k,v in slide_ast['meta'].items()
+                                                    if k not in ('title', 'subtitle')})
+        slide_source = run([*pandoc, "-f", "json", "-t", "markdown",
+                            "--standalone", "--wrap=none"], text=json.dumps(math_html(slide_render_ast)))
+        (output / "slides.qmd").write_text(diagram_fences(slide_source, render=True), encoding="utf-8")
+        inputs.append('slides.qmd')
     shutil.copytree(Path(__file__).parent / "runtime", output / "runtime")
     expand_runtime(output / "runtime")
     has_math = math_html(display_ast) != display_ast
@@ -503,10 +510,13 @@ def render(settings, output, edit_url=None, *, source_text=None,
         '<link rel="stylesheet" href="runtime/layout.css">\n'
         '<script defer src="runtime/media.js"></script>\n'
         '<script defer src="runtime/canvas.js"></script>\n'
+        '<script defer src="runtime/fit.js"></script>\n'
         '<script defer src="runtime/annotations.js"></script>\n' + math_header, encoding="utf-8")
-    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = datetime.now(timezone.utc)
+    stamp = now.isoformat(timespec="seconds")
     source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
-    links = f'<a href="slides.html">Slides</a> <a href="{source_name}">Source</a>'
+    links = '<a href="slides.html">Slides</a> ' if 'slides' in formats else ''
+    links += f'<a href="{source_name}">Source</a>'
     if settings.get('handout'):
         links += ' <a href="handout.html">Presenter handout</a>'
         handout = run([*pandoc, '-f', 'json', '-t', 'markdown',
@@ -516,9 +526,9 @@ def render(settings, output, edit_url=None, *, source_text=None,
         links += f' <a href="{html.escape(edit_url, quote=True)}">Edit source</a>'
     (output / "navigation.html").write_text(
         f'<nav class="matsugit-nav folioforge-nav" aria-label="Document formats">{links}'
-        f'<span>Updated <time datetime="{stamp}">{stamp}</time></span></nav>', encoding="utf-8")
+        f'<span>Updated <time datetime="{stamp}">{now.strftime("%d %b %Y, %H:%M UTC")}</time></span></nav>', encoding="utf-8")
     metadata = {
-        "project": {"type": "default", "render": ["render.qmd", "slides.qmd"]},
+        "project": {"type": "default", "render": inputs},
         "execute": {"enabled": False, "eval": False},
         "engine": "markdown",
         # Parsed Math nodes above use the same local runtime in every output.
@@ -526,7 +536,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
         "include-in-header": "media-head.html",
         "format": {
             "html": {"theme": "default", "css": "theme/" + theme["document"], "toc": True,
-                     "embed-resources": True, "pagetitle": settings["source"].stem,
+                     "embed-resources": True, "format-links": False, "pagetitle": settings["source"].stem,
                      "include-before-body": "navigation.html"},
             "revealjs": {"theme": ["default", "theme/" + theme["slides"]], "embed-resources": True,
                          "slide-level": 2, "width": 1280,
@@ -535,7 +545,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
                          "scrollable": True,
                          "auto-stretch": False,
                          "slide-number": "c/t", "transition": "none",
-                         "footer": '<a class="matsugit-document-link folioforge-document-link" href="index.html" aria-label="Read the document version">Document</a>'},
+                         "footer": ('<a class="matsugit-document-link folioforge-document-link" href="index.html" aria-label="Read the document version">Document</a>' if 'document' in formats else '')},
         },
     }
     if settings.get('handout'):
@@ -558,6 +568,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
         if (output / name).is_dir():
             shutil.rmtree(output / name)
     manifest = {"version": 1, "theme": settings["theme"], "updated": stamp, "edit_url": edit_url,
+                "formats": list(formats),
                 'handout': bool(settings.get('handout')),
                 "source_file": source_name,
                 "source_sha256": hashlib.sha256((output / source_name).read_bytes()).hexdigest(),

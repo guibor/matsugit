@@ -24,8 +24,10 @@ MATSUGIT_STANDARD_MCP=1=.
 
 * Package size
 
-=tests/test_package_size.py= keeps the committed tree under 8 MB (8,000,000
-bytes) and lists the largest files when it fails. This is a source-tree budget,
+=tests/test_package_size.py= reports the 8 MB (8,000,000 bytes) secondary target
+and lists the largest files when exceeded. Reliability and functionality take
+priority. Set =MATSUGIT_ENFORCE_SIZE_LIMIT=1= only for a distribution with a hard
+upload limit. This is a source-tree measurement,
 not a measurement of downstream ZIPs: those can include themes, review evidence
 and older renderer releases. Measure their expanded payload separately.
 What keeps this tree small:
@@ -45,7 +47,7 @@ What keeps this tree small:
   JavaScript); this is a build-time size optimization, not a runtime dependency.
 - The runtime embedded in =server.mjs= is Brotli-compressed, with text files
   stored as text. The bundle keeps zod's English messages only (the other
-  languages are never used). The generated server compacts whitespace only;
+  languages are never used). The generated server retains readable whitespace;
   identifier renaming and syntax minification are disabled. Review first-party
   source in =codex-plugin/src/=; all license notices remain bundled.
 - Documentation screenshots are 256-colour PNGs. Run
@@ -127,7 +129,7 @@ tests cover both host styles, narrow viewports, real diagnostics, bounded busy
 states, retry and stale replies, with no installs or document writes. These are
 simulated host envelopes, not acceptance tests inside the native desktop apps.
 Provider status tests mock GitHub/GitLab responses; real deployment
-access is not required. =ci/checks.yml= is the reviewed GitHub Actions recipe for
+access is not required. =.github/workflows/checks.yml= is the GitHub Actions workflow for
 pushes to main, pull requests and manual dispatch. It checks dependency
 advisories for all three npm lockfiles and builds complete bundled license
 notices. Missing notice text fails the build, including the Story CLI graph.
@@ -137,18 +139,51 @@ sends dependency names/versions to the npm registry, not document contents.
 This is test CI for this repository, not a deployment workflow for user documents.
 No account scopes are requested or expanded by matsugit.
 
-*CI is not active until a maintainer installs this recipe.* The credential used
-for the cleanup lacked GitHub's =workflow= scope. From a clean checkout, with
-workflow-authorized credentials:
+The workflow runs checks only. Installing a plugin never installs a repository
+workflow or changes account scopes. Verify its first Actions run after release.
+
+* Render fit and one source
+
+=tests/test_projection.py= checks independent render paths, CLI forwarding,
+reading claims/anchors, notes and preservation of the authored source.
+=tests/test_preview.py= checks patch invalidation, including stable-title and
+claim edits versus anchor changes. The real standalone-CI test in
+=tests/test_layout.py= uses the same document projection and fit runtime.
+
+=codex-plugin/tests/render-fit-browser.py= exercises the built workspace:
+crowded text, excluded notes, Show, unchanged type and source bytes, author-chosen
+breaks, title/claim patches, menu labels, reading output and narrow viewports.
+Run with standard and Cursor envelopes. Fit is measured as slides are displayed;
+use optional rendered lint for a whole-deck inspection. Neither is a guarantee
+of good design or factual accuracy. No screenshot baseline may be updated merely
+to conceal a changed layout.
+
+* Change reliability acceptance
+
+=history-browser.py= runs against the real MCP server: checkpoint, external
+edit, backend restart, one-slide restore, Undo, paused autosave, a stale review,
+document restore and explicit Save. Run it with both standard and Cursor host
+envelopes. =browser-fallback-browser.py= also restores and undoes a checkpoint
+through the actual loopback browser server. These are not native desktop tests.
+
 #+begin_src sh
-mkdir -p .github/workflows
-git mv ci/checks.yml .github/workflows/checks.yml
-git commit -m "Activate repository checks"
-git push
+python3 codex-plugin/tests/history-browser.py
+MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/history-browser.py
+python3 codex-plugin/tests/browser-fallback-browser.py
 #+end_src
-For GitHub CLI OAuth, =gh auth refresh -h github.com -s workflow= requests that
-additional scope interactively. This is an explicit maintainer decision, not a
-step performed by plugin installation. Verify the first Actions run after push.
+
+Manual release gate in native Codex and Cursor: edit a synthetic Markdown file,
+change a different line externally, open Changes, restore one explicitly chosen
+slide, Undo, restore again, Save, restart the plugin, and reopen the same file.
+Check the draft, source and history separately. A site URL is not evidence of a
+deployed revision. Confirm old pages can reconnect after upgrading; a host may
+still choose to create another panel. Keep the previous plugin version available
+until this gate passes. Do not delete recovery data during updates or rollback.
+
+Downstream internal package gate: rebuild from the reviewed engine commit,
+verify its manifest hashes, run setup and ZIP extraction tests, check both host
+launchers and repeat the same acceptance. Do not substitute a public theme for
+an internal theme or publish example documents as part of an update.
 
 Plugin 0.25.1 overrides the exact Zod pin in =@openai/mcp-extensions= 0.2.1
 with the project's patched Zod 4 dependency. See

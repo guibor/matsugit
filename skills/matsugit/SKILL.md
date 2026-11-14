@@ -19,6 +19,10 @@ Use Markdown for meaning, a small set of recipes for composition, and a theme
 for presentation. Do not change the renderer or an existing theme just to fit
 one slide.
 
+The authored Markdown file is the single source of truth for both slides and
+the reading document. Edit that file or its workspace draft, not generated
+HTML or QMD. Rendering never rewrites it or silently splits crowded content.
+
 ## Choose the workflow
 
 - **Present, download or publish:** read [delivery.md](references/delivery.md).
@@ -148,7 +152,8 @@ Many authors know PowerPoint, not Markdown. Unless they use syntax themselves:
   you introduced before replying; never leave a deck that the check rejects.
 - Point to the workspace for what is easier by hand: `Add` to pick a layout by
   picture, `Check` for the same findings with Show and a one-click fix, Story to
-  reorder slides. The check covers structure only; still look at the slides.
+  reorder slides. The tool checks source structure; the workspace also reports
+  measured layout problems as slides are displayed. Still review the whole deck.
 
 ## Content guidance is separate
 
@@ -190,18 +195,25 @@ bottom takeaways that the reference never stated.
 ## Render and check
 
 ```sh
-matsugit lint deck.md --strict
+matsugit lint deck.md
 matsugit render deck.md --output /tmp/deck-preview
 ```
+
+For just one output, add `--only slides` or `--only document` to render. The
+document-only path does not run slide layout. Both outputs still come from the
+same source; no second editable original is created.
 
 Use a new or empty output directory for each iteration. Preview is local and
 does not publish. Inspect the actual slides and reading document, including
 long titles, tables, media, source notes and narrow viewports. Optional
-`matsugit lint deck.md --rendered /tmp/deck-preview --strict` needs Playwright
-and Chromium. Lint is not proof of factual accuracy or perfect typography.
+`matsugit lint deck.md --rendered /tmp/deck-preview` needs Playwright and
+Chromium. Warnings do not block rendering or export. Add `--strict` only when
+an explicit failing validation gate is wanted. Lint is not proof of factual
+accuracy or perfect typography.
 
-Split a slide that does not fit with a `---` line, which repeats its title and
-claim automatically; never write a second heading such as "Title (continued)".
+When the author chooses to split a slide that does not fit, use a `---` line,
+which repeats its title and claim automatically; never write a second heading
+such as "Title (continued)".
 Fix crowded slides by splitting or simplifying with the author, not by silently
 deleting content, shrinking everything, or hiding overflow. Media should retain
 aspect ratio; never crop evidence to make it fit. Handouts include presenter

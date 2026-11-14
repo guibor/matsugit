@@ -39,6 +39,14 @@ class AnchorTests(unittest.TestCase):
         ast['blocks'][0]['c'][2][0]['c'] = 'After'
         self.assertNotEqual(first['shape'], preview.annotate(ast)[1]['shape'])
 
+    def test_slide_heading_patch_requires_same_anchor(self):
+        ast = {'meta':{}, 'blocks':[{'t':'Header','c':[2,['stable',[],[]],[{'t':'Str','c':'Before'}]]}]}
+        first = preview.annotate(ast, heading_slots=True)[1]
+        ast['blocks'][0]['c'][2][0]['c'] = 'After'
+        self.assertEqual(first['shape'], preview.annotate(ast, heading_slots=True)[1]['shape'])
+        ast['blocks'][0]['c'][1][0] = 'after'
+        self.assertNotEqual(first['shape'], preview.annotate(ast, heading_slots=True)[1]['shape'])
+
     def test_chart_cache_avoids_regenerating_unchanged_exhibits(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -128,6 +136,16 @@ class PreviewTests(unittest.TestCase):
         first, _ = self.render('## Topic\n\nText\n')
         self.assertEqual(self.render('## Topic\n\nText\n', first, 'document')[1]['kind'], 'full')
         self.assertEqual(self.render('## Topic\n\nText\n', self.root / 'expired')[1]['kind'], 'full')
+
+    def test_title_with_stable_anchor_and_claim_patch_without_render(self):
+        source = '---\nslide-layout: structured\n---\n\n## Before {#stable}\n### Claim before\n\nBody\n'
+        first, _ = self.render(source)
+        changed = source.replace('Before', 'After').replace('Claim before', 'Claim after')
+        _, result = self.render(changed, first)
+        self.assertEqual(result['kind'], 'patch')
+        self.assertEqual(result['changed'], 2)
+        self.assertEqual(self.full.call_count, 1)
+        self.assertEqual(self.render(changed.replace('#stable', '#different'), first)[1]['kind'], 'full')
 
     def test_many_rows_change_only_one_cell(self):
         source = '## Table\n\n| Label | Value |\n|---|---|\n' + ''.join(f'| Row {i} | Value {i} |\n' for i in range(300))

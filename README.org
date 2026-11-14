@@ -181,6 +181,13 @@ Your file is saved when you press Save. Turn on =Save automatically= under the
 when needed; local recovery copies can restore an interrupted draft. These
 checks protect workspace saves, but cannot lock out an unrelated external editor.
 
+=Changes= shows your draft, the saved/committed file, the last recorded push and
+the last verified live version separately. Its local history includes source
+checkpoints and recent Git commits. Compare slides, restore a document or choose
+exactly which slide to restore. Restore changes only your draft, is undoable and
+waits for explicit Save even when automatic saving is enabled. Images and themes
+are not versioned by these source checkpoints. See [[file:docs/reliability.md][reliability and limits]].
+
 * If you do write Markdown
 
 It is ordinary Markdown with a few blocks for layout. Nothing is hidden: the
@@ -218,11 +225,27 @@ and themes you can write yourself. Org files work too. From the command line:
 python3 -m matsugit template section --output deck.md
 python3 -m matsugit check deck.md
 python3 -m matsugit render deck.md --output /tmp/deck-preview
+python3 -m matsugit render deck.md --only document --output /tmp/reading-preview
+python3 -m matsugit render deck.md --only slides --output /tmp/slides-preview
 #+end_src
 
 Run these from the checkout. With a separately installed CLI, the structural
 check needs =matsugit check deck.md --checkout /path/to/matsugit=; =matsugit lint=
 is the separate density check that does not need the Node workspace bundle.
+
+The Markdown file is the source of truth. Reading HTML and slides are generated
+views, never independent editable documents. Reading output keeps the wording,
+flows columns vertically, and displays a claim as introductory text. It does not
+invent prose. Notes stay excluded unless explicitly enabled for reading.
+
+As a slide is displayed, =Check= measures its actual fit after fonts and media
+load. =Content doesn't fit= means you should shorten it or choose a manual
+=---= break; =Show= goes to its source. There is no automatic splitting,
+summarising or font shrinking. Warnings do not block export: exporting without
+fixing one may retain the layout problem. For a full-deck pass use
+=matsugit lint deck.md --rendered /tmp/deck-preview= with the optional browser
+dependencies. A hidden or not-yet-displayed slide is not certified by the
+workspace's current-slide check.
 
 * What it is not
 

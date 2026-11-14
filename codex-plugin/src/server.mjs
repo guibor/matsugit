@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 // The guided sample deck: one source, shared with `matsugit template tour`.
 import tourDeck from '../../matsugit/templates/tour.md';
-import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText, readSource} from './store.mjs';
+import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText, readSource, readDocument, saveDocument} from './store.mjs';
 import {checkDeck, checkSummary} from './check.mjs';
 import {PluginRuntime} from './runtime.mjs';
 import {RecoveryStore} from './recovery.mjs';
@@ -17,18 +17,33 @@ import {MergeService} from './merge-service.mjs';
 import {clientOf, wantsBrowser, openInBrowser, browserResult} from './browser-launch.mjs';
 import {AgentEdits, MAX_SLIDE} from './agent-edits.mjs';
 import {SetupDiagnostics} from './diagnostics.mjs';
+import {Checkpoints} from './checkpoints.mjs';
 
 const uri = 'ui://matsugit/workspace-v1';
 const runtime = new PluginRuntime(__MATSUGIT_RUNTIME__);
 const store = new WorkspaceStore(() => runtime.root());
 const recovery = new RecoveryStore();
-const agentEdits = new AgentEdits();
+const checkpoints = new Checkpoints(() => runtime.root());
+async function savedWithHistory(file, text, etag, options, reason = 'saved') {
+  const before = readDocument(file);
+  if (before.etag !== etag) return {outcome:'conflict', etag:before.etag};
+  await checkpoints.run('record', file, {text:before.text, reason:'before-save'});
+  const saved = saveDocument(file,text,etag,options);
+  if (saved.outcome === 'saved') {
+    try { await checkpoints.run('record', file, {text,reason}); }
+    catch (error) { saved.historyWarning = 'File saved, but history could not record this version: ' + error.message; }
+  }
+  return saved;
+}
+const agentEdits = new AgentEdits({save:(file,text,etag) => savedWithHistory(file,text,etag,undefined,'agent-edit')});
 const diagnostics = new SetupDiagnostics(() => runtime.root());
-const actions = new WorkspaceActions(runtime, store);
+const actions = new WorkspaceActions(runtime, store, undefined,
+  (owner,destination) => checkpoints.run('relocate',owner,{destination}));
 const tables = new TableTools(runtime);
 const merges = new MergeService(() => path.join(runtime.root(), 'codex-plugin/merge-worker.cjs'));
 const recoveryOwner = (args, context) => args.session || args.resourceUri
   ? store.recoveryOwner(args.session, getResourcePath(context.mcpReq?._meta)) : null;
+const historyOwner = (args, context) => recoveryOwner(args,context) || (args.resourceUri ? 'resource:' + args.resourceUri : null);
 const scope = {session: z.string().optional(), resourceUri: z.string().max(4096).optional()};
 const readOnly = {readOnlyHint: true, destructiveHint: false, openWorldHint: false};
 const viewOptions = {layout: z.enum(['source', 'render', 'split', 'story']).optional(), format: z.enum(['document', 'slides']).optional(), editor: z.enum(['raw', 'visual']).optional(), autosave: z.boolean().optional()};
@@ -41,7 +56,7 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.34.0'});
+  const server = new McpServer({name: 'matsugit', version: '0.35.0'});
   server.registerTool('matsugit_doctor', {title:'Check matsugit setup',
     description:'Check local preview and editor prerequisites, with versions and concrete next steps. Read-only: no installs, network requests, login, document reads or settings changes.',
     inputSchema:z.object({}), annotations:readOnly}, guard(async () => result(await diagnostics.run())));
@@ -53,7 +68,7 @@ serveStdio(() => {
     description:'Apply exact non-overlapping text replacements inside the slide returned by matsugit_read_slide. Requires that saved document revision to be unchanged. Each old passage must match once. Preserves all text outside the slide, rejects structural boundary changes. preview_only returns the proposed slide without writing. For a user-requested edit only; never publishes. Unsaved workspace edits still use the workspace conflict review.',
     inputSchema:z.object({edit_id:z.string().uuid(), edits:z.array(z.object({old:z.string().min(1).max(MAX_SLIDE), new:z.string().max(MAX_SLIDE)})).min(1).max(32), preview_only:z.boolean().optional()}),
     annotations:{readOnlyHint:false, destructiveHint:true, openWorldHint:false}},
-    guard(async ({edit_id,edits,preview_only}) => result(agentEdits.edit(edit_id,edits,preview_only))));
+    guard(async ({edit_id,edits,preview_only}) => result(await agentEdits.edit(edit_id,edits,preview_only))));
   server.registerTool('matsugit_merge', {description:'Compute a local three-way merge of workspace text. Never saves, publishes or executes document content.', ...appOnly,
     inputSchema:z.object({base:z.string().max(MAX_SOURCE), local:z.string().max(MAX_SOURCE), incoming:z.string().max(MAX_SOURCE)}), annotations:readOnly},
     guard(async args => appResult({computed:true}, {merge:await merges.plan(args)})));
@@ -162,7 +177,30 @@ serveStdio(() => {
   server.registerTool('matsugit_save', {description: 'Save explicit workspace edits only if the opened file still matches the expected version. Never force overwrites.', ...appOnly,
     inputSchema: z.object({session: z.string(), text: z.string().max(MAX_SOURCE), etag: z.string().min(1), recreate: z.boolean().optional()}),
     annotations: {readOnlyHint: false, destructiveHint: true, openWorldHint: false}},
-    guard(async ({session, text, etag, recreate}) => result(store.save(session, text, etag, {recreate}))));
+    guard(async ({session, text, etag, recreate}) => {
+      // Recreating a missing source uses the existing reviewed recovery path.
+      if (recreate) {
+        await checkpoints.run('record', store.recoveryOwner(session), {text,reason:'before-save'});
+        return result(store.save(session,text,etag,{recreate}));
+      }
+      return result(await savedWithHistory(store.owner(session),text,etag,{}));
+    }));
+  server.registerTool('matsugit_history_record', {description:'Keep a bounded private source checkpoint for this document. Never writes the source, copies attachments or publishes.', ...appOnly,
+    inputSchema:z.object({...scope, text:z.string().max(MAX_SOURCE), reason:z.enum(['opened','before-save','saved','external','before-restore','draft'])}),
+    annotations:{readOnlyHint:false,destructiveHint:false,openWorldHint:false}},
+    guard(async (args,context) => result(await checkpoints.run('record',historyOwner(args,context),{text:args.text,reason:args.reason}))));
+  server.registerTool('matsugit_history_list', {description:'List private source checkpoints for this document only. No network or source writes.', ...appOnly,
+    inputSchema:z.object(scope), annotations:readOnly},
+    guard(async (args,context) => {
+      const owner = historyOwner(args,context), data = await checkpoints.run('list',owner);
+      try { const git = await checkpoints.run('git-list',owner); data.items.push(...git.items); data.git = git.git; }
+      catch { data.gitUnavailable = true; }
+      data.items.sort((a,b) => b.created-a.created);
+      return result(data);
+    }));
+  server.registerTool('matsugit_history_read', {description:'Read a selected source checkpoint for comparison or draft restore. Does not save or publish. Images and themes are not restored.', ...appOnly,
+    inputSchema:z.object({...scope,id:z.string().regex(/^(?:[0-9]{1,18}|git:[a-f0-9]{40,64})$/)}), annotations:readOnly},
+    guard(async (args,context) => result(await checkpoints.run(args.id.startsWith('git:') ? 'git-read' : 'read',historyOwner(args,context),{id:args.id}))));
   server.registerTool('matsugit_recovery_begin', {description: 'Prepare a private recovery copy for this viewer; does not save the document.', ...appOnly,
     inputSchema: z.object({...scope, name: z.string().max(512)}), annotations: {readOnlyHint: false, destructiveHint: false, openWorldHint: false}},
     guard(async (args, context) => {

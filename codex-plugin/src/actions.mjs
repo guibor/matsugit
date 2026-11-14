@@ -9,8 +9,8 @@ import {pythonExecutable, pythonEnvironment} from './python.mjs';
 export class WorkspaceActions {
   jobs = new Map();
   plans = new Map();
-  constructor(runtime, store, downloads = path.join(os.homedir(), 'Downloads')) {
-    this.runtime = runtime; this.store = store; this.downloads = downloads;
+  constructor(runtime, store, downloads = path.join(os.homedir(), 'Downloads'), onRelocated = async () => {}) {
+    this.runtime = runtime; this.store = store; this.downloads = downloads; this.onRelocated = onRelocated;
   }
   start(args, hostPath) {
     const owner = this.store.owner(args.session, hostPath);
@@ -70,13 +70,15 @@ export class WorkspaceActions {
     });
     child.stderr.on('data', data => { job.log = (job.log + data).slice(-8000); });
     child.on('error', error => { job.state='error'; job.error=error.message; if (relocation) this.store.settleRelocation(owner); });
-    child.on('close', code => {
+    child.on('close', async code => {
       if (relocation) this.store.settleRelocation(owner);
       if (job.state === 'error') return;
       if (relocation && fs.existsSync(owner) && fs.lstatSync(owner).isSymbolicLink()
           && fs.realpathSync(owner) === relocation.destination) {
         try {
           job.workspace = this.store.relocated(owner, relocation.destination);
+          try { await this.onRelocated(owner,relocation.destination); }
+          catch (error) { job.workspace.historyWarning = 'File moved, but earlier history stayed at its original identity: ' + error.message; }
           for (const item of this.jobs.values()) if (item.owner === owner) item.owner = relocation.destination;
         } catch (error) { job.state='error'; job.error=error.message; return; }
       }

@@ -37,6 +37,7 @@ import {slideAgent} from './slide-agent.mjs';
 import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
 import {setupCheck} from './setup-check.mjs';
+import {historyPanel} from './history-panel.mjs';
 
 const $ = id => document.getElementById(id);
 const app = new App({name: 'matsugit', version});
@@ -59,6 +60,7 @@ let presentation = null;
 let tables;
 let story;
 let check;
+let fitBase = null, fitFindings = new Map();
 let railMoved;
 let publication;
 let refreshRequested = false, copying = false, feedbackTimer;
@@ -201,9 +203,9 @@ $('notice-setup').onclick = () => setupDiagnostics.open($('notice-setup'));
 let autosaveTimer;
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
-  if (demo || !state.autosave || !state.writable || !state.etag) return;
+  if (demo || !state.autosave || state.restorePending || !state.writable || !state.etag) return;
   autosaveTimer = setTimeout(async () => {
-    if (!state.autosave || state.conflict || !dirty()) return;
+    if (!state.autosave || state.restorePending || state.conflict || !dirty()) return;
     if (state.loading || state.saving || state.merging || state.delivering || tables.pending()) { scheduleAutosave(); return; }
     await save({review: false, auto: true});
   }, 1500);
@@ -251,7 +253,9 @@ const rail = slideRail({root: $('slide-rail'), text: () => editor.state.doc.toSt
     if (state.layout !== 'render') editor.focus();
   }});
 railMoved = rail.moved;
-check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.renderError, show: showSource, toggled: paintNotice, changed: list => rail.findings(list),
+check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.renderError,
+  renderedFindings: () => state.revisions.slides === state.revision && fitBase === state.bases.slides ? [...fitFindings.values()] : [],
+  show: showSource, toggled: paintNotice, changed: list => rail.findings(list),
   askAgent: (slide, suggestion) => agentSlide.open(slide, suggestion)});
 const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editing, notice,
   reveal: () => { if (state.layout === 'story' || state.layout === 'render') changeLayout('split'); }});
@@ -346,6 +350,7 @@ async function call(name, args) { return connectedCall(name, args); }
 function refreshControls() {
   story?.refresh();
   publication?.update();
+  $('history-open').disabled = !!demo || state.loading || state.saving || state.merging || state.delivering;
   $('external-review').disabled = !externalChange || state.loading || state.saving || state.merging || tables.pending();
   const headings = sourceOutline();
   const maxDepth = Math.max(0, ...headings.map(h => h.level));
@@ -499,6 +504,23 @@ for (const button of document.querySelectorAll('button[data-layout]')) button.on
 for (const button of document.querySelectorAll('button[data-format]')) button.onclick = () => changeFormat(button.dataset.format);
 window.addEventListener('message', event => {
   if (event.source !== $('preview').contentWindow || event.data?.matsugitPreview !== previewToken) return;
+  const fit = event.data.matsugitFit;
+  if (fit && state.format === 'slides' && fit.base === state.bases.slides && state.revisions.slides === state.revision) {
+    if (fitBase !== fit.base) { fitBase = fit.base; fitFindings = new Map(); }
+    const matches = sourceOutline().filter(h => h.key === fit.heading?.key);
+    const heading = matches[fit.heading?.occurrence || 0] || matches[0];
+    const from = heading?.from ?? 0;
+    const sourceSlide = structure(text(), isOrg()).headings.filter(h => h.level === 2);
+    const number = sourceSlide.findIndex(h => h.from === from) + 1;
+    if (fit.overflow || fit.overlap) fitFindings.set(fit.id, {
+      code:'rendered-fit', severity:'problem', slide:number || null,
+      title:fit.title, from, line:editor.state.doc.lineAt(from).number,
+      message:fit.overflow ? "Content doesn't fit." : 'Slide content overlaps.',
+      how:'Shorten the content or choose a manual slide break. Nothing has been changed; exporting now may retain this layout problem.',
+    });
+    else fitFindings.delete(fit.id);
+    check.refresh();
+  }
   if (event.data.presentExit) { exitPresentation(); return; }
   const wanted = event.data.matsugitEdit;
   if (wanted && !presentation && wanted.heading && typeof wanted.text === 'string') {
@@ -677,7 +699,23 @@ async function resourceRead({uri = state.uri, session = state.session} = {}) {
   const result = await call('matsugit_read', {session});
   return {...result, text: sourceText(result)};
 }
+let activeReload = null;
 async function reload(force = false, manual = false, expectedEtag = null) {
+  const revision = state.revision, sequence = loadSequence;
+  while (activeReload) {
+    if (!manual && !force) return false;
+    await activeReload;
+    if (revision !== state.revision || sequence !== loadSequence) {
+      notice('The draft changed while refreshing. Nothing was replaced; review the current versions.');
+      return false;
+    }
+  }
+  const pending = reloadNow(force,manual,expectedEtag);
+  activeReload = pending;
+  try { return await pending; }
+  finally { if (activeReload === pending) activeReload = null; }
+}
+async function reloadNow(force = false, manual = false, expectedEtag = null) {
   if ((!state.uri && !state.session) || state.loading || state.saving || state.merging || (state.refreshing && !manual)) return false;
   const sequence = loadSequence;
   const read = ++readSequence;
@@ -710,6 +748,12 @@ async function reload(force = false, manual = false, expectedEtag = null) {
       return false;
     }
     if (!force && data.etag === state.etag) return !state.conflict;
+    if (data.etag !== state.etag) {
+      await checkpoint('draft',text());
+      if (sequence !== loadSequence || read !== readSequence || state.saving || revision !== state.revision || table !== JSON.stringify(tables.snapshot())) return false;
+      await checkpoint('external',data.text);
+      if (sequence !== loadSequence || read !== readSequence || state.saving || revision !== state.revision || table !== JSON.stringify(tables.snapshot())) return false;
+    }
     if (!force && data.text !== state.base && externalChange?.data.etag !== data.etag) {
       externalChange = {base:state.base, local:text(), incoming:data.text, data, appliedText:null};
     }
@@ -738,7 +782,7 @@ async function reload(force = false, manual = false, expectedEtag = null) {
           } else await applyExternal(data, decision.text, snapshot, decision.versions);
         } catch(error) {
           // Typing during the merge is not a conflict: try again in a moment.
-          if (sequence === loadSequence && state.revision !== snapshot.revision) { mergeAttempt = null; retry = true; }
+          if (sequence === loadSequence && (state.revision !== snapshot.revision || error.retryExternal)) { mergeAttempt = null; retry = true; }
           else if (sequence === loadSequence) { state.conflict = true; notice(`Draft retained. ${error.message}`); }
         }
         finally { state.merging = false; }
@@ -812,7 +856,8 @@ async function applyExternal(data, merged, snapshot, history) {
   }
   const latest = await resourceRead();
   checkMergeSnapshot(snapshot);
-  if (latest.etag !== data.etag || latest.text !== data.text) throw Error('The file changed again.');
+  if (latest.etag !== data.etag || latest.text !== data.text)
+    throw Object.assign(Error('The file changed again; checking the latest version.'), {retryExternal:true});
   const changes = textChanges(text(), merged);
   if (changes.length && !wholesaleHistory) {
     // Outside the undo history: Undo keeps taking back the author's own edits.
@@ -857,12 +902,14 @@ async function refresh(forceFull = false) {
   await render();
 }
 async function save({review = true, auto = false} = {}) {
+  if (auto && state.restorePending) return false;
   if ($('save').disabled) return false;
   if (state.conflict) { if (review) await reviewForSave(); return false; }
   const value = text(), sequence = loadSequence;
   readSequence++;
   state.saving = true; refreshControls(); status('Saving');
   try {
+    if (state.uri) await checkpoint('before-save',state.base);
     const result = state.uri ? await extensions.resources.write(state.uri, {text: value, ifMatch: state.etag})
       : await call('matsugit_save', {session: state.session, text: value, etag: state.etag});
     if (sequence !== loadSequence) return false;
@@ -870,9 +917,12 @@ async function save({review = true, auto = false} = {}) {
       if (state.base !== value) savedHistory.remember(state.base);
       state.ancestor = null;
       state.base = value; state.etag = result.etag; state.conflict = false; state.saveError = null; state.lastSavedAt = Date.now();
+      state.restorePending = false;
       if (!auto || state.fileReceipt !== 'merged') state.fileReceipt = null;
       if (externalChange) externalChange.data = {text:value,etag:result.etag,writable:state.writable};
-      notice();
+      let historyWarning = result.historyWarning;
+      if (state.uri) { try { await checkpoint('saved',value); } catch (error) { historyWarning = 'Saved, but history failed: ' + error.message; } }
+      notice(historyWarning || '');
       return true;
     }
     else if (result.outcome === 'conflict' && auto) {
@@ -910,6 +960,8 @@ async function load(data, {acceptRevision = null} = {}) {
   incomingDocument = null;
   mergeAttempt = null; savedHistory.clear(); state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false;
   externalChange = null; state.fileMissing = false;
+  state.restorePending = false;
+  state.historyError = null;
   noticeMessage = '';
   story.reset();
   tables.reset();
@@ -980,6 +1032,10 @@ async function load(data, {acceptRevision = null} = {}) {
           }
         }
       } catch (error) { recoveryFailure(error); }
+      if (sequence !== loadSequence) return;
+      try { await checkpoint('opened',source); }
+      catch (error) { if (sequence === loadSequence) state.historyError = error.message; }
+      if (sequence !== loadSequence) return;
     }
     // Restoring an existing copy must not depend on creating another backup.
     if (suppliedRecovery) applyRecovery(suppliedRecovery);
@@ -992,6 +1048,7 @@ async function load(data, {acceptRevision = null} = {}) {
     state.standingNotice = !state.writable && !state.session && !state.uri && !demo
       ? 'This is a scratch copy to try things in; it is not saved. To keep a deck, ask in the chat: "Show me how matsugit works" for a sample of your own, or "Turn my notes into a deck".' : '';
     notice(state.writable && !state.etag ? 'The host supplied no file version. Saving is disabled to protect concurrent edits.' : '');
+    if (state.historyError) notice('History is unavailable: ' + state.historyError);
     if (state.conflict) notice('Recovered draft differs from the saved file. Both versions are retained for review.');
     else if (suppliedRecovery) notice(state.writable ? 'Recovered local draft. The source file was not changed.' : 'Recovered local copy. Download to keep it; the original file is unavailable here.');
     if (state.uri) {
@@ -1025,6 +1082,7 @@ async function follow(workspace) {
     recoveryGeneration = 0;
   } catch (error) { recoveryFailure(error); }
   refreshControls(); scheduleRecovery(); void refreshThemes();
+  if (workspace.historyWarning) notice(workspace.historyWarning);
 }
 async function download() {
   status('Sending download...');
@@ -1034,10 +1092,14 @@ async function download() {
 function recoveryScope() {
   return {...(state.session ? {session: state.session} : {}), ...(state.uri ? {resourceUri: state.uri} : {})};
 }
+async function checkpoint(reason, value = text()) {
+  if (demo || (!state.session && !state.uri)) return;
+  await call('matsugit_history_record',{...recoveryScope(),text:value,reason});
+}
 function viewState() {
   const style = document.documentElement.style;
   return {layout: state.layout, storyPreview:state.storyPreview, storyMode:state.storyMode, storySize:state.storySize, format: state.format, theme: $('theme').value, auto: $('auto').checked, sync: $('sync').checked,
-    editorMode:state.editorMode,autosave:state.autosave,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
+    editorMode:state.editorMode,autosave:state.autosave,restorePending:state.restorePending,slideSeparators:$('slide-separators').checked,tableDraft:tables.snapshot(),
     anchor: editor.state.selection.main.anchor, head: editor.state.selection.main.head, editorScroll: editor.scrollDOM.scrollTop,
     width: parseFloat(style.getPropertyValue('--source-size')) || 50, height: parseFloat(style.getPropertyValue('--source-height')) || 50,
     positions: state.positions};
@@ -1052,6 +1114,7 @@ function applyView(view) {
   changeLayout(view.layout); changeFormat(view.format);
   changeEditorMode(view.editorMode==='visual'?'visual':'raw');
   if (typeof view.autosave === 'boolean') { state.autosave = view.autosave; $('autosave').checked = view.autosave; }
+  state.restorePending = view.restorePending === true;
   $('slide-separators').checked = view.slideSeparators === true;
   editor.dispatch({effects: slideSeparators.of($('slide-separators').checked)});
   state.positions = view.positions; restoredPosition = true; origin = 'preview';
@@ -1248,6 +1311,30 @@ sharing = share({call, state, text, dirty: () => dirty() || tables.pending(), sa
   // Links open in the person's browser through the host when it can; a plain new tab otherwise.
   openLink: url => app.getHostCapabilities()?.openLinks ? app.openLink({url}).catch(() => window.open(url, '_blank', 'noopener')) : window.open(url, '_blank', 'noopener')});
 publication.update();
+const changes = historyPanel({call,scope:recoveryScope,publication:()=>publication,
+  snapshot:()=>({...mergeSnapshot(),org:state.name.toLowerCase().endsWith('.org'),dirty:dirty() || tables.pending(),
+    connected:!!state.etag,conflict:state.conflict,external:!!externalChange || !!incomingDocument || state.conflict}),
+  recover:recoveryPicker,review:()=>incomingDocument ? reviewIncoming() : state.conflict ? reviewForSave() : reviewAllChanges(),
+  apply:async (value,snapshot) => {
+    if (state.saving || state.loading || state.merging || state.delivering) throw Error('Wait for the current operation before restoring.');
+    checkMergeSnapshot(snapshot);
+    state.merging = true; refreshControls();
+    try {
+      await checkpoint('before-restore',snapshot.text);
+      checkMergeSnapshot(snapshot);
+      const latest = await resourceRead();
+      checkMergeSnapshot(snapshot);
+      if (latest.etag !== state.etag) throw Error('The file changed while History was open. Refresh and review it before restoring.');
+      if (new TextEncoder().encode(value).length > 2*1024*1024) throw Error('Restored draft exceeds 2 MiB.');
+      state.restorePending = true; clearTimeout(autosaveTimer);
+      const scroll = editor.scrollDOM.scrollTop;
+      replaceText(value); editor.scrollDOM.scrollTop = scroll;
+      state.fileReceipt = null;
+      notice('Restored to your draft. The file is unchanged. Undo reverses this; Save writes it.');
+      scheduleRecovery(); scheduleRender();
+    } finally { state.merging = false; refreshControls(); }
+  }});
+$('history-open').onclick = () => changes.open();
 $('insert').onclick = () => layouts.open();
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };

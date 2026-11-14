@@ -3,6 +3,7 @@ import unittest
 from matsugit.authoring import CATALOG, ELEMENTS, HIDDEN, TEMPLATES, editor_templates
 from matsugit.source import convert
 from matsugit.converter import converter
+from matsugit.core import Error
 
 
 class EditorTemplatesTest(unittest.TestCase):
@@ -38,11 +39,15 @@ class EditorTemplatesTest(unittest.TestCase):
                 self.assertEqual(entry['group'] == 'slide', starts_slide, key)
 
     def test_org_elements_preserve_semantics(self):
+        try:
+            pandoc = converter()
+        except Error as error:
+            self.skipTest(str(error))
         for name in ['columns', 'columns-3', 'takeaway', 'notes', 'rows']:
             with self.subTest(name=name):
                 org = self.entries[name]['org']
                 self.assertIn('#+begin_', org)
-                back = convert(org, 'org', 'markdown', converter())
+                back = convert(org, 'org', 'markdown', pandoc)
                 self.assertIn(name.replace('-3', ''), back)
         for fmt in ['markdown', 'org']:
             comment = self.entries['agent-comment'][fmt]

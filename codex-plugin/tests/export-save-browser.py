@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 from playwright.sync_api import sync_playwright
 
@@ -18,8 +19,12 @@ def wait(frame, expression, timeout=180):
     raise AssertionError(frame.locator('body').inner_text()[-3000:])
 
 
+with sync_playwright() as playwright:
+    chrome = os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE',playwright.chromium.executable_path)
 server = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')],
-                          env=dict(os.environ, MATSUGIT_TEST_DOWNLOAD='blocked'),
+                          env=dict(os.environ, MATSUGIT_TEST_DOWNLOAD='blocked',
+                              MATSUGIT_EXPORT_PYTHON=os.environ.get('MATSUGIT_EXPORT_PYTHON',sys.executable),
+                              MATSUGIT_CHROME=os.environ.get('MATSUGIT_CHROME',chrome)),
                           stdout=subprocess.PIPE, text=True)
 try:
     ready = json.loads(server.stdout.readline())

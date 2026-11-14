@@ -107,6 +107,7 @@ def main(argv=None):
             p.add_argument("--" + flag)
         if name == "render":
             p.add_argument("--output", required=True, type=Path)
+            p.add_argument('--only', choices=['document', 'slides'], help='Build only the requested view of the source')
         elif name == "publish":
             p.add_argument("--yes", action="store_true", help="Confirm committing and pushing rendered artifacts")
             p.add_argument("--deploy", action="store_true", help="Also request the explicitly installed Pages workflow")
@@ -230,7 +231,7 @@ def main(argv=None):
             return serve(args.source, args.output, open_browser=not args.no_open, port=args.port)
         settings = config(getattr(args, "source", Path.cwd() / "source.md"), vars(args))
         if args.command == "render":
-            render(settings, args.output)
+            render(settings, args.output, formats=(args.only,) if args.only else ('document', 'slides'))
             print(f"Rendered: {args.output.resolve()}")
         elif args.command == "publish":
             publish(settings, confirmed=args.yes, deploy=args.deploy)

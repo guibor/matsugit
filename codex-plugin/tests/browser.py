@@ -150,7 +150,10 @@ try:
         frame.evaluate("matsugitWorkspace.editor.dispatch({changes:{from:0,to:0,insert:'Local draft\\n'}})")
         source.write_text('# External agent edit\n')
         frame.evaluate('matsugitWorkspace.reload()')
-        assert ui.locator('#save').is_disabled()
+        # Save now opens review; it must not silently overwrite the external edit.
+        ui.locator('#save').click()
+        ui.locator('#merge-dialog').wait_for(state='visible')
+        ui.locator('#merge-cancel').click()
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString().startsWith("Local draft")')
         assert source.read_text() == '# External agent edit\n'
         print('External edit conflict retained', flush=True)

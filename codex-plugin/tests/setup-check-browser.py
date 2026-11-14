@@ -152,7 +152,9 @@ class Replies:
             passive_status = (name == 'matsugit_action'
                               and params['arguments'].get('action') == 'publication-status'
                               and params['arguments'].get('check') is False)
-            if name not in allowed and name != 'matsugit_action_status' and not passive_status:
+            opening_checkpoint = (name == 'matsugit_history_record'
+                                  and params['arguments'].get('reason') == 'opened')
+            if name not in allowed and name != 'matsugit_action_status' and not passive_status and not opening_checkpoint:
                 self.forbidden.append(params)
                 route.fulfill(json={'error': {'code': -32601, 'message': 'Unexpected tool in read-only test'}})
                 return

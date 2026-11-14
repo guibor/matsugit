@@ -91,6 +91,12 @@ test('unfinished sources, missing slides and oversized edits are bounded', t => 
   assert.throws(() => patchSlide(source,2,Array(33).fill(edit[0])),/32 exact/);
   fs.writeFileSync(file,'## A\n::: notes\nUnclosed');
   assert.throws(() => api.read(file,1),/unfinished/);
+  fs.writeFileSync(file,'## A\n```js\nUnclosed');
+  assert.throws(() => api.read(file,1),/unfinished code/);
+  fs.writeFileSync(file,'## A\nBody\n');
+  const snapshot = api.read(file,1);
+  assert.throws(() => api.edit(snapshot.edit_id,[{old:'Body',new:'```js\nBody'}]),/unfinished code/);
+  assert.equal(fs.readFileSync(file,'utf8'),'## A\nBody\n');
   fs.writeFileSync(file,'## A\n'+'x'.repeat(MAX_SLIDE));
   assert.throws(() => api.read(file,1),/64 KiB/);
 });

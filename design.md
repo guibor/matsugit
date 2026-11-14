@@ -31,6 +31,25 @@ Three surfaces sit on top:
 
 ## Python package `matsugit/`
 
+Private change history uses `history.py` (SQLite transactions, private files,
+content-addressed source snapshots) and `git_history.py` (bounded, read-only
+local Git commands). `checkpoints.mjs` calls it with the workspace's authorized
+document identity. The history schema is versioned; a newer schema is refused
+without rewriting it. A source save still uses its original etag check after
+the pre-save checkpoint, so history I/O cannot authorize an intervening write.
+Post-save checkpoint failure is reported as a history warning, never a false
+claim that the file failed to save. The database has per-document and global
+retention limits; quota failure rolls back pruning and keeps existing versions.
+
+`history-panel.mjs` is the Changes entry point. `document-state.mjs` keeps local
+draft, commit, recorded push and verified deployment observations independent.
+`slide-diff.mjs` matches unique text/body/title evidence; duplicate titles are
+not stable IDs. `history-restore.mjs` requires explicit slide destinations and
+validates structural boundaries. Restore checks the draft generation and disk
+etag after checkpointing, is one isolated Undo step and pauses autosave.
+The existing save/reconcile engine stays in `app.js`; no broad refactor is
+needed to introduce these contracts.
+
 | Module | Role | Main functions |
 | --- | --- | --- |
 | `cli.py` | Command-line entry point | `main()` dispatches every subcommand |
@@ -250,6 +269,31 @@ for navigation, never as provider API endpoints.
   `.cursor-plugin/plugin.json`; versions must match `codex-plugin/package.json`.
 
 ## Tests
+
+### Independent reading and slide projections
+
+`document.py` projects the shared Pandoc AST into continuous reading content,
+without changing the authored Markdown or inventing prose. Only structured
+claims immediately after a slide heading/break become lead paragraphs. An
+identical leading title is deduplicated with its anchor retained. Reading-only
+CSS removes slide column constraints; Reveal CSS and authored boundaries stay
+unchanged. `core.render(formats=...)` prepares only the selected projection;
+`render --only document|slides` exposes that contract. Generated navigation
+links only to built views. Portable CI includes the same projection module.
+
+`runtime/fit.js` reads rendered geometry after fonts/media and checks overflow,
+clipping and overlapping primary slide regions. It does not mutate layout or
+source. The preview reports the current slide through the existing token-bound
+bridge; Check retains only findings for the matching rendered source revision.
+It does not imply that unvisited slides were measured. The optional full-deck
+browser lint uses the identical measurement code. Fit findings are advisory,
+not build or export failures (unless the author explicitly requests strict lint).
+
+Preview titles with unchanged anchor/attributes can patch in place, including
+the copied Reveal menu label. A changed anchor or heading structure forces a
+full render; document headings still rebuild their TOC. Claims remain inert
+text patches. Fonts, theme, slide geometry and source text are never rewritten
+to make a patch succeed.
 
 - `python3 -m unittest discover -s tests`: renderer, layout, publication,
   catalogue, Cursor install (synthetic fixtures and local Git remotes only).

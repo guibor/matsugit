@@ -8,6 +8,7 @@
     <div class="identity"><span id="brand-icon"></span><strong>matsugit</strong><span id="filename">Untitled.md</span><button id="copy-path" title="Copy document path" aria-label="Copy document path" disabled></button><span id="dirty" hidden aria-hidden="true">*</span><span id="save-state" role="status" aria-live="polite">Local copy</span></div>
     <div class="actions">
       <button id="share" title="Share this deck with others"></button>
+      <button id="history-open" title="Changes and history" aria-haspopup="dialog" aria-controls="history-dialog"></button>
       <button id="insert" title="Add a slide or a layout" aria-label="Add a slide or a layout"></button>
       <button id="undo" title="Undo" aria-label="Undo"></button><button id="redo" title="Redo" aria-label="Redo"></button>
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
@@ -110,6 +111,22 @@
   <div id="slide-rail" role="toolbar" aria-label="Slides" hidden></div>
   <footer><span id="status" role="status">Connecting</span><span id="recovery-status"></span><span id="location">Ln 1, Col 1</span><span id="workspace-version"></span></footer>
 </main>
+<dialog id="history-dialog" class="delivery-dialog" aria-labelledby="history-title">
+  <div class="recovery-heading"><h2 id="history-title">Changes</h2><button id="history-close" aria-label="Close changes" title="Close changes" autofocus></button></div>
+  <div id="history-now"></div>
+  <div class="incoming-actions"><button id="history-review">Review changes made elsewhere</button><button id="history-recover">Unsaved recovery copies</button></div>
+  <h3>History</h3>
+  <p>Local source checkpoints and recent local commits. Images and themes are not restored. No remote history is fetched.</p>
+  <div id="history-items" aria-label="Source checkpoints"></div>
+  <p id="history-status" role="status" aria-live="polite"></p>
+  <section id="history-preview" hidden>
+    <ul id="history-slide-changes" aria-label="Slide changes"></ul>
+    <details><summary>Full source comparison</summary><div class="change-diff"><label>Earlier source<textarea id="history-before" readonly></textarea></label><label>Current draft<textarea id="history-after" readonly></textarea></label></div></details>
+    <button id="history-restore-document">Restore document to draft</button>
+    <div class="history-slide-controls"><label>Earlier slide<select id="history-slide"></select></label><label>Placement<select id="history-placement"><option value="replace">Replace selected slide</option><option value="after">Insert after selected slide</option><option value="end">Append at end</option></select></label><label>Current slide<select id="history-destination"></select></label><button id="history-restore-slide">Restore slide to draft</button></div>
+    <p>Restore is undoable. Save explicitly to change the file.</p>
+  </section>
+</dialog>
 <dialog id="setup-dialog" class="delivery-dialog" aria-labelledby="setup-title" aria-describedby="setup-status">
   <div class="recovery-heading"><h2 id="setup-title">Check setup</h2><button type="button" id="setup-close" title="Close setup check" aria-label="Close setup check" autofocus></button></div>
   <p id="setup-status" role="status" aria-live="polite" aria-atomic="true"></p>

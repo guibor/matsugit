@@ -206,7 +206,7 @@ def run(seed):
                     raise Failure(f'other writer\'s lines on disk missing from the editor: {missing}')
             browser.close()
         return log
-    except Failure as failure:
+    except Exception as failure:
         raise Failure(f'seed {seed} (autosave {autosave}): {failure}\nsteps: {log}') from None
     finally:
         host.terminate()
@@ -232,7 +232,14 @@ def resolve(frame, page, log):
             frame.locator('#merge-next').click()
         else:
             break
-    frame.locator('#merge-apply').click()
+    try:
+        frame.locator('#merge-apply').click()
+    except Exception:
+        page.screenshot(path=f'/tmp/matsugit-merge-timeout-{os.getpid()}.png')
+        print('Merge timeout state:',frame.evaluate('''() => {const d=document.getElementById('merge-dialog'),b=document.getElementById('merge-apply');
+          return {open:d.open,dialogRect:d.getBoundingClientRect().toJSON(),buttonRect:b.getBoundingClientRect().toJSON(),
+          display:getComputedStyle(b).display,visibility:getComputedStyle(b).visibility,body:document.body.innerText.slice(-4000)};}'''),flush=True)
+        raise
     deadline = time.monotonic() + 20
     while frame.evaluate('document.getElementById("merge-dialog").open') and time.monotonic() < deadline:
         if frame.locator('#merge-both').is_visible() and frame.locator('#merge-apply').is_enabled():

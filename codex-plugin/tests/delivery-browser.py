@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import time
 import zipfile
@@ -19,7 +20,8 @@ def wait(frame, expression, timeout=180):
     raise AssertionError(frame.locator('body').inner_text()[-3000:])
 
 
-server = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')], stdout=subprocess.PIPE, text=True)
+server = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')], stdout=subprocess.PIPE,text=True,
+    env=dict(os.environ,MATSUGIT_EXPORT_PYTHON=os.environ.get('MATSUGIT_EXPORT_PYTHON',sys.executable)))
 try:
     ready = json.loads(server.stdout.readline())
     source = Path(ready['source']); original = source.read_text()
