@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-peek-') as folder:
                 button.click()
                 wait(frame,'!!document.querySelector("#slide-peek iframe")?.getAttribute("src")')
                 slide = frame.locator('#slide-peek iframe').element_handle().content_frame()
-                wait(slide,'window.Reveal?.getCurrentSlide()?.textContent.includes("WORKING_BODY")',20)
+                wait(slide,'window.Reveal?.getCurrentSlide?.()?.textContent.includes("WORKING_BODY")',20)
                 assert not slide.evaluate('Reveal.isScrollView()')
                 assert 'Unsaved working evidence.' in slide.locator('section.present').inner_text()
                 bounds = frame.locator('#slide-peek').bounding_box()

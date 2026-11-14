@@ -127,8 +127,8 @@ function paintNotice() {
   $('notice-recreate').disabled = state.saving || state.loading || state.merging || state.delivering || tables?.pending();
   $('reload').hidden = !state.conflict && !state.incomingReady && !incomingDocument && !(state.fileReceipt && externalChange);
   $('accept-update').hidden = !state.incomingReady || !!state.conflict;
-  $('accept-update').textContent = dirty() ? 'Combine changes' : 'Accept update';
-  $('accept-update').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
+  $('accept-update').textContent = state.accepting ? 'Checking update...' : dirty() ? 'Combine changes' : 'Accept update';
+  $('accept-update').disabled = state.accepting || state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
   $('notice-save').hidden = !state.fileReceipt || state.conflict || state.incomingReady || !dirty();
@@ -723,8 +723,12 @@ async function reload(force = false, manual = false, expectedEtag = null, accept
   }
   const pending = reloadNow(force,manual,expectedEtag,accept);
   activeReload = pending;
+  if (accept) { state.accepting = true; refreshControls(); }
   try { return await pending; }
-  finally { if (activeReload === pending) activeReload = null; }
+  finally {
+    if (activeReload === pending) activeReload = null;
+    if (accept) { state.accepting = false; refreshControls(); }
+  }
 }
 async function reloadNow(force = false, manual = false, expectedEtag = null, accept = false) {
   if ((!state.uri && !state.session) || state.loading || state.saving || state.merging || (state.refreshing && !manual)) return false;
@@ -780,7 +784,6 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
       state.incomingReady = {etag:data.etag,agent:!!data.agentBases?.includes(state.etag)};
       notice(); refreshControls(); return false;
     }
-    if (accept || force) state.incomingReady = null;
     if (data.etag !== state.etag) {
       await checkpoint('draft',text());
       if (sequence !== loadSequence || read !== readSequence || state.saving || revision !== state.revision || table !== JSON.stringify(tables.snapshot())) return false;
@@ -822,6 +825,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
             }});
           checkMergeSnapshot(snapshot);
           if (decision.review) {
+            state.incomingReady = null;
             state.ancestor = decision.base; state.reviewWhole = !!decision.whole;
             state.ambiguousExternal = !!decision.ambiguous; state.conflict = true; notice();
           } else await applyExternal(data, decision.text, snapshot, decision.versions);

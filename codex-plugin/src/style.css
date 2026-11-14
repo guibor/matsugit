@@ -379,12 +379,12 @@ header{padding:8px 14px;gap:10px;border-bottom:1px solid var(--border);backgroun
 #filename{font-size:12.5px;color:var(--fg);opacity:.75}
 #save-state{padding:2px 8px;border-radius:999px;background:var(--muted-bg)}#save-state[data-kind=saved]{color:var(--ok)}
 #save-state[data-kind=dirty]{color:var(--accent);background:var(--accent-soft)}#save-state[data-kind=review]{color:var(--muted)}#save-state[data-kind=error]{color:var(--bad)}
-#slide-peek{box-sizing:border-box;width:min(1100px,calc(100% - 16px));height:min(760px,calc(100dvh - 16px));max-height:calc(100dvh - 16px);padding:12px}
+#slide-peek{box-sizing:border-box;width:min(1100px,calc(100% - 16px));max-height:calc(100dvh - 16px);padding:12px}
 #slide-peek[open]{display:flex;flex-direction:column;gap:8px}
 #slide-peek header{display:flex;align-items:center;gap:12px;flex-shrink:0}
 #slide-peek-title{font-size:14px;line-height:1.3;overflow-wrap:anywhere;flex:1;min-width:0}
 #slide-peek header button{flex:0 0 32px;width:32px;height:32px}
-#slide-peek iframe{border:0;width:100%;flex:1;min-height:0;background:white}
+#slide-peek iframe{border:0;width:100%;aspect-ratio:16/9;max-height:calc(100dvh - 100px);flex:0 1 auto;min-height:0;background:white}
 #slide-peek iframe[hidden]{display:none}
 .actions{gap:4px;align-items:center}.actions>button{border-radius:7px}
 #share{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:0 12px 0 10px;min-height:30px}

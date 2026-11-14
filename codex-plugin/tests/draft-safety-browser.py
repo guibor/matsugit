@@ -40,10 +40,8 @@ try:
         Path(ready['source']).write_text(incoming)
         frame.evaluate('matsugitWorkspace.reload()')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==draft, 'An agent update replaced recently saved local edits without review'
-        full_versions()
-        frame.locator('#incoming-dialog').wait_for(state='visible')
-        frame.locator('#incoming-use').click()
-        frame.wait_for_function('()=>!document.getElementById("incoming-dialog").open')
+        frame.locator('#accept-update').click()
+        frame.wait_for_function('()=>!matsugitWorkspace.state.incomingReady && !matsugitWorkspace.state.merging')
         assert frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')==incoming
         # Nothing before the accepted file can be undone, so Undo is not offered.
         assert frame.locator('#undo').is_disabled(), 'Undo offered across the external baseline'
