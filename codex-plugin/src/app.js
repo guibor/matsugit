@@ -17,7 +17,7 @@ import {slideRail} from './slide-rail.mjs';
 import {textChanges, savedEditHistory, planExternalEdit, wholeFileReview} from './external-edits.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding, setupProblem} from './check.mjs';
-import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
+import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, ArrowLeft, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
 import {previewHtml, patchedHtml} from './preview.js';
 import {structure, headingTargets} from './structure.mjs';
 import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} from './authoring.mjs';
@@ -177,10 +177,11 @@ installRoleHelp($('editor'), $('role-help'));
 for (const [id, icon] of Object.entries({'brand-icon': FileText, 'empty-icon': PanelsTopLeft,
   open: FolderOpen, save: Save, download: Download, undo: Undo2, redo: Redo2, refresh: RefreshCw, insert: Plus,
   recover: History, 'close-recovery': X, 'compact-markup': Braces, present: Presentation,
-  'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': Minimize2,
+  'present-previous': ChevronLeft, 'present-next': ChevronRight, 'present-exit': ArrowLeft,
   'copy-path':Copy, 'edit-table':Table2, 'external-review':GitCompareArrows, 'notice-dismiss':X})) $(id).append(createElement(icon));
 $('insert').append('Add');
 $('present').append('Present');
+$('present-exit').append('Exit presentation');
 $('more').append(createElement(Ellipsis));
 $('view-options').append(createElement(SlidersHorizontal));
 $('view-options').onclick = () => {

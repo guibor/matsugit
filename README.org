@@ -173,7 +173,8 @@ skill-only option with no server.
    sends just that slide) while you keep working on another.
 5. *Check.* Clear what =Check= lists.
 6. *Arrange.* Reorder in =Story= until the argument reads in sequence.
-7. *Present.* The screen icon presents; Escape returns to editing.
+7. *Present.* The screen icon presents; =Exit presentation= or Escape returns
+   to your previous view.
 8. *Share.* One button, then a link.
 
 Your file is saved when you press Save. Turn on =Save automatically= under the

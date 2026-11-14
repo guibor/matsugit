@@ -295,6 +295,11 @@ full render; document headings still rebuild their TOC. Claims remain inert
 text patches. Fonts, theme, slide geometry and source text are never rewritten
 to make a patch succeed.
 
+Presentation mode keeps its controls opaque, with a labeled `Exit presentation`
+command and a return arrow distinct from fullscreen controls. Exiting restores
+the previous view and follow setting and focuses Present. Escape remains an
+alternative; finding the return action must not depend on knowing that key.
+
 - `python3 -m unittest discover -s tests`: renderer, layout, publication,
   catalogue, Cursor install (synthetic fixtures and local Git remotes only).
 - `npm test --prefix codex-plugin`: pure modules and the built server over MCP.

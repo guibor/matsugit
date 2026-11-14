@@ -211,6 +211,10 @@ Immediate, in priority order:
 
 * Requirements that changed
 
+- 2026-11-15, presentation exit must be discoverable without hover or a shortcut.
+  Keep the Present/fullscreen entry behavior; show a persistent, labeled
+  =Exit presentation= command that returns to the prior view.
+
 - 2026-11-14, preserve the existing slide design and manual boundaries. One
   authored Markdown document remains authoritative; reading and slide outputs
   are generated independently. Actual rendered overflow is advisory in Check,
