@@ -474,8 +474,15 @@ function showPreview() {
 }
 function changeFormat(format) {
   if (format === state.format && state.rendered?.[format]) return;
+  if (format !== state.format) {
+    // A failed slide render says nothing about a cached or pending document.
+    if (noticeMessage === state.renderNotice) noticeMessage = '';
+    state.renderError = null; state.renderNotice = null; state.setupIssue = false;
+    $('preview-stale').hidden = true;
+  }
   state.format = format;
   check?.refresh();
+  paintNotice();
   state.renderedRevision = state.revisions[format] ?? -1;
   for (const button of document.querySelectorAll('[data-format]')) button.setAttribute('aria-pressed', String(button.dataset.format === format));
   if (state.rendered?.[format]) showPreview();
@@ -704,7 +711,7 @@ async function render(manual = true) {
       // Say it in slide words, keep the last good preview visibly marked as old,
       // and point at the list that explains where the problem is.
       state.renderError = error.message;
-      state.renderNotice = "The preview can't update yet. " + check.refresh().find(item => item.severity === 'problem').message;
+      state.renderNotice = "The preview can't update yet. " + (check.refresh().find(item => item.severity === 'problem')?.message || error.message);
       notice(state.renderNotice); $('empty-label').textContent = 'Preview unavailable';
       $('preview-stale').hidden = !state.rendered?.[format];
       if (refreshRequested) { refreshRequested = false; actionFeedback('refresh', 'error', 'Preview failed'); }

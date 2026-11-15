@@ -1,5 +1,13 @@
 #+title: matsugit product requirements
 
+* Changed requirement: checks belong to the active output (2026-11-15)
+
+Reading mode must not show slide-only heading, claim, takeaway, column-count,
+aspect-ratio or density findings as document problems. Shared syntax, chart
+and actual document-render failures remain actionable. Switching outputs
+clears the other output's failed-preview notice, including when the new view
+is cached. Checks never rewrite the source or weaken slide validation.
+
 * Follow-up reports after document export (2026-11-15)
 
 - Open document/Open slides and export-related open-link buttons reportedly do

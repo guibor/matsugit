@@ -15,6 +15,25 @@ test('reading mode excludes slide fit and density, not document structure errors
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const python = process.env.MATSUGIT_PYTHON || 'python3';
 const H = '---\ntitle: T\nslide-layout: structured\n---\n\n';
+test('document checks allow prose headings and repeated takeaways without changing slides', () => {
+  const source = H + '# Chapter\n\n### Intro\n\n## Concepts\n\nBody.\n\n### Definition\n\nDetail.\n\n'
+    + '::: takeaway\nFirst.\n:::\n\n::: takeaway\nSecond.\n:::\n';
+  const findings = checkDeck(source);
+  for (const code of ['claim-extra', 'claim-untitled', 'takeaway-extra'])
+    assert.ok(findings.some(f => f.code === code), code);
+  assert.deepEqual(findingsForFormat(findings, 'document'), []);
+  assert.deepEqual(findingsForFormat(findings, 'slides'), findings);
+});
+test('document keeps shared syntax and chart errors, not slide settings or column limits', () => {
+  const source = H.replace('slide-layout: structured', 'slide-layout: structured\nslide-title-page: "false"\ndocument-collapsible: "true"')
+    + '## Section\n\n:::: columns\n#### One\nText.\n::::\n\n'
+    + '::: chart\nNo data.\n:::\n\n::: evidence\nUnclosed.\n';
+  const findings = checkDeck(source), document = findingsForFormat(findings, 'document');
+  assert.ok(findings.some(f => f.code === 'parts-count'));
+  assert.ok(!document.some(f => f.code === 'parts-count'));
+  assert.equal(document.filter(f => f.code === 'setting-quoted').length, 1);
+  for (const code of ['chart-table', 'block-open']) assert.ok(document.some(f => f.code === code), code);
+});
 test('Pages subtitle failures are caught locally with a targeted body-heading fix', () => {
   const text = H + '## Concepts\n\nBody text.\n\n### Definition\n\nMore text.\n';
   const finding = checkDeck(text).find(f => f.code === 'claim-extra');

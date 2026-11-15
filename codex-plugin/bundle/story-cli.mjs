@@ -4459,9 +4459,10 @@ function checkDeck(source, org = false) {
     return heading2?.level === 2 ? { slide: heading2.number, title: heading2.label } : { slide: null, title: heading2 ? heading2.label : "" };
   };
   const findings = [];
-  const add = (code, severity, from, message, how, fix) => findings.push({
+  const add = (code, severity, from, message, how, fix, scope = "both") => findings.push({
     code,
     severity,
+    scope,
     ...where(from),
     from,
     line: source.slice(0, from).split("\n").length,
@@ -4488,7 +4489,8 @@ function checkDeck(source, org = false) {
       setting.line.from,
       `The setting \`${key}\` must be true or false without quotation marks.`,
       `Write \`${key}: ${setting.value}\`.`,
-      /^(true|false)$/.test(setting.value) ? { label: "Remove quotes", changes: [{ from: setting.line.from, to: setting.line.to, insert: `${key}: ${setting.value}` }] } : void 0
+      /^(true|false)$/.test(setting.value) ? { label: "Remove quotes", changes: [{ from: setting.line.from, to: setting.line.to, insert: `${key}: ${setting.value}` }] } : void 0,
+      key.startsWith("slide-") ? "slides" : "both"
     );
   }
   if (settings["slide-layout"] && !["default", "structured", "title-claim"].includes(layout))
@@ -4596,6 +4598,7 @@ function checkDeck(source, org = false) {
     if ((block.role === "rows" || block.role === "columns" && !explicit) && !arranged) needsLayout ||= block;
     if (["columns", "rows"].includes(block.role) && !arranged) continue;
     const name2 = title(block.role), [low, high] = LIMITS[block.role];
+    const scope = ["columns", "rows"].includes(block.role) ? "slides" : "both";
     const range = low === high ? `exactly ${low}` : high - low === 1 ? `${low} or ${high}` : `${low} to ${high}`;
     let parts;
     if (explicit) parts = items.length;
@@ -4605,7 +4608,9 @@ function checkDeck(source, org = false) {
         "problem",
         block.from,
         `This ${name2} block mixes \`####\` headings with separate \`${ITEM[block.role]}\` blocks.`,
-        `Use one style: either a \`####\` heading to start each part, or one \`${ITEM[block.role]}\` block per part.`
+        `Use one style: either a \`####\` heading to start each part, or one \`${ITEM[block.role]}\` block per part.`,
+        void 0,
+        scope
       );
       continue;
     } else if (items.length && items[0].kind !== "h4") {
@@ -4615,7 +4620,8 @@ function checkDeck(source, org = false) {
         items[0].from,
         `Each part of a ${name2} block must start with a \`####\` heading. This content comes before the first one.`,
         "Add a line such as `#### First part` above it, or move the content into a part.",
-        { label: "Add heading", changes: [{ from: items[0].from, to: items[0].from, insert: "#### Part title\n\n" }] }
+        { label: "Add heading", changes: [{ from: items[0].from, to: items[0].from, insert: "#### Part title\n\n" }] },
+        scope
       );
       continue;
     } else {
@@ -4628,7 +4634,9 @@ function checkDeck(source, org = false) {
           "problem",
           head.from,
           `This part of the ${name2} block has a heading but no content.`,
-          "Write something under the heading, or remove the heading."
+          "Write something under the heading, or remove the heading.",
+          void 0,
+          scope
         );
       }
     }
@@ -4637,7 +4645,9 @@ function checkDeck(source, org = false) {
       "problem",
       block.from,
       `This ${name2} block has ${parts} ${parts === 1 ? "part" : "parts"}. ${name2} works with ${range}.`,
-      parts > high ? "Merge parts, or move some to a second slide with a `---` line." : `Add ${parts ? "another" : "a"} part: a \`####\` heading with content under it.`
+      parts > high ? "Merge parts, or move some to a second slide with a `---` line." : `Add ${parts ? "another" : "a"} part: a \`####\` heading with content under it.`,
+      void 0,
+      scope
     );
   }
   if (needsLayout) {

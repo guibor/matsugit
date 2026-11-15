@@ -113,7 +113,7 @@ export function checkDeck(source, org = false) {
       : {slide: null, title: heading ? heading.label : ''};
   };
   const findings = [];
-  const add = (code, severity, from, message, how, fix) => findings.push({code, severity, ...where(from), from,
+  const add = (code, severity, from, message, how, fix, scope = 'both') => findings.push({code, severity, scope, ...where(from), from,
     line: source.slice(0, from).split('\n').length, message, how, ...(fix ? {fix} : {})});
   const lineOf = from => lines.findLast(line => line.from <= from);
   const fenceText = block => ':'.repeat(block.width);
@@ -127,7 +127,8 @@ export function checkDeck(source, org = false) {
     const setting = settings[key];
     if (setting && /^['"]/.test(setting.raw)) add('setting-quoted', 'problem', setting.line.from,
       `The setting \`${key}\` must be true or false without quotation marks.`, `Write \`${key}: ${setting.value}\`.`,
-      /^(true|false)$/.test(setting.value) ? {label: 'Remove quotes', changes: [{from: setting.line.from, to: setting.line.to, insert: `${key}: ${setting.value}`}]} : undefined);
+      /^(true|false)$/.test(setting.value) ? {label: 'Remove quotes', changes: [{from: setting.line.from, to: setting.line.to, insert: `${key}: ${setting.value}`}]} : undefined,
+      key.startsWith('slide-') ? 'slides' : 'both');
   }
   if (settings['slide-layout'] && !['default', 'structured', 'title-claim'].includes(layout))
     add('setting-layout', 'problem', settings['slide-layout'].line.from, `\`slide-layout: ${layout}\` is not a layout matsugit knows.`,
@@ -199,17 +200,18 @@ export function checkDeck(source, org = false) {
     if ((block.role === 'rows' || block.role === 'columns' && !explicit) && !arranged) needsLayout ||= block;
     if (['columns', 'rows'].includes(block.role) && !arranged) continue;
     const name = title(block.role), [low, high] = LIMITS[block.role];
+    const scope = ['columns', 'rows'].includes(block.role) ? 'slides' : 'both';
     const range = low === high ? `exactly ${low}` : high - low === 1 ? `${low} or ${high}` : `${low} to ${high}`;
     let parts;
     if (explicit) parts = items.length;
     else if (items.some(item => item.kind === 'item') && items.some(item => item.kind === 'h4')) {
       add('parts-mixed', 'problem', block.from, `This ${name} block mixes \`####\` headings with separate \`${ITEM[block.role]}\` blocks.`,
-        `Use one style: either a \`####\` heading to start each part, or one \`${ITEM[block.role]}\` block per part.`);
+        `Use one style: either a \`####\` heading to start each part, or one \`${ITEM[block.role]}\` block per part.`, undefined, scope);
       continue;
     } else if (items.length && items[0].kind !== 'h4') {
       add('parts-start', 'problem', items[0].from, `Each part of a ${name} block must start with a \`####\` heading. This content comes before the first one.`,
         'Add a line such as `#### First part` above it, or move the content into a part.',
-        {label: 'Add heading', changes: [{from: items[0].from, to: items[0].from, insert: '#### Part title\n\n'}]});
+        {label: 'Add heading', changes: [{from: items[0].from, to: items[0].from, insert: '#### Part title\n\n'}]}, scope);
       continue;
     } else {
       const heads = items.filter(item => item.kind === 'h4');
@@ -217,13 +219,13 @@ export function checkDeck(source, org = false) {
       for (const head of heads) {
         const following = items[items.indexOf(head) + 1];
         if (!following || following.kind === 'h4') add('parts-empty', 'problem', head.from,
-          `This part of the ${name} block has a heading but no content.`, 'Write something under the heading, or remove the heading.');
+          `This part of the ${name} block has a heading but no content.`, 'Write something under the heading, or remove the heading.', undefined, scope);
       }
     }
     if (parts < low || parts > high) add('parts-count', 'problem', block.from,
       `This ${name} block has ${parts} ${parts === 1 ? 'part' : 'parts'}. ${name} works with ${range}.`,
       parts > high ? 'Merge parts, or move some to a second slide with a `---` line.'
-        : `Add ${parts ? 'another' : 'a'} part: a \`####\` heading with content under it.`);
+        : `Add ${parts ? 'another' : 'a'} part: a \`####\` heading with content under it.`, undefined, scope);
   }
   if (needsLayout) {
     const key = settings['slide-layout'];
@@ -373,9 +375,10 @@ export function checkSummary(findings) {
   return {problems, tips, label: problems ? `${problems} to fix` : tips ? `${tips} ${tips === 1 ? 'tip' : 'tips'}` : 'No problems'};
 }
 
-const SLIDE_ONLY = new Set(['title-continued', 'slide-empty', 'title-long', 'slide-dense', 'table-dense', 'rendered-fit']);
+const SLIDE_ONLY = new Set(['title-continued', 'slide-empty', 'title-long', 'slide-dense', 'table-dense', 'rendered-fit',
+  'claim-extra', 'claim-untitled', 'takeaway-extra', 'heading-inside', 'layout-off', 'setting-layout', 'setting-ratio']);
 export function findingsForFormat(findings, format) {
-  return format === 'document' ? findings.filter(item => !SLIDE_ONLY.has(item.code)) : findings;
+  return format === 'document' ? findings.filter(item => item.scope !== 'slides' && !SLIDE_ONLY.has(item.code)) : findings;
 }
 
 // A tool missing from this computer is not a problem in the deck. Say what to

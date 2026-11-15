@@ -1,5 +1,11 @@
 # matsugit design
 
+Check findings are filtered for the active output before adding its renderer
+failure. This prevents hidden slide findings from masking a real document
+failure. Column/row and slide-setting checks carry explicit slide scope;
+shared block/chart checks remain. Changing output clears the previous output's
+render error and notice before showing a cached preview or starting a render.
+
 Document exports carry an explicit document/slides view through the workspace
 action schema, CLI and Emacs command. HTML/PDF render only that view. Reading
 PDFs print index.html without Reveal initialization; screen-only disclosure CSS

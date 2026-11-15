@@ -30,6 +30,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, format = () => 
       message: 'The check could not read this document.', how: error.message}]; }
     // The renderer is the authority. Show its message when the check has no
     // explanation of its own, so a failed preview is never left unexplained.
+    found = findingsForFormat(found, format());
     const failure = renderError();
     if (failure && !found.some(item => item.severity === 'problem')) found.unshift(rendererFinding(failure));
     const measured = renderedFindings();
@@ -85,6 +86,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, format = () => 
     $('check-icon').replaceChildren(createElement(summary.problems ? TriangleAlert : summary.tips ? Lightbulb : CircleCheck));
     $('check-label').textContent = summary.label;
     const documentMode = format() === 'document';
+    panel.setAttribute('aria-label', documentMode ? 'Document check' : 'Slide check');
     chip.title = summary.problems ? 'Open issues for this view.' : summary.tips ? 'Open suggestions for this view.' : documentMode ? 'No document problems found' : 'No problems found in the slide structure';
     $('check-summary').textContent = !findings.length ? documentMode ? 'No document problems found.' : 'No problems found. Fit is checked as slides are displayed; still review the whole deck.'
       : [summary.problems && `${summary.problems} to fix`, summary.tips && `${summary.tips} ${summary.tips === 1 ? 'tip' : 'tips'}`].filter(Boolean).join(', ');
