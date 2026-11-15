@@ -126,7 +126,7 @@ class RenderParityTests(unittest.TestCase):
                         self.assertIn('LITERAL_NOTES',generated)
                     if real:
                         for name in ('index.html','slides.html'):
-                            for folder in (local,bundle,previews[0 if name=='index.html' else 1]):
+                            for folder in (local,repo/'.matsugit-ci/site/demo',previews[0 if name=='index.html' else 1]):
                                 html = (folder/name).read_text()
                                 self.assertEqual('SourceSentinel' in html,flag)
                                 self.assertEqual('NotesSentinel' in html,flag or name=='slides.html')
