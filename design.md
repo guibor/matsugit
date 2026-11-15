@@ -1,5 +1,11 @@
 # matsugit design
 
+Document exports carry an explicit document/slides view through the workspace
+action schema, CLI and Emacs command. HTML/PDF render only that view. Reading
+PDFs print index.html without Reveal initialization; screen-only disclosure CSS
+does not hide printed content. Existing CLI/API calls default to slides. ZIP
+continues to render both. Generated document filenames carry a distinct suffix.
+
 Share links use host navigation and separate icon-only clipboard controls.
 `copy-link.mjs` first copies a temporary selection inside the active modal,
 then tries the asynchronous Clipboard API with a bounded wait. If neither

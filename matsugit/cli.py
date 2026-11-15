@@ -44,6 +44,7 @@ def main(argv=None):
     export = commands.add_parser('export', help='Export a local file, optionally into a configured synced folder')
     export.add_argument('source', type=Path)
     export.add_argument('--format', choices=['html', 'zip', 'pptx', 'pdf'], required=True)
+    export.add_argument('--view', choices=['document', 'slides'], default='slides', help='Content for HTML/PDF (default: slides); ZIP contains both')
     export.add_argument('--output', type=Path)
     export.add_argument('--sync-folder', action='store_true')
     export.add_argument('--replace', action='store_true', help='Explicitly replace an existing export, including external edits')
@@ -178,7 +179,7 @@ def main(argv=None):
         if args.command == 'export':
             from .exports import export_file
             result = export_file(config(args.source, vars(args)), args.format, args.output,
-                                 sync_folder=args.sync_folder, reference=args.reference_doc, replace=args.replace)
+                                 sync_folder=args.sync_folder, reference=args.reference_doc, replace=args.replace, view=args.view)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         if args.command == 'setup-diagrams':

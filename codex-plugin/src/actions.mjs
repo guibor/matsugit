@@ -54,7 +54,7 @@ export class WorkspaceActions {
     const extension = ['.md','.markdown','.qmd','.org'].includes(path.extname(args.name || '').toLowerCase()) ? path.extname(args.name) : '.md';
     const output = args.action === 'export' && !args.sync_folder ? path.join(directory, 'export.' + args.format) : undefined;
     const job = {owner, directory, state:'running', action:args.action, log:'', destination:relocation?.destination,
-      exportName:output ? this.exportName(args.name, args.format) : undefined};
+      exportName:output ? this.exportName(args.name, args.format, args.view) : undefined};
     if (relocation) this.store.expectRelocation(owner, relocation.destination);
     this.jobs.set(id, job);
     const child = spawn(pythonExecutable(),
@@ -113,7 +113,7 @@ export class WorkspaceActions {
     finally { fs.closeSync(fd); }
     return {chunk:buffer.toString('base64'), next:offset+buffer.length, done:offset+buffer.length === job.size};
   }
-  exportName(name, format) {
+  exportName(name, format, view = 'slides') {
     const leaf = String(name || 'Untitled.md').split(/[\\/]/).at(-1).replace(/[\x00-\x1f\x7f]/g, '_');
     const stem = path.parse(leaf).name.replace(/^\.+/, '') || 'Untitled';
     let shortened = '';
@@ -121,7 +121,7 @@ export class WorkspaceActions {
       if (Buffer.byteLength(shortened + character) > 180) break;
       shortened += character;
     }
-    return shortened + '.' + format;
+    return shortened + (view === 'document' ? '-document' : '') + '.' + format;
   }
   saveExport(id, session, hostPath) {
     this.status(id, session, hostPath);

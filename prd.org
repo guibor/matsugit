@@ -1,5 +1,23 @@
 #+title: matsugit product requirements
 
+* Follow-up reports after document export (2026-11-15)
+
+- Open document/Open slides and export-related open-link buttons reportedly do
+  nothing instead of opening the browser. Investigate host navigation after the
+  document-export fix; do not conflate a click/request with confirmed opening.
+- A table close to a heading reportedly appears as pipe text. A synthetic table
+  immediately after a heading parses correctly; one after ordinary paragraph
+  text without a blank line reproduces the failure. Confirm the user's exact
+  excerpt and affected view before changing parsing; preserve literal code.
+
+* Changed requirement: independent reading exports (2026-11-15)
+
+Document HTML/PDF exports must never invoke slide layout or fail on slide-only
+heading rules. The workspace offers explicit Document PDF/HTML choices and
+defaults to the active view. CLI --view and Emacs M-x matsugit-export select
+the same backend path. ZIP remains both outputs; PowerPoint remains slides.
+Reading PDFs include folded content. The source and unsaved draft stay intact.
+
 * Next release: forgiving slide builds (2026-11-15)
 
 Recoverable authoring mistakes should produce warnings and usable slides, not

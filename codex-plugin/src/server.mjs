@@ -87,6 +87,7 @@ serveStdio(() => {
       provider:z.enum(['github','gitlab']).optional(), host:z.string().max(253).optional(), repository:z.string().max(512).optional(), page:z.number().int().min(1).max(1000).optional(),
       text:z.string().max(MAX_SOURCE).optional(), name:z.string().max(512).optional(), theme:z.string().max(80).optional(),
       target:z.string().max(80).optional(), build:z.enum(['ci','local']).optional(), format:z.enum(['html','zip','pptx','pdf']).optional(),
+      view:z.enum(['document','slides']).optional(),
       sync_folder:z.boolean().optional(), replace:z.boolean().optional(), plan:z.string().optional(), deploy:z.boolean().optional(), move_source:z.boolean().optional()}),
     annotations:{readOnlyHint:false, destructiveHint:true, openWorldHint:true}},
     guard(async (args,context) => result(actions.start(args,getResourcePath(context.mcpReq?._meta)))));

@@ -51,7 +51,7 @@
   '("cover" "statement" "summary" "metrics" "exhibit" "evidence" "table"
     "okr-summary" "okr-objective"
     "comparison" "process" "d2" "timeline" "quotation" "decision" "chart"
-    "implication" "mapping" "annotated" "assertion" "section" "canvas")
+    "implication" "mapping" "annotated" "assertion" "section" "canvas" "collapsible")
   "Theme-independent slide recipes supplied by the shared renderer.")
 
 (defun matsugit-convert-string (text from to)
@@ -215,16 +215,21 @@ Resolve the remote launcher there and strip TRAMP prefixes only for that host."
   (message "Publishing target: %s" (or matsugit-target "project/host default")))
 
 ;;;###autoload
-(defun matsugit-export (format output sync-folder)
+(defun matsugit-export (format output sync-folder &optional view)
   "Export FORMAT to OUTPUT, or with prefix to the configured SYNC-FOLDER.
-Never publishes to Git or connects a cloud account."
+VIEW selects document or slides for HTML/PDF, defaulting to slides for callers.
+Interactively ask which view to export.  Never publishes to Git or connects a
+cloud account."
   (interactive
    (let* ((format (completing-read "Export format: " '("pptx" "pdf" "html" "zip") nil t))
+          (view (if (member format '("html" "pdf"))
+                    (completing-read "Export content: " '("document" "slides") nil t nil nil "document")
+                  "slides"))
           (sync current-prefix-arg))
      (list format (unless sync (read-file-name "Export to: " nil
-                             (concat (file-name-base (or buffer-file-name "deck")) "." format))) sync)))
+                             (concat (file-name-base (or buffer-file-name "deck")) "." format))) sync view)))
   (matsugit--run
-   (append (list "export" (matsugit--source) "--format" format)
+   (append (list "export" (matsugit--source) "--format" format "--view" (or view "slides"))
            (if sync-folder '("--sync-folder") (list "--output" (expand-file-name output)))
            (when matsugit-theme (list "--theme" matsugit-theme)))))
 

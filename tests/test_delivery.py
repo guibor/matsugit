@@ -99,6 +99,45 @@ class DeliveryTests(unittest.TestCase):
                 exports.export_file(config(self.source), 'html', dest)
         self.assertEqual(self.source.read_text(), original)
 
+    def test_document_exports_never_render_slides(self):
+        for kind in ('html', 'pdf'):
+            output = self.root / ('document.' + kind)
+            def render_document(settings, folder, **kwargs):
+                self.assertEqual(kwargs['formats'], ('document',))
+                folder.mkdir()
+                (folder / 'index.html').write_text('Reading document')
+            def print_document(folder, pdf, **kwargs):
+                self.assertEqual(kwargs['view'], 'document')
+                self.assertFalse((folder / 'slides.html').exists())
+                pdf.write_bytes(b'%PDF-synthetic')
+            with patch.object(exports, 'render', side_effect=render_document), \
+                    patch.object(exports, 'browser_artifacts', side_effect=print_document):
+                result = exports.export_file(config(self.source), kind, output, view='document')
+            self.assertEqual(result['view'], 'document')
+            self.assertTrue(output.is_file())
+
+    def test_cli_document_view_reaches_export_backend(self):
+        from matsugit.cli import main
+        with patch.object(exports, 'export_file', return_value={}) as export:
+            self.assertEqual(main(['export', str(self.source), '--format', 'pdf', '--view', 'document',
+                                   '--output', str(self.root / 'reading.pdf')]), 0)
+            self.assertEqual(export.call_args.kwargs['view'], 'document')
+
+    def test_document_and_slide_sync_exports_have_distinct_names(self):
+        targets.save({'export_directory':str(self.root)})
+        with patch.object(exports, 'render', side_effect=self.fake_render):
+            slide = exports.export_file(config(self.source), 'html', sync_folder=True)
+            doc = exports.export_file(config(self.source), 'html', sync_folder=True, view='document')
+        self.assertNotEqual(slide['path'], doc['path'])
+        self.assertTrue(doc['path'].endswith('-document.html'))
+
+    def test_document_rejects_slide_only_formats_before_rendering(self):
+        with patch.object(exports, 'render') as render:
+            for kind in ('pptx', 'zip'):
+                with self.assertRaisesRegex(Error, 'Document export supports HTML or PDF'):
+                    exports.export_file(config(self.source), kind, self.root / ('out.' + kind), view='document')
+            render.assert_not_called()
+
     def test_sync_folder_replaces_unchanged_export_without_making_copies(self):
         folder = self.root / 'OneDrive'; folder.mkdir()
         targets.save({'export_directory':str(folder)})

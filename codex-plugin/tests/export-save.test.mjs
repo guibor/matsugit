@@ -78,6 +78,7 @@ test('changed prepared data leaves no partial final file and can be retried', t 
 test('export names cannot escape Downloads and long Unicode names fit a filesystem component', t => {
   const {downloads,actions} = fixture(t);
   assert.equal(actions.exportName('../../source.md','pdf'),'source.pdf');
+  assert.equal(actions.exportName('../../source.md','pdf','document'),'source-document.pdf');
   assert.equal(actions.exportName('C:\\private\\source.md','pdf'),'source.pdf');
   const name=actions.exportName('\u00e9'.repeat(300)+'.md','pdf');
   assert.ok(Buffer.byteLength(name)<=184);

@@ -5,8 +5,11 @@ The selected format is presented without the editor; arrows/Space navigate slide
 documents keep their reading layout with page scrolling. Escape restores editing.
 This never publishes.
 
-The download icon offers Source, HTML slides, ZIP (document + slides + source),
-PDF and editable PowerPoint. The current draft can be exported without saving
+The download icon offers Source, Document PDF, Document HTML, PDF slides, Slide
+HTML, ZIP (document + slides + source), and editable PowerPoint. Its initial
+selection follows the active Document/Slides view. Document HTML/PDF render only
+the reading document, so slide-specific heading rules cannot block them.
+The current draft can be exported without saving
 over the source. Theme and complex-layout fidelity differ in PowerPoint: text
 and tables are native; charts/diagrams are images. Review the file before sharing.
 Use PDF/HTML for rendered fidelity, or an approved native reference PPTX for
@@ -22,9 +25,17 @@ Do not equate a browser download request with a confirmed saved file.
 ```sh
 matsugit export deck.md --format pptx --output deck.pptx
 matsugit export deck.org --format pdf --output deck.pdf
+matsugit export brief.md --format pdf --view document --output brief.pdf
+matsugit export brief.md --format html --view document --output brief.html
 matsugit export deck.md --format zip --output deck.zip
 matsugit setup-export
 ```
+
+In Emacs, `M-x matsugit-export` asks for the file format, then Document or Slides
+for HTML/PDF. Existing noninteractive calls default to slides. The
+`mdf/matsugit-export` alias uses this same command. Document exports to Downloads
+or a configured synced folder use a `-document` suffix to avoid replacing a
+slide export. Document HTML keeps folding; PDF prints all folded content.
 
 `setup-export` explicitly installs isolated Playwright/Chromium, needed only for
 PDF and Mermaid-to-PowerPoint capture. Do not install implicitly while authoring.

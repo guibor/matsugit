@@ -7,6 +7,27 @@
 (require 'matsugit-browser)
 (require 'matsugit-tables)
 
+(ert-deftest matsugit-export-forwards-document-view-without-publishing ()
+  (let (command)
+    (cl-letf (((symbol-function 'matsugit--source) (lambda () "/tmp/source.md"))
+              ((symbol-function 'matsugit--run) (lambda (args) (setq command args))))
+      (matsugit-export "pdf" "/tmp/document.pdf" nil "document")
+      (should (equal command '("export" "/tmp/source.md" "--format" "pdf" "--view" "document" "--output" "/tmp/document.pdf")))
+      (matsugit-export "html" nil t)
+      (should (equal command '("export" "/tmp/source.md" "--format" "html" "--view" "slides" "--sync-folder"))))))
+
+(ert-deftest matsugit-export-interactive-prompts-for-document-or-slides ()
+  (let ((answers '("pdf" "document")) command)
+    (with-temp-buffer
+      (setq buffer-file-name "/tmp/source.md")
+      (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) (pop answers)))
+                ((symbol-function 'read-file-name) (lambda (&rest _) "/tmp/document.pdf"))
+                ((symbol-function 'matsugit--source) (lambda () buffer-file-name))
+                ((symbol-function 'matsugit--run) (lambda (args) (setq command args))))
+        (call-interactively #'matsugit-export)
+        (should (equal (cadr (member "--view" command)) "document"))
+        (should-not answers)))))
+
 (ert-deftest matsugit-package-load-is-opt-in-and-independent ()
   (should-not (featurep 'spacemacs))
   (should-not (fboundp 'mdf/matsugit-preview-slides))

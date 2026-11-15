@@ -111,6 +111,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     if (demo) { download(); return; }
     if (busy) return;
     $('export-dialog').showModal();
+    $('export-format').value = state.format === 'document' ? 'pdf-document' : 'pdf';
     $('export-progress').textContent = '';
     prepared = null; $('export-ready').hidden = true;
     $('export-saved-path').hidden = true;
@@ -189,8 +190,11 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   };
   $('export-run').onclick = async () => {
     if (busy) return;
-    const format = $('export-format').value;
+    const selection = $('export-format').value;
+    const view = selection.endsWith('-document') ? 'document' : 'slides';
+    const format = selection.replace(/-document$/, '');
     const args = snapshot(), sync = $('export-destination').value === 'sync';
+    const filename = args.name.replace(/\.[^.]+$/, '') + (view === 'document' ? '-document' : '') + '.' + format;
     prepared = null; $('export-ready').hidden = true;
     $('export-saved-path').hidden = true;
     lock(true); $('export-progress').textContent = 'Preparing export...';
@@ -199,9 +203,9 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
         prepared = {name:args.name,blob:new Blob([args.text],{type:'text/plain;charset=utf-8'})};
         await sendPrepared(); return;
       }
-      const job = await run('export', {...args, format, sync_folder:sync, replace:$('export-replace').checked}, $('export-progress'));
+      const job = await run('export', {...args, format, view, sync_folder:sync, replace:$('export-replace').checked}, $('export-progress'));
       if ($('export-destination').value === 'local') {
-        prepared = {name:args.name.replace(/\.[^.]+$/, '') + '.' + format, job:job.job, owner:job.owner, warnings:job.result.warnings};
+        prepared = {name:filename, job:job.job, owner:job.owner, warnings:job.result.warnings};
         $('export-download-retry').hidden = true; $('export-save-local').hidden = false; $('export-local-target').hidden = true;
         await savePrepared(); return;
       }
@@ -213,7 +217,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
           offset = part.next; done = part.done;
           $('export-progress').textContent = `Receiving export: ${Math.round(offset / 1024)} KiB`;
         }
-        prepared = {name:args.name.replace(/\.[^.]+$/, '') + '.' + format,
+        prepared = {name:filename,
           blob:new Blob(chunks,{type:exportMime[format]}),warnings:job.result.warnings,job:job.job,owner:job.owner};
         await sendPrepared();
       } else {

@@ -112,6 +112,7 @@ def main(request):
                               'quarto': os.environ.get('QUARTO', 'quarto')})
     if action == 'export':
         return export_file(settings, request['format'], request.get('output'),
+                           view=request.get('view', 'slides'),
                            sync_folder=request.get('sync_folder', False), source_text=request['text'],
                            replace=bool(request.get('sync_folder') and request.get('replace')))
     if action not in ('plan', 'publish'):

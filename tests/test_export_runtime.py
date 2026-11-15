@@ -38,6 +38,15 @@ class ExportRuntimeTests(unittest.TestCase):
                 exports.browser_artifacts(Path('/tmp/render'))
             run.assert_called_once()
 
+    def test_document_view_survives_isolated_pdf_runtime(self):
+        result = subprocess.CompletedProcess([], 0, '[]', '')
+        with patch.dict(os.environ, {'_MATSUGIT_EXPORT_REEXEC': ''}), \
+                patch.object(exports.importlib.util, 'find_spec', return_value=None), \
+                patch.object(Path, 'is_file', return_value=True), \
+                patch.object(exports.subprocess, 'run', return_value=result) as run:
+            exports.browser_artifacts(Path('/tmp/render'), Path('/tmp/doc.pdf'), view='document')
+            self.assertEqual(run.call_args.args[0][-3:], ['/tmp/render', '/tmp/doc.pdf', 'document'])
+
     def test_missing_environment_does_not_spawn(self):
         with patch.dict(os.environ, {'_MATSUGIT_EXPORT_REEXEC': ''}), \
                 patch.object(exports.importlib.util, 'find_spec', return_value=None), \

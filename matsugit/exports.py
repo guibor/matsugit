@@ -33,7 +33,9 @@ def setup():
     print(f'PDF and diagram export ready: {python}')
 
 
-def browser_artifacts(directory, pdf=None):
+def browser_artifacts(directory, pdf=None, *, view='slides'):
+    if view not in ('document', 'slides'):
+        raise Error('Export view must be document or slides')
     if importlib.util.find_spec('playwright') is None:
         # A stale export environment must fail once, not recursively relaunch itself.
         if os.environ.get('_MATSUGIT_EXPORT_REEXEC') == '1':
@@ -46,7 +48,7 @@ def browser_artifacts(directory, pdf=None):
         env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parent.parent),
                    _MATSUGIT_EXPORT_REEXEC='1')
         result = subprocess.run([str(python), '-m', 'matsugit.exports', str(directory),
-                                 str(pdf) if pdf else ''], env=env, capture_output=True, text=True, timeout=240)
+                                 str(pdf) if pdf else '', view], env=env, capture_output=True, text=True, timeout=240)
         if result.returncode:
             raise Error(result.stderr.strip() or 'Browser export failed')
         return json.loads(result.stdout)
@@ -56,18 +58,21 @@ def browser_artifacts(directory, pdf=None):
         page = browser.new_page(viewport={'width': 1280, 'height': 720}, device_scale_factor=2)
         # Generated output is self-contained. Never fetch private links or remote images.
         page.route('**/*', lambda route: route.abort() if urlsplit(route.request.url).scheme in ('http', 'https') else route.continue_())
-        path = directory / ('slides.html' if pdf else 'index.html')
-        page.goto(path.as_uri() + ('?print-pdf' if pdf else ''), wait_until='load')
+        slide_pdf = pdf and view == 'slides'
+        path = directory / ('slides.html' if slide_pdf else 'index.html')
+        page.goto(path.as_uri() + ('?print-pdf' if slide_pdf else ''), wait_until='load')
         page.evaluate('document.fonts.ready')
         diagrams = page.locator('svg.mermaid-js')
         if page.locator('.mermaid').count():
             page.wait_for_function('document.querySelectorAll(".mermaid").length === document.querySelectorAll("svg.mermaid-js").length', timeout=30000)
         names = []
         if pdf:
-            page.wait_for_function('window.Reveal?.isReady() && document.documentElement.classList.contains("print-pdf")')
-            page.evaluate('Reveal.configure({pdfSeparateFragments:false})')
-            page.evaluate('window.matsugitFit?.fitAll()')
-            page.pdf(path=str(pdf), print_background=True, prefer_css_page_size=True)
+            if slide_pdf:
+                page.wait_for_function('window.Reveal?.isReady() && document.documentElement.classList.contains("print-pdf")')
+                page.evaluate('Reveal.configure({pdfSeparateFragments:false})')
+                page.evaluate('window.matsugitFit?.fitAll()')
+            page.pdf(path=str(pdf), print_background=True, prefer_css_page_size=True,
+                     **({} if slide_pdf else {'format':'A4', 'margin':{side:'18mm' for side in ('top','bottom','left','right')}}))
         else:
             for index in range(diagrams.count()):
                 name = f'diagram-{index}.png'
@@ -134,16 +139,20 @@ def color_reference(pandoc, directory, palette):
     return reference
 
 
-def export_file(settings, kind, output=None, *, sync_folder=False, reference=None, source_text=None, replace=False):
+def export_file(settings, kind, output=None, *, sync_folder=False, reference=None, source_text=None, replace=False, view='slides'):
     if kind not in ('html', 'zip', 'pptx', 'pdf'):
         raise Error('Supported export formats: html, zip, pptx, pdf')
+    if view not in ('document', 'slides'):
+        raise Error('Export view must be document or slides')
+    if view == 'document' and kind not in ('html', 'pdf'):
+        raise Error('Document export supports HTML or PDF; ZIP includes both views and PowerPoint uses slides')
     if output and sync_folder:
         raise Error('Choose --output or --sync-folder, not both')
     if sync_folder:
         directory = global_settings().get('export_directory')
         if not directory or not Path(directory).expanduser().is_dir():
             raise Error('Configure an existing folder with matsugit export-folder /path/to/OneDrive/Decks')
-        output = Path(directory).expanduser() / (settings['slug'] + '.' + kind)
+        output = Path(directory).expanduser() / (settings['slug'] + ('-document' if view == 'document' else '') + '.' + kind)
     if output is None:
         raise Error('Choose --output FILE or --sync-folder')
     output = Path(output).expanduser().absolute()
@@ -158,17 +167,18 @@ def export_file(settings, kind, output=None, *, sync_folder=False, reference=Non
         artifact = root / ('export.' + kind)
         rendered = root / 'render'
         if kind in ('html', 'zip', 'pdf'):
-            render(settings, rendered, source_text=source_text)
+            render(settings, rendered, source_text=source_text,
+                   formats=('document', 'slides') if kind == 'zip' else (view,))
             if kind == 'html':
-                shutil.copyfile(rendered / 'slides.html', artifact)
-                warnings.append('Standalone slide HTML; use ZIP for document/source links and the complete bundle.')
+                shutil.copyfile(rendered / ('index.html' if view == 'document' else 'slides.html'), artifact)
+                warnings.append(f'Standalone {view} HTML; use ZIP for document/source links and the complete bundle.')
             elif kind == 'zip':
                 with zipfile.ZipFile(artifact, 'w', zipfile.ZIP_DEFLATED) as archive:
                     for path in sorted(rendered.rglob('*')):
                         if path.is_file() and not path.is_symlink():
                             archive.write(path, path.relative_to(rendered))
             else:
-                browser_artifacts(rendered, artifact)
+                browser_artifacts(rendered, artifact, view=view)
         else:
             rendered.mkdir()
             theme = install_theme(settings, rendered)
@@ -219,9 +229,10 @@ def export_file(settings, kind, output=None, *, sync_folder=False, reference=Non
                 export_state.record(output, settings['source'])
             except (OSError, Error) as error:
                 warnings.append(f'Export saved, but ownership receipt failed: {error}. Next replacement needs confirmation.')
-    return {'path': str(output), 'format': kind, 'warnings': warnings,
+    return {'path': str(output), 'format': kind, 'view': 'both' if kind == 'zip' else view, 'warnings': warnings,
             'sync': 'Saved locally. OneDrive upload status is not verified.' if sync_folder else None}
 
 
 if __name__ == '__main__':
-    print(json.dumps(browser_artifacts(Path(sys.argv[1]), Path(sys.argv[2]) if sys.argv[2] else None)))
+    print(json.dumps(browser_artifacts(Path(sys.argv[1]), Path(sys.argv[2]) if sys.argv[2] else None,
+                                     view=sys.argv[3] if len(sys.argv) > 3 else 'slides')))
