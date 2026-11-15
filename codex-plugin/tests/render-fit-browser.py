@@ -57,6 +57,9 @@ with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
                 frame.evaluate('''value=>{const e=matsugitWorkspace.editor;
                     e.dispatch({changes:{from:0,to:e.state.doc.length,insert:value}});}''',text)
                 wait(frame, SETTLED)
+                target = frame.locator('#preview').get_attribute('src').split('#')[0]
+                wait(frame.child_frames[0], 'location.href.split("#")[0] === ' + json.dumps(target)
+                     + ' && document.readyState === "complete" && !!window.Reveal?.isReady()')
 
             renamed = original.replace('## Small', '## Renamed').replace('A plain claim','An updated claim')
             preview.evaluate('window.fitPatchSentinel=42')
@@ -115,6 +118,9 @@ with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
             frame.locator('[data-format="document"]').click()
             wait(frame, SETTLED)
             reading = frame.child_frames[0]
+            target = frame.locator('#preview').get_attribute('src').split('#')[0]
+            wait(reading, 'location.href.split("#")[0] === ' + json.dumps(target)
+                 + ' && document.readyState === "complete" && !!document.querySelector(".ff-fold-toggle")')
             assert reading.locator('main .ff-document-claim').inner_text() == 'An updated claim'
             assert 'Private notes' not in reading.locator('main').inner_text()
             assert reading.locator('main li').count() == 24
