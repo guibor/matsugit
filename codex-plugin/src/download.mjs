@@ -22,6 +22,8 @@ export function browserDownload({name,blob}) {
 
 export function fileDownloads(app, fallback = browserDownload) {
   let transport = typeof app?.downloadFile === 'function' ? 'standard' : 'browser';
+  const browserAllowed = () => !app || app.getHostVersion?.()?.name === 'matsugit in the browser';
+  const unsupported = () => Object.assign(Error('This host cannot download files. Use Save to Downloads on the named machine below; the export is already prepared.'), {code:'DOWNLOAD_UNSUPPORTED'});
   return async ({name,blob}) => {
     name = String(name || 'download').split(/[\\/]/).at(-1).replace(/[\x00-\x1f\x7f]/g,'_');
     if (!name || /^\.+$/.test(name)) name = 'download';
@@ -46,7 +48,8 @@ export function fileDownloads(app, fallback = browserDownload) {
         transport = 'browser';
       }
     }
+    if (!browserAllowed()) throw unsupported();
     fallback(file);
-    return `Browser download requested: ${name}. Receipt cannot be confirmed. If no file appears, retry Download; this host may block browser downloads.`;
+    return `Browser download requested: ${name}. Check your browser downloads.`;
   };
 }

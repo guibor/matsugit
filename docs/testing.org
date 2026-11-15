@@ -1,5 +1,15 @@
 #+title: Renderer and workspace regression checks
 
+* Layout editing and delivery (0.36.1)
+=layout-edit-browser.py= protects structural boundaries while retaining prose
+and ratio edits, and checks Raw/Formatted passage continuity in standard and
+Cursor-style hosts. =test_fixed_media.py= normalizes twice and measures a real
+shallow connector between two three-column panels. =export-save-browser.py=
+checks explicit local PDF delivery after a refused host download and direct
+Downloads selection, including verified bytes and non-overwriting filenames.
+=setup-check-browser.py= exercises diagnostics in both hosts. These checks are
+also in the CI workflow; they do not prove native host download receipt.
+
 * Robustness tests (0.30)
 #+begin_src sh
 python3 codex-plugin/tests/concurrency-fuzz-browser.py

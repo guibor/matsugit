@@ -103,6 +103,14 @@ body:not(.reveal-viewport) .rows > .row + .row {
 .reveal .slides .quotation p:last-child { margin-bottom:0; }
 .reveal .slides section.dense .ff-body { font-size:.85em; line-height:1.3; }
 .reveal .slides section.dense li + li { margin-top:.16em; }
+/* Explicit closer spacing preserves type sizes and never conceals overflow. */
+.reveal .slides section.tight .ff-claim { margin-bottom:.45em; }
+.reveal .slides section.tight .ff-body :is(p,ul,ol) { margin-block:.3em; }
+.reveal .slides section.tight .ff-body li + li { margin-top:.12em; }
+.reveal .slides section.tight .ff-division-heading { margin-block:.4em .2em; }
+.reveal .slides section.tight .ff-row + .ff-row { margin-top:10px; padding-top:8px; }
+.reveal .slides section.tight :is(.ff-implication,.ff-annotated) { margin-block:.35em; gap:.5em; }
+.reveal .slides section.tight :is(.takeaway,.ff-takeaway) { margin-top:.4em; }
 
 /* Opt-in quotation slide. Ordinary blockquotes and documentary excerpts stay unchanged. */
 .reveal .slides section.quote { height:100%; box-sizing:border-box; flex-direction:column; }

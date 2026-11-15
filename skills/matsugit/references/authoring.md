@@ -196,3 +196,13 @@ generic preview does not prove CI parity. Do not replace such a renderer merely
 to follow this skill. Keep unsupported exhibits as attributed local images or
 report the missing native capability. Do not pretend a roadmap is a dated Gantt
 chart, or a categorical line plot a correctly spaced time series.
+# Layout safety and fit
+
+Formatted editing protects paired layout fences and region heading prefixes.
+Edit their words normally; use Markdown for deliberate structural changes.
+The Spacing control applies `.tight` to the current slide without reducing type.
+The same option is available from fit findings in Check; Undo restores it.
+An image with an explicit absolute height keeps that height, including shallow
+connectors between panels. Do not remove the author's dimensions to force a fit.
+Automatic text scaling is not enabled: respect semantic type sizes, and do not
+shrink one parallel column independently of its peers or shrink slide titles.

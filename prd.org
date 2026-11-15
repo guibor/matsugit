@@ -277,3 +277,13 @@ Immediate, in priority order:
   editing the slide you just wrote is the common case).
 - 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
   =Follow=. Behaviour unchanged.
+* 0.36.1: layout editing, position continuity and reliable delivery
+- Protect container boundaries in Formatted editing; keep Raw fully editable.
+- Preserve the visible passage across appearance switches.
+- Honour explicit image heights rather than allocating at least 96px to every image.
+- Expose per-slide Compact spacing and full runtime versions in Check setup.
+- Let authors explicitly export to Downloads on the named runtime machine.
+- Next: bounded automatic fitting inside assigned layout regions; unchanged layouts
+  that already fit, readable text floors, consistent regions and preview/export parity.
+  Keep titles/claims fixed by default; share sizes among semantic peers within a
+  slide, without allowing a dense slide to shrink the rest of the deck.

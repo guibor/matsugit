@@ -4,6 +4,7 @@
 import {createElement, CircleCheck, TriangleAlert, Lightbulb, X} from 'lucide';
 import {checkDeck, checkSummary, rendererFinding} from './check.mjs';
 import {storyModel} from './story-model.mjs';
+import {slideSpacing, layoutControl} from './layout-edit.mjs';
 
 const $ = id => document.getElementById(id);
 
@@ -35,6 +36,11 @@ export function checkPanel({editor, isOrg, enabled, renderError, renderedFinding
     // A measured fit problem supersedes the approximate word-count tip.
     found = found.filter(item => item.code !== 'slide-dense' || !measured.some(fit => fit.from === item.from));
     found.push(...measured);
+    if (!isOrg()) for (const finding of found) {
+      if (!['rendered-fit','slide-dense'].includes(finding.code) || finding.from === null) continue;
+      const spacing = slideSpacing(text(),finding.from);
+      if (spacing && !spacing.active) finding.fix = {label:'Try compact spacing', changes:[slideSpacing(text(),finding.from,true)]};
+    }
     return found.sort((a,b) => Number(b.severity === 'problem') - Number(a.severity === 'problem'));
   }
   function item(finding) {
@@ -58,7 +64,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, renderedFinding
       if (!enabled()) { feedback.textContent = 'Wait for the current operation, then try again.'; return; }
       // Findings carry offsets into the text they were computed from.
       if (revision !== text()) { refresh(); feedback.textContent = 'The text changed. The list is up to date now; try again.'; return; }
-      editor.dispatch({changes: finding.fix.changes, userEvent: 'input', scrollIntoView: true,
+      editor.dispatch({changes: finding.fix.changes, userEvent: 'input', scrollIntoView: true, annotations:layoutControl.of(true),
         selection: {anchor: Math.min(...finding.fix.changes.map(change => change.from))}});
       refresh();
       feedback.textContent = 'Changed in your draft. Undo restores it. Nothing was saved.';

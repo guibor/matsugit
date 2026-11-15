@@ -1,9 +1,10 @@
-import {StateEffect, StateField} from '@codemirror/state';
+import {EditorState, StateEffect, StateField} from '@codemirror/state';
 import {Decoration, EditorView, ViewPlugin, WidgetType} from '@codemirror/view';
 import {syntaxTree} from '@codemirror/language';
 import {parser, GFM} from '@lezer/markdown';
 import {createElement, Pencil} from 'lucide';
 import {structure} from './structure.mjs';
+import {layoutControl, layoutEditAllowed} from './layout-edit.mjs';
 
 export const visualMode = StateEffect.define();
 const md = parser.configure(GFM);
@@ -221,7 +222,15 @@ export function visualExtensions(actions) {
     },
     provide:f=>EditorView.decorations.from(f,v=>v.decorations),
   });
-  return [field,EditorView.atomicRanges.of(view=>view.state.field(field).atomic),
+  return [field, EditorState.transactionFilter.of(tr => {
+    if (!tr.docChanged || !tr.startState.field(field).enabled || actions.isOrg()
+        || tr.annotation(layoutControl) || !(tr.isUserEvent('input') || tr.isUserEvent('delete'))) return tr;
+    const changes = [];
+    tr.changes.iterChanges((from,to,_a,_b,insert) => changes.push({from,to,insert:insert.toString()}));
+    if (layoutEditAllowed(tr.startState.doc.toString(), changes)) return tr;
+    queueMicrotask(() => actions.onError?.('Layout boundary protected. Edit the words inside it, or switch to Markdown to change the structure.'));
+    return [];
+  }), EditorView.atomicRanges.of(view=>view.state.field(field).atomic),
     ViewPlugin.fromClass(class {
       constructor(view) { this.updateClass(view); }
       update(update) { this.updateClass(update.view); }

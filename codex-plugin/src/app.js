@@ -25,6 +25,8 @@ import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} fr
 import {installRoleHelp} from './role-help.mjs';
 import {delivery} from './delivery.js';
 import {visualExtensions, visualMode} from './visual.mjs';
+import {preservePassage} from './editor-position.mjs';
+import {slideSpacing, layoutControl} from './layout-edit.mjs';
 import {tableDialog} from './table-dialog.js';
 import {setOutlineDepth, outlineKeys} from './outline.mjs';
 import {updateThemePicker} from './theme-picker.mjs';
@@ -147,7 +149,7 @@ const setup = new Compartment();
 const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.of(value)];
 const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicSetup), markdown({extensions:GFM}), EditorView.lineWrapping,
   authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice}),
-  visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading,
+  visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading, onError:notice,
     open:(range,placement)=>tables.open(range,null,placement),preview:source=>tables.preview(source),detach:root=>tables.detach(root)}),
   keymap.of([{key:'Alt-.',run:()=>{tables.atSelection();return true;}}]),
   outlineKeys(() => state.name.toLowerCase().endsWith('.org')),
@@ -166,7 +168,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
     for (const tr of update.transactions) if (tr.docChanged && !state.loading && tr.annotation(Transaction.addToHistory) !== false)
       tr.changes.iterChangedRanges((from, to) => { if (to - from > 40 && to - from >= tr.startState.doc.length / 2) wholesaleHistory = true; });
     if (update.docChanged && !state.loading) scheduleAutosave();
-    if ((update.docChanged || update.selectionSet) && !state.loading) scheduleRecovery();
+    if ((update.docChanged || update.selectionSet) && !state.loading) { scheduleRecovery(); refreshSpacing(); }
     if ((update.selectionSet || update.docChanged) && !state.loading && !followingPreview) {
       origin = 'source'; clearTimeout(followTimer); followTimer = setTimeout(followSource, 180);
       sourceInput = Date.now();
@@ -199,7 +201,7 @@ $('more').onclick = () => moreMenu($('more-panel').hidden);
 $('more-panel').addEventListener('click', event => { if (event.target.closest('button')) moreMenu(false); });
 document.addEventListener('pointerdown', event => { if (!$('more-wrap').contains(event.target)) moreMenu(false); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('more-panel').hidden) { moreMenu(false); $('more').focus(); } });
-const setupDiagnostics = setupCheck({call});
+const setupDiagnostics = setupCheck({call, workspaceVersion:version});
 $('setup-check').onclick = () => { moreMenu(false); setupDiagnostics.open($('more')); };
 $('notice-setup').onclick = () => setupDiagnostics.open($('notice-setup'));
 // Autosave: write the draft to its file shortly after typing stops. It uses
@@ -302,10 +304,22 @@ function changeEditorMode(mode) {
     button.title=button.disabled?'Visual prose editing is available for Markdown; Org source is preserved':'';
   }
   const visual=state.editorMode==='visual';
-  $('source-pane').dataset.mode=state.editorMode;
-  $('compact-markup').setAttribute('aria-pressed',String(visual));
-  editor.dispatch({effects:[visualMode.of(visual),compactMarkup.of(visual)]});scheduleRecovery();
+  preservePassage(editor, () => {
+    $('source-pane').dataset.mode=state.editorMode;
+    $('compact-markup').setAttribute('aria-pressed',String(visual));
+    editor.dispatch({effects:[visualMode.of(visual),compactMarkup.of(visual)]});
+  });
+  refreshSpacing(); scheduleRecovery();
 }
+function refreshSpacing() {
+  const spacing = isOrg() ? null : slideSpacing(text(), editor.state.selection.main.head);
+  $('slide-spacing').disabled = !spacing || demo || state.loading;
+  $('slide-spacing').value = spacing?.active ? 'compact' : 'normal';
+}
+$('slide-spacing').onchange = () => {
+  const change = slideSpacing(text(),editor.state.selection.main.head,$('slide-spacing').value === 'compact');
+  if (change && !isOrg() && !state.loading) editor.dispatch({changes:change,userEvent:'input',annotations:layoutControl.of(true)});
+};
 for(const button of document.querySelectorAll('[data-editor]')) button.onclick=()=>changeEditorMode(button.dataset.editor);
 $('slide-separators').onchange = () => {
   editor.dispatch({effects: slideSeparators.of($('slide-separators').checked)});

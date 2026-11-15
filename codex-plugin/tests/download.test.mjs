@@ -43,16 +43,22 @@ test('legacy host refusal is retained and cannot become a browser download', asy
   assert.equal(calls,2);
 });
 
-test('missing host method falls back without claiming receipt; subsequent retry is a direct browser gesture', async () => {
+test('browser fallback remains available only in the standalone browser host', async () => {
   let calls=0; const files=[];
-  const send=fileDownloads({downloadFile:async()=>{calls++;throw failure(-32601);}},file=>files.push(file));
+  const send=fileDownloads({getHostVersion:()=>({name:'matsugit in the browser'}),downloadFile:async()=>{calls++;throw failure(-32601);}},file=>files.push(file));
   const file={name:'../source.md',blob:new Blob(['draft'])};
   const message=await send(file);
-  assert.match(message,/Receipt cannot be confirmed/);
+  assert.match(message,/Check your browser downloads/);
   assert.equal(files[0].name,'source.md');
   const second=send(file);
   assert.equal(files.length,2); // synchronous, before the click's activation expires
   await second; assert.equal(calls,1);
   await fileDownloads(null,file=>files.push(file))({name:'..',blob:file.blob});
   assert.equal(files[2].name,'download');
+});
+test('embedded host without a download API never pretends a blocked anchor downloaded the file', async () => {
+  let calls=0;
+  const send=fileDownloads({downloadFile:async()=>{calls++;throw failure(-32601);}},noBrowser);
+  for (let i=0;i<2;i++) await assert.rejects(send({name:'deck.pdf',blob:new Blob(['pdf'])}),error=>error.code==='DOWNLOAD_UNSUPPORTED');
+  assert.equal(calls,1);
 });

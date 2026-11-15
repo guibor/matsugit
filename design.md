@@ -328,3 +328,31 @@ the selected origin/path, and each preview request rereads file configuration.
 - `codex-plugin/tests/*-browser.py`: the real built workspace in Chromium via
   the isolated host in `tests/browser-host.mjs` (needs Python Playwright).
   `check-browser.py` covers the check panel and the picker.
+# Visual Layout Safety and Delivery (0.36.1)
+
+Formatted editing protects paired container fences and region heading prefixes.
+Whole-block removal remains possible; Raw Markdown is the structural escape hatch.
+Raw/Formatted switches anchor to the visible caret or reading passage, not pixels.
+Explicit image heights bypass flexible media allocation, including shallow panel
+connectors. Compact spacing is an undoable slide attribute and preserves type size.
+Setup reports UI, server, renderer and host separately. Unsupported host downloads
+offer explicit server Downloads delivery, never an unverified sandbox anchor loop.
+
+Bounded automatic fit remains separate work: preserve authored geometry, fit media
+proportionally, reduce spacing, then scale text within readable floors. Equal-role
+regions should share a consistent type scale. No clipping or silent slide splitting.
+Validate preview/export parity and long-content cases before enabling it by default.
+Fit groups follow semantics: titles and claims stay at theme size; peer region
+headings share a size; peer body text shares a bounded scale. Tables scale as
+whole tables, not individual cells. Takeaways and sources keep their own roles.
+Explicit image dimensions remain constraints. No independently tiny dense column.
+Fit is local to a slide, never driven by the densest slide in the deck. Keep
+already-fitting slides unchanged. Peer groups follow the layout's semantic roles,
+not every text node: body, region heading, table, takeaway and source are separate.
+Keep title and claim sizes fixed unless the author explicitly permits a change.
+Choose one shared scale that fits every member of a peer group, within a
+theme-defined readability floor; an unresolved member produces a fit finding,
+not clipping, hidden overflow, a changed layout or an automatic split. Recompute
+from the original theme metrics after fonts/media load so repeated renders do not
+accumulate shrinkage. Preview, standalone HTML and PDF must use the same decision;
+PowerPoint must be checked separately rather than assumed to inherit browser fit.

@@ -272,6 +272,12 @@ def exercise(browser, ready, mode, shots):
         assert not result.get('isError'), result
         report = result['structuredContent']
         assert report['schema'] == 1 and report['checks'], report
+        versions = frame.locator('#setup-versions').inner_text()
+        expected_version = json.loads((ROOT / 'codex-plugin/package.json').read_text())['version']
+        assert f'Matsugit workspace {expected_version}' in versions, versions
+        assert f'Server {report["workspace_version"]}' in versions, versions
+        assert f'Python renderer {report["version"]}' in versions, versions
+        assert report['runtime_host'] in versions, versions
         settled(frame, 'ready' if report['ready'] else 'attention')
         for required, group in ((True, 'required'), (False, 'optional')):
             expected = [check['id'] for check in report['checks'] if check['required'] is required]

@@ -74,6 +74,7 @@
         </div>
         <label class="auto source-separators" title="Show source slide boundaries without changing the document"><input id="slide-separators" type="checkbox">Slide separators</label>
         <button id="edit-table" title="Edit table at cursor" aria-label="Edit table at cursor"></button>
+        <label class="auto">Spacing <select id="slide-spacing" aria-label="Current slide spacing" title="Spacing on the current slide; text size stays unchanged"><option value="normal">Standard</option><option value="compact">Compact</option></select></label>
       </div>
       <section id="story-pane" aria-label="Story editor" hidden>
         <div class="story-toolbar">
@@ -129,6 +130,7 @@
 </dialog>
 <dialog id="setup-dialog" class="delivery-dialog" aria-labelledby="setup-title" aria-describedby="setup-status">
   <div class="recovery-heading"><h2 id="setup-title">Check setup</h2><button type="button" id="setup-close" title="Close setup check" aria-label="Close setup check" autofocus></button></div>
+  <p id="setup-versions"></p>
   <p id="setup-status" role="status" aria-live="polite" aria-atomic="true"></p>
   <div id="setup-results" aria-busy="false" hidden>
     <section id="setup-required-group" aria-labelledby="setup-required-title"><h3 id="setup-required-title">Required</h3><ul id="setup-required"></ul></section>
@@ -259,7 +261,7 @@
 <dialog id="export-dialog" class="delivery-dialog" aria-labelledby="export-title">
   <div class="recovery-heading"><h2 id="export-title">Export</h2><button id="close-export" title="Close" aria-label="Close"></button></div>
   <label>Format<select id="export-format"><option value="source">Source</option><option value="pptx">PowerPoint (editable)</option><option value="pdf">PDF slides</option><option value="html">Slide HTML</option><option value="zip">ZIP: document, slides and source</option></select></label>
-  <label>Destination<select id="export-destination"><option value="download">Download</option><option id="sync-destination" value="sync" disabled>Synced folder (not configured)</option></select></label>
+  <label>Destination<select id="export-destination"><option value="download">Download to this device</option><option id="local-destination" value="local" hidden>Save on server</option><option id="sync-destination" value="sync" disabled>Synced folder (not configured)</option></select></label>
   <small id="export-folder"></small>
   <label id="export-replace-row" class="auto" hidden><input id="export-replace" type="checkbox">Replace existing file, including edits made outside matsugit</label>
   <p id="pptx-warning" hidden>Editable text and tables; charts and diagrams are images. Complex layouts may differ. Review in PowerPoint before sharing.</p>

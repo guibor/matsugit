@@ -102,3 +102,10 @@ are refused. Local-render publishing retains its existing copy workflow.
 `--yes` applies a clean fast-forward. Follow the real source checkout, not a host
 default. Never force, auto-stash, or discard a draft to make sync succeed. For
 conflicts use Git/Magit and retain both versions. See `docs/canonical-source.org`.
+# Host download limits
+
+When the embedded host lacks a download API, do not report a browser request as
+a delivered file. In Export choose `Downloads on <host>` to save directly on the
+named runtime machine, or use `Save to Downloads on <host>` for a prepared export.
+The returned path confirms a file on that machine, not on a remote viewing device.
+This saves locally without publication and does not overwrite an existing export.

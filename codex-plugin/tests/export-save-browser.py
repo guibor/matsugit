@@ -46,7 +46,8 @@ try:
         frame.locator('#export-format').select_option('pdf')
         frame.locator('#export-run').click()
         wait(frame, 'document.getElementById("export-ready").hidden === false && !document.getElementById("export-run").disabled')
-        assert 'Receipt cannot be confirmed' in frame.locator('#export-progress').inner_text()
+        assert 'host has no download API' in frame.locator('#export-progress').inner_text()
+        assert not frame.locator('#export-download-retry').is_visible()
         assert not received, 'Sandboxed browser download should be blocked in this fixture'
         assert not downloads.exists(), 'No filesystem save before the explicit user action'
         assert str(downloads) in frame.locator('#export-local-target').inner_text()
@@ -62,6 +63,19 @@ try:
         assert frame.locator('#export-save-local').is_disabled()
         assert page.evaluate('exportRequests') == 1, 'Saving the prepared PDF must not render it again'
         assert not received
+        # Explicit server Downloads destination avoids host download/chunk transport.
+        frame.locator('#close-export').click()
+        frame.locator('#download').click()
+        wait(frame, '!document.getElementById("export-run").disabled')
+        frame.locator('#export-format').select_option('pdf')
+        frame.locator('#export-destination').select_option('local')
+        frame.locator('#export-run').click()
+        wait(frame, '!document.getElementById("export-saved-path").hidden && !document.getElementById("export-run").disabled')
+        second = Path(frame.locator('#export-saved-path').input_value())
+        assert second != saved and second.read_bytes().startswith(b'%PDF-')
+        assert saved.exists(), 'The earlier export must not be overwritten'
+        assert frame.locator('#export-save-local').is_visible()
+        assert frame.locator('#export-save-local').is_disabled()
         for width, height in ((1440,1000),(390,844)):
             page.set_viewport_size({'width':width, 'height':height})
             box = frame.locator('#export-dialog').bounding_box()

@@ -5,6 +5,8 @@ import {getResourcePath, OpenAIFileEntrypointInputSchema} from '@openai/mcp-exte
 import {z} from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import {version} from '../package.json';
 // The guided sample deck: one source, shared with `matsugit template tour`.
 import tourDeck from '../../matsugit/templates/tour.md';
 import {WorkspaceStore, MAX_SOURCE, checkedPath, checkedText, readSource, readDocument, saveDocument} from './store.mjs';
@@ -57,10 +59,11 @@ const guard = fn => async (...args) => {
   catch (error) { return {isError: true, content: [{type: 'text', text: error.message}]}; }
 };
 serveStdio(() => {
-  const server = new McpServer({name: 'matsugit', version: '0.36.0'});
+  const server = new McpServer({name: 'matsugit', version});
   server.registerTool('matsugit_doctor', {title:'Check matsugit setup',
     description:'Check local preview and editor prerequisites, with versions and concrete next steps. Read-only: no installs, network requests, login, document reads or settings changes.',
-    inputSchema:z.object({}), annotations:readOnly}, guard(async () => result(await diagnostics.run())));
+    inputSchema:z.object({}), annotations:readOnly}, guard(async () => result({...await diagnostics.run(),
+      workspace_version:version, runtime_host:os.hostname(), runtime_platform:process.platform})));
   server.registerTool('matsugit_read_slide', {title:'Read a slide for a scoped edit',
     description:'Read one saved slide and obtain a short-lived edit snapshot. Use before matsugit_edit_slide. Slide numbers match Story, not continuation pages. Optional etag checks a previous workspace snapshot. Reads only the selected document; does not open a viewer or publish. Unsaved panel typing is not included.',
     inputSchema:z.object({path:z.string(), slide:z.number().int().positive(), etag:z.string().optional()}), annotations:readOnly},

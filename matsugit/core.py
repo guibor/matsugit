@@ -406,6 +406,15 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
         name = copied[path]
         return "assets/" + quote(name) + ("#" + url.fragment if url.fragment else "")
 
+    def image_slot(image, classes, content):
+        height = dict(image['c'][0][2]).get('height', '')
+        fixed = re.fullmatch(r'(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:px|pt|cm|mm|in|em|rem)', height)
+        values = []
+        if fixed and float(re.match(r'[0-9.]+', height)[0]) > 0:
+            classes = [*classes, 'ff-media-fixed']
+            values = [['style', '--ff-image-height:' + height]]
+        return {'t':'Div', 'c':[['',classes,values],[content]]}
+
     def visit(node):
         if isinstance(node, list):
             return [visit(item) for item in node]
@@ -433,7 +442,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
         if kind == 'Para' and len(node['c']) == 1 and node['c'][0].get('t') == 'Image':
             # Pandoc leaves uncaptioned standalone images as paragraphs, not figures.
             names = [c for c in node['c'][0]['c'][0][1] if c.startswith('media-')]
-            return {'t':'Div', 'c':[['',['ff-media','ff-image',*names],[]],[node]]}
+            return image_slot(node['c'][0], ['ff-media','ff-image',*names], node)
         if kind == "Div" and "ff-media" in node["c"][0][1] and len(node["c"][1]) == 1:
             child = node["c"][1][0]
             if child.get("t") == "Div" and "ff-media" in child["c"][0][1]:
@@ -447,7 +456,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
                       and block["c"][0].get("t") == "Image"]
             if len(images) == 1 and len(node["c"][2]) == 1:
                 classes = [c for c in images[0]["c"][0]["c"][0][1] if c.startswith("media-")]
-                return {"t": "Div", "c": [["", ["ff-media", "ff-image", *classes], []], [node]]}
+                return image_slot(images[0]['c'][0], ['ff-media','ff-image',*classes], node)
         return node
 
     ast = visit(ast)

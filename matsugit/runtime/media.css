@@ -46,6 +46,13 @@
 .reveal .media-right img { object-position: right center !important; }
 .reveal .column { min-width: 0; }
 .ff-media:not(.ff-fitted) img { height: auto; }
+/* An authored image height is a fixed block, not a share of unused slide space. */
+.reveal .ff-media.ff-media-fixed { margin-block:.2em; height:auto; }
+.reveal .ff-media.ff-media-fixed :is(p,figure,.quarto-figure) { margin:0; padding:0; }
+.reveal .ff-media.ff-media-fixed img {
+  display:block; height:var(--ff-image-height) !important; max-height:none !important;
+  margin:0 auto !important; object-fit:contain;
+}
 @media (max-width: 640px) {
   body:not(.reveal-viewport) .media-half > .ff-media,
   body:not(.reveal-viewport) .ff-media.media-half { width: 100%; }

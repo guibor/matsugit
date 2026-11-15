@@ -17,7 +17,17 @@ export function setupReport(value) {
   return value;
 }
 
-export function setupCheck({call}) {
+export function setupVersions(report, workspaceVersion) {
+  const parts = [`Matsugit workspace ${workspaceVersion}`,
+    `Server ${report?.workspace_version || 'version not reported'}`,
+    `Python renderer ${report?.version || 'version not reported'}`];
+  if (report?.runtime_host) parts.push(`Running on ${report.runtime_host}${report.runtime_platform ? ' (' + report.runtime_platform + ')' : ''}`);
+  if (report?.workspace_version && report.workspace_version !== workspaceVersion)
+    parts.push('Workspace and server versions differ. Save your draft, reload the connection and reopen this document.');
+  return parts.join(' | ');
+}
+
+export function setupCheck({call, workspaceVersion}) {
   const $ = id => document.getElementById(id);
   const dialog = $('setup-dialog'), results = $('setup-results'), status = $('setup-status');
   const retry = $('setup-retry'), closeButton = $('setup-close');
@@ -65,10 +75,12 @@ export function setupCheck({call}) {
     results.hidden = true;
     $('setup-required').replaceChildren(); $('setup-optional').replaceChildren();
     status.textContent = 'Checking tools...'; status.dataset.kind = 'busy'; busy(true);
+    $('setup-versions').textContent = setupVersions(null,workspaceVersion);
     try {
       const response = await call('matsugit_doctor', {});
       if (!current()) return;
       const report = setupReport(response);
+      $('setup-versions').textContent = setupVersions(report,workspaceVersion);
       for (const required of [true, false]) {
         const group = required ? 'required' : 'optional';
         const checks = report.checks.filter(check => check.required === required);

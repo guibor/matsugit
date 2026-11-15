@@ -12,7 +12,7 @@
 
   function prepare(slide) {
     for (const slot of slide.querySelectorAll(".ff-media")) {
-      if (slot.closest(".media-natural")) continue;
+      if (slot.closest(".media-natural") || slot.classList.contains('ff-media-fixed')) continue;
       const media = slot.querySelector("img, svg.mermaid-js, iframe.ff-canvas-frame");
       if (!media) continue; // Mermaid may still be rendering asynchronously.
       slot.classList.add("ff-fitted");

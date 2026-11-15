@@ -34,6 +34,9 @@ test('built plugin initializes and exposes the app, file handler and versioned f
     assert.equal(client.getServerVersion().version,
       JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8')).version);
     const {tools} = await client.listTools();
+    const doctor = await client.callTool({name:'matsugit_doctor',arguments:{}});
+    assert.equal(doctor.structuredContent.workspace_version,client.getServerVersion().version);
+    assert.equal(typeof doctor.structuredContent.runtime_host,'string');
     const linkTool = tools.find(tool => tool.name === 'matsugit_links');
     assert.equal(linkTool.annotations.readOnlyHint, true);
     assert.equal(linkTool.annotations.openWorldHint, false);

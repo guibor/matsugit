@@ -1,9 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {setupReport} from '../src/setup-check.mjs';
+import {setupReport,setupVersions} from '../src/setup-check.mjs';
 
 const check = {id:'python', label:'Python', status:'ready', required:true, detail:'Python 3.12'};
 const report = {schema:1, ready:true, checks:[check]};
+test('setup names the running UI, server and renderer separately, even when disconnected', () => {
+  assert.match(setupVersions(null,'0.36.1'),/Matsugit workspace 0.36.1.*Server version not reported/);
+  const ready=setupVersions({workspace_version:'0.36.1',version:'0.21.9',runtime_host:'test-host',runtime_platform:'darwin'},'0.36.1');
+  assert.match(ready,/Python renderer 0.21.9.*test-host/); assert.doesNotMatch(ready,/differ/);
+  assert.match(setupVersions({workspace_version:'0.35.0'},'0.36.1'),/versions differ/);
+});
 
 test('setup reports keep optional failures separate from required readiness', () => {
   for (const status of ['ready', 'missing', 'unsupported', 'error']) {

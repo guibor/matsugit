@@ -119,6 +119,9 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     lock(true);
     try {
       await preferences($('export-progress'));
+      $('local-destination').hidden = !options.local_downloads;
+      $('local-destination').textContent = options.local_downloads ? `Downloads on ${options.local_downloads.host}` : 'Save on server';
+      $('export-save-local').replaceChildren(createElement(FolderDown), `Save to Downloads on ${options.local_downloads?.host || 'server'}`);
       $('sync-destination').disabled = !options.export_directory;
       $('sync-destination').textContent = options.export_directory ? 'Synced folder' : 'Synced folder (not configured)';
       $('export-folder').textContent = options.export_directory || '';
@@ -140,6 +143,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   };
   async function sendPrepared() {
     $('export-ready').hidden = false;
+    $('export-download-retry').hidden = false;
     $('export-filename').textContent = `${prepared.name} (${Math.ceil(prepared.blob.size / 1024)} KiB)`;
     $('export-save-local').hidden = !prepared.job || !options.local_downloads;
     $('export-local-target').hidden = $('export-save-local').hidden;
@@ -151,6 +155,12 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
       $('export-progress').textContent = [message, ...(prepared.warnings || [])].join('\n\n');
     } catch (error) {
       $('export-progress').textContent = `Download not completed: ${error.message}\n\nThe prepared file is retained. Download again does not rebuild the export.`;
+      if (error.code === 'DOWNLOAD_UNSUPPORTED') {
+        $('export-download-retry').hidden = true;
+        $('export-progress').textContent = prepared.job
+          ? `${prepared.name} is ready, but this host has no download API. Use Save to Downloads on ${options.local_downloads?.host || 'the server'} below. The prepared export is retained.`
+          : 'This host cannot download the source file. Your draft is retained. Use the workspace Save action, or copy the Markdown to retain it separately.';
+      }
     }
   }
   $('export-download-retry').onclick = async () => {
@@ -159,15 +169,20 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
     try { await sendPrepared(); }
     finally { lock(false); $('export-format').onchange(); }
   };
+  async function savePrepared() {
+    $('export-ready').hidden = false;
+    $('export-filename').textContent = prepared.name;
+    const result = await call('matsugit_export_save', {...prepared.owner, job:prepared.job});
+    prepared.saved = result;
+    $('export-saved-path').value = result.path;
+    $('export-saved-path').hidden = false;
+    $('export-progress').textContent = [`Saved on ${result.host}: ${result.path}`, ...(prepared.warnings || [])].join('\n\n');
+  }
   $('export-save-local').onclick = async () => {
     if (busy || !prepared?.job || prepared.saved) return;
     lock(true); $('export-progress').textContent = 'Saving prepared export...';
     try {
-      const result = await call('matsugit_export_save', {...prepared.owner, job:prepared.job});
-      prepared.saved = result;
-      $('export-saved-path').value = result.path;
-      $('export-saved-path').hidden = false;
-      $('export-progress').textContent = [`Saved on ${result.host}: ${result.path}`, ...(prepared.warnings || [])].join('\n\n');
+      await savePrepared();
     } catch (error) {
       $('export-progress').textContent = `File not saved: ${error.message}\n\nThe prepared export is retained.`;
     } finally { lock(false); $('export-format').onchange(); }
@@ -185,6 +200,11 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
         await sendPrepared(); return;
       }
       const job = await run('export', {...args, format, sync_folder:sync, replace:$('export-replace').checked}, $('export-progress'));
+      if ($('export-destination').value === 'local') {
+        prepared = {name:args.name.replace(/\.[^.]+$/, '') + '.' + format, job:job.job, owner:job.owner, warnings:job.result.warnings};
+        $('export-download-retry').hidden = true; $('export-save-local').hidden = false; $('export-local-target').hidden = true;
+        await savePrepared(); return;
+      }
       if (!sync) {
         const chunks = []; let offset = 0, done = false;
         while (!done) {

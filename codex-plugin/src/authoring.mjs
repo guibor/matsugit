@@ -1,9 +1,10 @@
-import {Decoration, ViewPlugin, gutter, GutterMarker, WidgetType} from '@codemirror/view';
+import {Decoration, EditorView, ViewPlugin, gutter, GutterMarker, WidgetType} from '@codemirror/view';
 import {RangeSetBuilder, StateEffect, StateField} from '@codemirror/state';
 import {foldService} from '@codemirror/language';
 import {autocompletion, startCompletion, snippet} from '@codemirror/autocomplete';
 import {structure, slideBoundaries} from './structure.mjs';
 import {roleDescription} from './role-help.mjs';
+import {layoutControl} from './layout-edit.mjs';
 import {chartTypes, wrapElement, snippetTemplate, ratioLine} from './insertions.mjs';
 
 const recipes = __MATSUGIT_TEMPLATES__;
@@ -54,7 +55,7 @@ class BlockLabel extends WidgetType {
       const values = this.count === 3 ? ['1:1:1'] : ['1:1', '2:1', '1:2'];
       if (!values.includes(current)) values.push(current);
       for (const value of values) select.add(new Option(value, value, false, value === current));
-      select.onchange = () => view.dispatch({changes:{from:this.from,to:this.to,insert:ratioLine(this.line,select.value,this.org)},userEvent:'input'});
+      select.onchange = () => view.dispatch({changes:{from:this.from,to:this.to,insert:ratioLine(this.line,select.value,this.org)},userEvent:'input',annotations:layoutControl.of(true)});
       el.append(select);
     }
     return el;
@@ -87,8 +88,7 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
         if (view.state.field(compactState) && !['Section','Slide','Claim','Region'].includes(item.role)) {
           const line = view.state.doc.lineAt(from);
           const block = this.outline.blocks.find(b => b.from === from || b.endFrom === from);
-          const editing = view.state.selection.ranges.some(s => s.from <= line.to && s.to >= from);
-          if (block && !block.opaque && block.role !== 'agent-comment' && !editing) {
+          if (block && !block.opaque && block.role !== 'agent-comment') {
             const body = view.state.doc.sliceString(block.startEnd, block.to);
             const count = (body.match(isOrg() ? /^\s*#\+begin_(?:region|column)\b/gmi : /^####\s|^:{3,}\s+(?:\{\.column\b|column\b)/gm) || []).length;
             const adjustable = !/\bwidth[= ]/.test(body) && [2,3].includes(count);
@@ -97,9 +97,11 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
         }
       }
       this.markers = marks.finish(); this.decorations = Decoration.set(decorations, true);
+      this.atomic = Decoration.set(decorations.filter(range => range.value.spec.widget), true);
     }
   }, {decorations: value => value.decorations});
   return [compactState, separatorState, semantic,
+    EditorView.atomicRanges.of(view => view.plugin(semantic)?.atomic || Decoration.none),
     gutter({class: 'ff-semantic-gutter', markers: view => view.plugin(semantic).markers}),
     foldService.of((state, from) => {
       const block = parsed(state).blocks.find(block => block.from === from);
