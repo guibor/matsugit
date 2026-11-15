@@ -77,6 +77,11 @@
       slide.dataset.ffMediaReady = "true";
     }
   }
+  window.matsugitMedia = {fitSlide(slide) {
+    if (!slide?.querySelector('.ff-media')) return;
+    prepare(slide);
+    allocate(slide, (Number(window.Reveal.getConfig().height) || 720) - 24);
+  }};
   function schedule() {
     if (queued) return;
     queued = true;

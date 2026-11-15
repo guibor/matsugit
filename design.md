@@ -339,7 +339,7 @@ connectors. Compact spacing is an undoable slide attribute and preserves type si
 Setup reports UI, server, renderer and host separately. Unsupported host downloads
 offer explicit server Downloads delivery, never an unverified sandbox anchor loop.
 
-Bounded automatic fit remains separate work: preserve authored geometry, fit media
+The 0.36.1 fitting design (implemented below) preserves authored geometry, fits media
 proportionally, reduce spacing, then scale text within readable floors. Equal-role
 regions should share a consistent type scale. No clipping or silent slide splitting.
 Validate preview/export parity and long-content cases before enabling it by default.
@@ -357,6 +357,19 @@ not clipping, hidden overflow, a changed layout or an automatic split. Recompute
 from the original theme metrics after fonts/media load so repeated renders do not
 accumulate shrinkage. Preview, standalone HTML and PDF must use the same decision;
 PowerPoint must be checked separately rather than assumed to inherit browser fit.
+
+## Bounded Automatic Fit
+
+The shared fit runtime restores original inline styles before each pass, leaves
+already-fitting slides untouched, reduces positive prose margins to 70%, then
+tries common prose scales in 2% steps down to 88%. Each table has a separate
+group. Computed fonts are captured before mutation; only elements with direct
+text are scaled so container inheritance cannot shrink fixed region headings.
+Sources, titles, claims, media and code are excluded. Theme floors default to
+20px, with hard bounds of 16px and 80% scale. `.no-fit` opts out per slide.
+Unresolved geometry remains visible to the existing fit checker. Media is
+reallocated at each candidate scale. Print and scroll views process all visible
+slides; PDF explicitly fits before capture. This does not change PPTX layout.
 
 ## Export Runtime Recovery (2026-11-15)
 

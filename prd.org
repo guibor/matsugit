@@ -284,10 +284,15 @@ Immediate, in priority order:
 - Honour explicit image heights rather than allocating at least 96px to every image.
 - Expose per-slide Compact spacing and full runtime versions in Check setup.
 - Let authors explicitly export to Downloads on the named runtime machine.
-- Next: bounded automatic fitting inside assigned layout regions; unchanged layouts
+- Fitting requirements: bounded automatic fitting inside assigned layout regions; unchanged layouts
   that already fit, readable text floors, consistent regions and preview/export parity.
   Keep titles/claims fixed by default; share sizes among semantic peers within a
   slide, without allowing a dense slide to shrink the rest of the deck.
+
+* Automatic fitting implementation
+- Shared browser runtime: bounded peer sizing after spacing reduction.
+- Fixed semantic hierarchy, explicit opt-out, no source mutations or hidden overflow.
+- Validate fit/reset/idempotence and real HTML/PDF; PowerPoint remains separate.
 
 * Export Runtime Reliability (2026-11-15)
 - PDF/diagram fallback must launch at most one export interpreter. Missing

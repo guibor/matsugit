@@ -1,0 +1,45 @@
+#+title: Workspace state-machine audit
+
+* Scope and conclusion
+Audit of the core authoring flows at ca59984, followed by automatic-fit work.
+This is a transition inventory and test-gap assessment, not a claim that every
+possible combination is verified. Keep separate state machines; do not replace
+the application with one giant enum. Markdown remains canonical.
+
+* Highest-risk transitions
+| Machine / implementation | Transitions | Required invariant |
+| Draft/file: app.js, external-edits.mjs | clean -> typing -> saving; incoming -> accepted/merge/conflict | Acknowledging an old save cannot acknowledge newer text; no incoming write discards an unaccepted draft |
+| Preview: app.js, preview.js | idle -> queued -> rendering -> current/stale/failed; cancel | Only a matching document/revision/theme/format result becomes current |
+| Session: session-connection.mjs | connected -> expired -> reconnecting -> connected; document switch | Late reconnect cannot bind a different document; retry only a rejected expired request, not an uncertain write |
+| Delivery: delivery.js, download.mjs | preparing -> ready -> sending -> acknowledged/unconfirmed/refused; local save | Prepared bytes and owner remain stable across retry; browser request is not receipt; local save names its host |
+| Publication: share.mjs, publication-status.mjs | saved -> sent -> building -> live/failed/unknown | Live belongs to a specific source revision, not merely a URL |
+| Table draft: visual.mjs, app.js | editing -> applied/cancelled; incoming/recovery | A pending table edit survives incoming source changes and pauses unsafe actions |
+| History restore: app.js, recovery.mjs | choose -> checkpoint -> draft restored -> save | Restore is undoable and cannot write disk without the normal save guard |
+| Layout fit: runtime/fit.js | baseline -> compact -> scaled -> fits/unresolved; reset | Never compound scaling, change fixed roles or erase overflow evidence |
+
+* What exists and what the audit adds
+There are already scenario tests for concurrent edits, acceptance, recovery,
+reconnect, history, Share and export. Session reconnect explicitly guards path
+and sequence, and export retains a prepared job. These are useful safeguards.
+The remaining architectural risk is coordination: app.js repeats overlapping
+boolean guards (saving/loading/merging/delivering/incomingReady/table pending),
+while Share has separate visit/context/monitoring state. The inventory alone
+does not prove any particular interleaving is broken.
+
+Next targeted tests, before restructuring those owners:
+1. Delayed save reply after typing plus incoming edit: verify each exact text
+   revision and prompt, not only a final Saved label.
+2. Theme switch + cancellation + late preview reply: reject stale geometry and
+   fit findings as well as stale HTML.
+3. Disconnect after export-save succeeds but before its receipt: do not infer
+   failure or silently repeat the side effect. Check job receipt before retry.
+4. New edit while a prior CI revision becomes live: keep current draft status
+   independent of the older deployment receipt.
+5. Reconnect during a pending table draft and a History restore: retain the
+   table text and require a valid checkpoint before applying the restore.
+
+Recommended next implementation: extract and test a pure draft/file transition
+function first, retaining existing browser tests unchanged. Use generated event
+sequences with reordered/duplicated replies and failure injection. Add other
+machines only where their invariants expose a concrete gap. No new state-machine
+dependency is needed for this audit, and no save/merge refactor is bundled with fit.

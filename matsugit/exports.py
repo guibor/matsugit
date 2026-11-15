@@ -66,6 +66,7 @@ def browser_artifacts(directory, pdf=None):
         if pdf:
             page.wait_for_function('window.Reveal?.isReady() && document.documentElement.classList.contains("print-pdf")')
             page.evaluate('Reveal.configure({pdfSeparateFragments:false})')
+            page.evaluate('window.matsugitFit?.fitAll()')
             page.pdf(path=str(pdf), print_background=True, prefer_css_page_size=True)
         else:
             for index in range(diagrams.count()):

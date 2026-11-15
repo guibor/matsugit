@@ -204,5 +204,12 @@ The Spacing control applies `.tight` to the current slide without reducing type.
 The same option is available from fit findings in Check; Undo restores it.
 An image with an explicit absolute height keeps that height, including shallow
 connectors between panels. Do not remove the author's dimensions to force a fit.
-Automatic text scaling is not enabled: respect semantic type sizes, and do not
-shrink one parallel column independently of its peers or shrink slide titles.
+Slide HTML, workspace previews and PDF apply bounded automatic fitting only
+when content overflows: reduce paragraph/list spacing, then share a modest
+text reduction across peer prose. Tables form separate complete size groups.
+Titles, claims, region headings, sources and explicit image sizes stay fixed.
+The default floor is 20 CSS pixels and maximum reduction is 12 percent.
+Themes may set `--ff-fit-min-font-size` and `--ff-fit-min-scale` (hard safety
+limits: 16px and 80%). Add `.no-fit` to a slide to retain exact theme sizing.
+Overflow remaining at the floor is still reported; nothing is clipped or split.
+PowerPoint uses Pandoc's separate layout and does not inherit this browser fit.

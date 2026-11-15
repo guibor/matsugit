@@ -85,7 +85,8 @@ with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
             shots = Path(os.environ.get('MATSUGIT_SCREENSHOTS', '/tmp/matsugit-focused-shots'))
             shots.mkdir(parents=True,exist_ok=True)
             page.screenshot(path=str(shots/'overflow.png'))
-            print('PASS: crowding warns without modifying source or type',flush=True)
+            assert preview.locator('.ff-body li').first.evaluate('e=>parseFloat(getComputedStyle(e).fontSize)') >= 20
+            print('PASS: unresolved crowding warns, source retained and type bounded',flush=True)
 
             # The author supplies boundaries; the renderer only respects them.
             split = crowded.replace('- Evidence item 8:', '\n---\n\n- Evidence item 8:').replace('- Evidence item 16:', '\n---\n\n- Evidence item 16:')
@@ -119,7 +120,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
             assert reading.locator('main li').count() == 24
             assert source.read_text() == original
             assert not errors, errors
-            print('PASS: fit warning, Show, unchanged source/type, manual splits, stable-title/claim patch, reading projection, narrow hosts',flush=True)
+            print('PASS: fit warning, Show, unchanged source, bounded type, manual splits, title/claim patch, reading projection, narrow hosts',flush=True)
             page.close(run_before_unload=False)
             browser.close()
     finally:
