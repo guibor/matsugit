@@ -328,7 +328,8 @@ the selected origin/path, and each preview request rereads file configuration.
 - `codex-plugin/tests/*-browser.py`: the real built workspace in Chromium via
   the isolated host in `tests/browser-host.mjs` (needs Python Playwright).
   `check-browser.py` covers the check panel and the picker.
-# Visual Layout Safety and Delivery (0.36.1)
+
+## Visual Layout Safety and Delivery (0.36.1)
 
 Formatted editing protects paired container fences and region heading prefixes.
 Whole-block removal remains possible; Raw Markdown is the structural escape hatch.
@@ -356,3 +357,15 @@ not clipping, hidden overflow, a changed layout or an automatic split. Recompute
 from the original theme metrics after fonts/media load so repeated renders do not
 accumulate shrinkage. Preview, standalone HTML and PDF must use the same decision;
 PowerPoint must be checked separately rather than assumed to inherit browser fit.
+
+## Export Runtime Recovery (2026-11-15)
+
+`exports.setup` refreshes an existing export virtual environment with the
+current Python before installing the hash-locked dependencies. OS Python
+upgrades can leave an existing interpreter symlink pointing at a new version
+while its packages remain under the old version's site-packages directory.
+`exports.browser_artifacts` marks its one fallback subprocess with
+`_MATSUGIT_EXPORT_REEXEC=1`. A fallback interpreter without Playwright raises
+an actionable error instead of recursively launching itself. Tests in
+`tests/test_export_runtime.py` cover bounded fallback, failed/missing runtimes,
+and creation versus refresh of the isolated export environment.

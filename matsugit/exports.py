@@ -22,8 +22,10 @@ from . import export_state
 def setup():
     root = Path.home() / '.local/share/matsugit/export-tools'
     python = root / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
-    if not python.exists():
-        subprocess.run([sys.executable, '-m', 'venv', str(root)], check=True)
+    command = [sys.executable, '-m', 'venv']
+    if python.exists():
+        command.append('--upgrade')
+    subprocess.run([*command, str(root)], check=True)
     locked = Path(__file__).parent / 'dependencies/export.txt'
     subprocess.run([str(python), '-m', 'pip', 'install', '--require-hashes',
                     '--only-binary=:all:', '-r', str(locked)], check=True)
@@ -33,12 +35,16 @@ def setup():
 
 def browser_artifacts(directory, pdf=None):
     if importlib.util.find_spec('playwright') is None:
+        # A stale export environment must fail once, not recursively relaunch itself.
+        if os.environ.get('_MATSUGIT_EXPORT_REEXEC') == '1':
+            raise Error('Export Python cannot import Playwright. Run matsugit setup-export to repair it')
         python = Path(os.environ.get('MATSUGIT_EXPORT_PYTHON', str(
             Path.home() / '.local/share/matsugit/export-tools' /
             ('Scripts/python.exe' if os.name == 'nt' else 'bin/python'))))
         if not python.is_file():
             raise Error('PDF/diagram export needs Chromium. Run matsugit setup-export once')
-        env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parent.parent))
+        env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parent.parent),
+                   _MATSUGIT_EXPORT_REEXEC='1')
         result = subprocess.run([str(python), '-m', 'matsugit.exports', str(directory),
                                  str(pdf) if pdf else ''], env=env, capture_output=True, text=True, timeout=240)
         if result.returncode:

@@ -277,6 +277,7 @@ Immediate, in priority order:
   editing the slide you just wrote is the common case).
 - 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
   =Follow=. Behaviour unchanged.
+
 * 0.36.1: layout editing, position continuity and reliable delivery
 - Protect container boundaries in Formatted editing; keep Raw fully editable.
 - Preserve the visible passage across appearance switches.
@@ -287,3 +288,18 @@ Immediate, in priority order:
   that already fit, readable text floors, consistent regions and preview/export parity.
   Keep titles/claims fixed by default; share sizes among semantic peers within a
   slide, without allowing a dense slide to shrink the rest of the deck.
+
+* Export Runtime Reliability (2026-11-15)
+- PDF/diagram fallback must launch at most one export interpreter. Missing
+  dependencies in that interpreter must fail with repair instructions, never
+  recursively create workers or exhaust a shared server.
+- =setup-export= must repair an existing virtual environment after an OS
+  Python upgrade, retaining hash-locked dependencies.
+** Changed Requirements
+- Existence of the export interpreter was previously treated as proof that
+  its environment remained usable. It is not; refresh it during explicit
+  setup and bound fallback independently of dependency health.
+** Immediate Next Steps
+- [X] Run the focused runtime tests and verify an actual browser/PDF export
+  on md-server, including fast failure with a deliberately missing dependency.
+- [X] Include the fix in renderer 0.21.9 / plugin 0.36.1.
