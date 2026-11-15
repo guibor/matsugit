@@ -4327,7 +4327,8 @@ var KNOWN = [
   "compact",
   "data-table",
   "quotation",
-  "attribution"
+  "attribution",
+  "collapsible"
 ];
 var FOREIGN = /* @__PURE__ */ new Set([
   "incremental",
@@ -4356,7 +4357,8 @@ var BOOLEANS = [
   "slide-empty-slides",
   "slide-title-page",
   "publish-sources",
-  "include-notes"
+  "include-notes",
+  "document-collapsible"
 ];
 var FENCE = /^ {0,3}(:{3,})[ \t]*(.*?)[ \t]*$/;
 var title = (role) => role[0].toUpperCase() + role.slice(1).replaceAll("-", " ");

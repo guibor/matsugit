@@ -60,6 +60,7 @@ jobs:
           MATSUGIT_STANDARD_MCP: '1'
         run: |
           python3 codex-plugin/tests/document-fold-browser.py
+          python3 codex-plugin/tests/document-fold-export-browser.py
           python3 codex-plugin/tests/share-browser.py
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/share-browser.py
           python3 codex-plugin/tests/check-browser.py

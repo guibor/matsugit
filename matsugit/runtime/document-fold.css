@@ -3,5 +3,8 @@
 .ff-fold-toggle[aria-expanded=false]::before{transform:rotate(-45deg)}
 .ff-fold-toggle:hover{opacity:1;background:color-mix(in srgb,currentColor 8%,transparent)}
 .ff-fold-toggle:focus-visible{opacity:1;outline:2px solid currentColor;outline-offset:2px}
+.ff-fold-block-toggle{display:inline-flex;gap:10px;width:auto;height:auto;min-height:32px;padding:4px 8px;margin:0;font:inherit;font-weight:600;opacity:.8;text-align:left}
+.ff-fold-block-toggle::before{flex:none}
+.ff-fold-heading:has(>.ff-fold-block-toggle){margin:8px 0}
 @media screen{.ff-folded>:not(.ff-fold-heading){display:none!important}}
-@media print{.ff-fold-toggle{display:none!important}}
+@media print{.ff-fold-toggle{display:none!important}.ff-fold-block-toggle{display:inline!important;padding:0;opacity:1}.ff-fold-block-toggle::before{display:none}}

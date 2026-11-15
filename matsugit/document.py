@@ -38,4 +38,15 @@ def document(ast):
             claim_position = False
         out.append(block)
     result['blocks'] = out
+    if result.get('meta', {}).get('document-collapsible') == {'t': 'MetaBool', 'c': True}:
+        def mark(node):
+            if isinstance(node, dict):
+                if node.get('t') == 'Header' and 'collapsible' not in node['c'][1][1]:
+                    node['c'][1][1].append('collapsible')
+                for value in node.values():
+                    mark(value)
+            elif isinstance(node, list):
+                for value in node:
+                    mark(value)
+        mark(out)
     return result

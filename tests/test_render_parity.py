@@ -124,11 +124,13 @@ class RenderParityTests(unittest.TestCase):
                         self.assertEqual((local/name).read_text(),(generated/name).read_text(),name)
                     for name in ('document.css','slides.scss','theme.json'):
                         self.assertEqual((local/'theme'/name).read_bytes(),(generated/'theme'/name).read_bytes())
-                    for name in ('layout.css','media.css','canvas.css'):
+                    for name in ('layout.css','media.css','canvas.css','document-fold.js','document-fold.css'):
                         self.assertEqual((local/'runtime'/name).read_bytes(),(generated/'runtime'/name).read_bytes())
                     document, slides = (local/'render.qmd').read_text(), (local/'slides.qmd').read_text()
                     # Org can escape underscores in its Markdown representation.
                     document, slides = document.replace('\\_', '_'), slides.replace('\\_', '_')
+                    self.assertEqual('.collapsible' in document, flag)
+                    self.assertNotIn('.collapsible', slides)
                     self.assertEqual('SourceSentinel' in document,flag)
                     self.assertEqual('SourceSentinel' in slides,flag)
                     self.assertEqual('NotesSentinel' in document,flag)

@@ -14,7 +14,8 @@ def metadata(meta):
     """Keep display/layout metadata, never executable Quarto configuration."""
     result = {key: deepcopy(meta[key]) for key in ('title', 'subtitle') if key in meta}
     for key in ('slide-layout', 'slide-section-dividers', 'slide-empty-slides',
-                'slide-aspect-ratio', 'slide-title-page', 'publish-sources', 'include-notes'):
+                'slide-aspect-ratio', 'slide-title-page', 'publish-sources', 'include-notes',
+                'document-collapsible'):
         if key not in meta:
             continue
         value = meta[key]

@@ -11,7 +11,8 @@ except ImportError:
     from layout import metadata, plain
 
 DISPLAY = {'slide-layout', 'slide-section-dividers', 'slide-empty-slides',
-           'slide-aspect-ratio', 'slide-title-page', 'publish-sources', 'include-notes'}
+           'slide-aspect-ratio', 'slide-title-page', 'publish-sources', 'include-notes',
+           'document-collapsible'}
 BOOLEAN = DISPLAY - {'slide-layout', 'slide-aspect-ratio'}
 OPAQUE = {'src', 'example', 'export', 'comment', 'agent-comment'}
 

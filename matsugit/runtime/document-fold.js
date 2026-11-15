@@ -11,14 +11,26 @@
       const button = controls.get(section);
       if (button) { button.setAttribute('aria-expanded', 'true'); button.title = 'Collapse section'; }
     }
-    for (const section of root.querySelectorAll('section[class*="level"]')) {
-      const heading = section.querySelector(':scope > :is(h1,h2,h3,h4,h5,h6)');
-      if (!heading || section.children.length < 2 || heading.querySelector('.ff-fold-toggle')) continue;
-      const title = heading.textContent.trim();
+    const marked = root.querySelectorAll('section.collapsible, div.collapsible, section:has(> :is(h1,h2,h3,h4,h5,h6).collapsible)');
+    const foldable = new Set(marked);
+    // A marked region includes its subsections, not unrelated sibling sections.
+    for (const region of marked) for (const section of region.querySelectorAll('section')) foldable.add(section);
+    for (const section of foldable) {
+      if (!section.children.length) continue;
+      let heading = section.firstElementChild;
+      const hasHeading = /^H[1-6]$/.test(heading.tagName);
+      if (hasHeading && (section.children.length < 2 || heading.querySelector('.ff-fold-toggle'))) continue;
+      const title = hasHeading ? heading.textContent.trim() : section.getAttribute('title') || 'Details';
+      if (!hasHeading) {
+        heading = document.createElement('div');
+        section.prepend(heading);
+      }
       const button = document.createElement('button');
-      button.type = 'button'; button.className = 'ff-fold-toggle';
+      button.type = 'button'; button.className = 'ff-fold-toggle' + (hasHeading ? '' : ' ff-fold-block-toggle');
+      if (!hasHeading) button.textContent = title;
       button.setAttribute('aria-label', 'Section: ' + title);
-      button.setAttribute('aria-expanded', 'true'); button.title = 'Collapse section';
+      button.setAttribute('aria-expanded', 'false'); button.title = 'Expand section';
+      section.classList.add('ff-folded');
       heading.classList.add('ff-fold-heading');
       button.onclick = () => {
         if (section.classList.contains('ff-folded')) expand(section);

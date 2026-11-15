@@ -1,5 +1,39 @@
 # Authoring contract
 
+## Collapsible reading content
+
+Document HTML is not collapsible by default. Mark only the sections you want:
+
+```markdown
+## Supporting evidence {.collapsible}
+
+This section starts collapsed in document HTML.
+```
+
+For a passage, table or other block inside a section, use **Add > Collapsible
+content**, type `/collapsible`, or wrap it in a fenced div:
+
+```markdown
+::: {.collapsible title="Supporting detail"}
+
+The detail to reveal on demand.
+
+:::
+```
+
+To make all document sections collapsible, add `document-collapsible: true` to
+the YAML frontmatter. Omit it or use `false` to leave unmarked sections ordinary.
+All collapsible sections and blocks start collapsed on opening HTML. The
+heading or block label remains visible. Collapsibility is inherited by every
+subsection: mark the parent once, not each child. Each subsection starts
+collapsed and opens independently; opening a parent does not expand its children.
+Unmarked sibling sections outside that parent remain ordinary.
+Fragment links reveal their target. Slides and print/PDF keep all content
+visible. Folding changes the reading view only, never the Markdown source.
+
+Global folding applies to sections, not every individual paragraph or image.
+Use a labelled block when an element does not already have a section heading.
+
 ## Source structure
 
 ```markdown

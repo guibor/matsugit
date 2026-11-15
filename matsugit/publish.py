@@ -185,6 +185,8 @@ def setup_ci(settings, provider):
         ".matsugit-ci/runtime/annotations.js": Path(__file__).parent / "runtime/annotations.js",
         ".matsugit-ci/runtime/media.css": Path(__file__).parent / "runtime/media.css",
         ".matsugit-ci/runtime/layout.css": Path(__file__).parent / "runtime/layout.css",
+        ".matsugit-ci/runtime/document-fold.js": Path(__file__).parent / "runtime/document-fold.js",
+        ".matsugit-ci/runtime/document-fold.css": Path(__file__).parent / "runtime/document-fold.css",
         ".matsugit-ci/runtime/math-config.js": Path(__file__).parent / "runtime/math-config.js",
         ".matsugit-ci/runtime/mathjax-tex-svg.js": mathjax,
         ".matsugit-ci/runtime/MATHJAX-LICENSE": Path(__file__).parent / "runtime/MATHJAX-LICENSE",

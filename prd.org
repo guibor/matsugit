@@ -1,5 +1,25 @@
 #+title: matsugit product requirements
 
+* Next release: forgiving slide builds (2026-11-15)
+
+Recoverable authoring mistakes should produce warnings and usable slides, not
+abort a whole Pages build. Start with misplaced or additional H3 body headings:
+interpret them safely for rendering, without rewriting the Markdown source.
+Report any fallback clearly. Keep security checks and genuine rendering failures
+fatal; never silently drop content or claim a broken output succeeded.
+This is follow-up work, not part of the opt-in folding release.
+
+* Changed requirement: opt-in reading disclosures (2026-11-15)
+
+This supersedes automatic foldability introduced in 0.36.6. Unmarked document
+HTML has no disclosure controls. A boolean document-collapsible YAML option
+marks all reading sections; .collapsible marks a chosen heading or fenced div.
+Foldability is inherited by all subsections, each initially collapsed; opening
+a parent does not expand its children. Every marked element starts collapsed
+on opening HTML. An explicit block can
+carry a title. Add and slash completion offer a collapsible-content template.
+Printing/PDF and slides retain all content; source text is never rewritten.
+
 * Changed requirement: usable shared links (2026-11-15)
 
 Share provides distinct Open slides/document buttons and accessible copy icons.

@@ -4,6 +4,7 @@ slide-layout: structured
 slide-section-dividers: false
 publish-sources: false
 include-notes: false
+document-collapsible: false
 ---
 
 ## Synthetic parity deck {#authored-cover .cover}

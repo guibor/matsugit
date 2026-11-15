@@ -28,7 +28,7 @@ def wait(frame, expression, timeout=120):
 with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
     source = Path(tmp) / 'deck.md'
     original = ('---\ntitle: Fit test\nslide-layout: structured\nslide-title-page: false\n'
-                'slide-section-dividers: false\n---\n\n## Small {#small}\n### A plain claim\n\nShort body.\n'
+                'slide-section-dividers: false\ndocument-collapsible: true\n---\n\n## Small {#small}\n### A plain claim\n\nShort body.\n'
                 '\n::: notes\n' + 'Private notes are not visible slide content. ' * 150 + '\n:::\n')
     source.write_text(original)
     host = subprocess.Popen(['node',str(ROOT/'codex-plugin/tests/browser-host.mjs')],
@@ -121,12 +121,10 @@ with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
             target = frame.locator('#preview').get_attribute('src').split('#')[0]
             wait(reading, 'location.href.split("#")[0] === ' + json.dumps(target)
                  + ' && document.readyState === "complete" && !!document.querySelector(".ff-fold-toggle")')
-            assert reading.locator('main .ff-document-claim').inner_text() == 'An updated claim'
+            assert reading.locator('main .ff-document-claim').text_content().strip() == 'An updated claim'
             assert 'Private notes' not in reading.locator('main').inner_text()
             assert reading.locator('main li').count() == 24
             toggle = reading.locator('.ff-fold-toggle').first
-            assert toggle.get_attribute('aria-expanded') == 'true'
-            toggle.click()
             assert toggle.get_attribute('aria-expanded') == 'false'
             assert reading.locator('main .ff-document-claim').is_hidden()
             page.emulate_media(media='print')

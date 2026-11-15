@@ -11,13 +11,13 @@ const CHART_TYPES = ['bar', 'barh', 'line', 'scatter', 'stacked', 'stacked100'];
 const KNOWN = ['takeaway', 'source', 'notes', 'columns', 'column', 'rows', 'row', 'metrics',
   'comparison', 'timeline', 'decision', 'assertion', 'claim', 'chart', 'implication', 'mapping',
   'annotated', 'evidence', 'callout', 'canvas', 'agent-comment', 'compact', 'data-table',
-  'quotation', 'attribution'];
+  'quotation', 'attribution', 'collapsible'];
 // Ordinary Quarto/Reveal classes are never "typos" of ours.
 const FOREIGN = new Set(['incremental', 'nonincremental', 'fragment', 'aside', 'footer', 'center',
   'smaller', 'scrollable', 'absolute', 'panel-tabset', 'content-visible', 'content-hidden',
   'sources', 'comment', 'block', 'note', 'tip', 'warning', 'important', 'caution']);
 const BOOLEANS = ['slide-section-dividers', 'slide-empty-slides', 'slide-title-page',
-  'publish-sources', 'include-notes'];
+  'publish-sources', 'include-notes', 'document-collapsible'];
 const FENCE = /^ {0,3}(:{3,})[ \t]*(.*?)[ \t]*$/;
 const title = role => role[0].toUpperCase() + role.slice(1).replaceAll('-', ' ');
 

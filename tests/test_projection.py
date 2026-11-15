@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from matsugit import core
 from matsugit.document import document
-from matsugit.layout import slides
+from matsugit.layout import slides, metadata
 
 
 def heading(level, text):
@@ -25,6 +25,34 @@ def source(blocks):
 
 
 class DocumentTests(unittest.TestCase):
+    def test_collapsing_is_opt_in_and_only_changes_the_reading_projection(self):
+        ast = source([heading(2, 'Topic'), paragraph('Evidence'), heading(2, 'More'), paragraph('Detail')])
+        original = deepcopy(ast)
+        self.assertEqual(document(ast), ast)
+        ast['meta']['document-collapsible'] = {'t': 'MetaBool', 'c': False}
+        self.assertEqual(document(ast)['blocks'], original['blocks'])
+        ast['meta']['document-collapsible']['c'] = True
+        before = deepcopy(ast)
+        result = document(ast)
+        self.assertEqual(result['blocks'][0]['c'][1][1], ['collapsible'])
+        self.assertEqual(result['blocks'][2]['c'][1][1], ['collapsible'])
+        self.assertEqual(slides(ast)['blocks'], slides(original)['blocks'])
+        self.assertEqual(ast, before)
+
+    def test_selected_sections_and_blocks_retain_markers_without_global_option(self):
+        ast = source([heading(2, 'Selected'), paragraph('Evidence'), heading(2, 'Ordinary'),
+                      {'t': 'Div', 'c': [['detail', ['collapsible'], [['title', 'Supporting detail']]], [paragraph('More')]]}])
+        ast['blocks'][0]['c'][1][1].append('collapsible')
+        self.assertEqual(document(ast), ast)
+        self.assertEqual(document(ast)['blocks'][2]['c'][1][1], [])
+
+    def test_collapsible_metadata_is_a_safe_boolean(self):
+        for value in (True, False):
+            meta = {'document-collapsible': {'t': 'MetaBool', 'c': value}}
+            self.assertEqual(metadata(meta), meta)
+        with self.assertRaisesRegex(ValueError, 'document-collapsible must be true or false'):
+            metadata({'document-collapsible': {'t': 'MetaString', 'c': 'true'}})
+
     def test_opening_h2_title_keeps_anchor_claim_and_body_once(self):
         ast = source([{'t':'RawBlock','c':['html','<!-- author note -->']},
                       heading(2,'Example'), heading(3,'Opening claim'), paragraph('Cover evidence'),

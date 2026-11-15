@@ -9,8 +9,14 @@ to the current document and dialog visit; copying never saves or publishes.
 `findingsForFormat` filters slide-only advice from the reading-mode check panel.
 Accepted external edits retain the existing reversible comparison flow but are
 labelled as applied, distinct from pending changes. `document-fold.js` adds
-disclosures to Quarto reading sections only; screen-only CSS folds bodies,
-fragment navigation expands ancestors, and print always retains all content.
+disclosures only to opted-in reading sections and blocks, initially collapsed.
+`document-collapsible: true` marks reading headers in the document projection,
+while `.collapsible` can mark individual headings or fenced divs. No setting
+means no automatic controls. Marked regions pass foldability to all descendant
+sections; each starts collapsed independently. Screen-only CSS folds bodies, fragment navigation
+expands ancestors, and print always retains all content.
+The installed Pages renderer packages the same folding script and stylesheet;
+local/CI parity checks compare those assets and the projected folding markers.
 
 How the code is organised and where the main functions live. For behaviour and
 limits, read `README.org` and `docs/`; for requirements, `prd.org`.
