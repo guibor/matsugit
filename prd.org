@@ -277,3 +277,19 @@ Immediate, in priority order:
   editing the slide you just wrote is the common case).
 - 2026-11-10, control names. Was: =Auto= and =Sync=. Now: =Auto-update= and
   =Follow=. Behaviour unchanged.
+
+* Export Runtime Reliability (2026-11-15)
+- PDF/diagram fallback must launch at most one export interpreter. Missing
+  dependencies in that interpreter must fail with repair instructions, never
+  recursively create workers or exhaust a shared server.
+- =setup-export= must repair an existing virtual environment after an OS
+  Python upgrade, retaining hash-locked dependencies.
+** Changed Requirements
+- Existence of the export interpreter was previously treated as proof that
+  its environment remained usable. It is not; refresh it during explicit
+  setup and bound fallback independently of dependency health.
+** Immediate Next Steps
+- [X] Run the focused runtime tests and verify an actual browser/PDF export
+  on md-server, including fast failure with a deliberately missing dependency.
+- [ ] Include the fix in the next renderer/plugin release. The installed
+  md-server source and plugin cache are patched; no release is published here.
