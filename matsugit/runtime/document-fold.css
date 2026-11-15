@@ -1,0 +1,7 @@
+.ff-fold-toggle{display:inline-grid;place-items:center;vertical-align:middle;width:28px;height:28px;margin:0 6px 0 0;padding:0;border:0;border-radius:4px;background:transparent;color:inherit;opacity:.6;cursor:pointer}
+.ff-fold-toggle::before{content:"";width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translate(-1px,-1px)}
+.ff-fold-toggle[aria-expanded=false]::before{transform:rotate(-45deg)}
+.ff-fold-toggle:hover{opacity:1;background:color-mix(in srgb,currentColor 8%,transparent)}
+.ff-fold-toggle:focus-visible{opacity:1;outline:2px solid currentColor;outline-offset:2px}
+@media screen{.ff-folded>:not(.ff-fold-heading){display:none!important}}
+@media print{.ff-fold-toggle{display:none!important}}

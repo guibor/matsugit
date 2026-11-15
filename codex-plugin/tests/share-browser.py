@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 from playwright.sync_api import sync_playwright
+from share_link_checks import check_share_links
 
 ROOT = Path(__file__).resolve().parents[2]
 shots = Path(os.environ.get('MATSUGIT_SCREENSHOTS', tempfile.mkdtemp(prefix='matsugit-share-')))
@@ -104,6 +105,7 @@ try:
         frame.locator('#share-links .share-open[data-link="source"]').click()
         page.wait_for_function('(window.openedLinks || []).length === 1', timeout=5000)
         assert page.evaluate('window.openedLinks') == ['https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md']
+        check_share_links(page, frame, SITE, shots, wait)
         assert Path(info['source']).is_symlink() and 'first version' in Path(info['destination']).read_text()
         assert 'first version' in git(root / 'remotes/team/docs.git', 'show', 'main:matsugit-site/deck/source.md')
         assert frame.evaluate('matsugitWorkspace.state.path') == info['destination']

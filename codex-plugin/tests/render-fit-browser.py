@@ -118,6 +118,20 @@ with tempfile.TemporaryDirectory(prefix='matsugit-fit-test-') as tmp:
             assert reading.locator('main .ff-document-claim').inner_text() == 'An updated claim'
             assert 'Private notes' not in reading.locator('main').inner_text()
             assert reading.locator('main li').count() == 24
+            toggle = reading.locator('.ff-fold-toggle').first
+            assert toggle.get_attribute('aria-expanded') == 'true'
+            toggle.click()
+            assert toggle.get_attribute('aria-expanded') == 'false'
+            assert reading.locator('main .ff-document-claim').is_hidden()
+            page.emulate_media(media='print')
+            assert reading.locator('main .ff-document-claim').is_visible()
+            assert toggle.is_hidden()
+            page.emulate_media(media='screen')
+            toggle.focus()
+            page.keyboard.press('Enter')
+            assert reading.locator('main .ff-document-claim').is_visible()
+            assert not frame.locator('.check-item[data-code=rendered-fit]').count()
+            page.screenshot(path=str(shots/'document-disclosures.png'))
             assert source.read_text() == original
             assert not errors, errors
             print('PASS: fit warning, Show, unchanged source, bounded type, manual splits, title/claim patch, reading projection, narrow hosts',flush=True)

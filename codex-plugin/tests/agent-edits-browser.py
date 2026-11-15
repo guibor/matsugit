@@ -85,11 +85,20 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
             source.write_text(source.read_text().replace('Agent delivery.','Agent delivery.\nAnother paragraph.'))
             frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame,'!!matsugitWorkspace.state.incomingReady && !matsugitWorkspace.state.merging')
+            assert frame.locator('#reload').inner_text() == 'Compare changes'
+            assert 'notice-primary' in frame.locator('#accept-update').get_attribute('class')
             assert 'Agent delivery advanced.' not in frame.evaluate(TEXT)
             frame.locator('#accept-update').click()
             wait(frame,TEXT + '.includes("Agent delivery advanced.") && !matsugitWorkspace.state.merging')
             page.unroute_all(behavior='wait')
             assert advanced
+            assert frame.locator('#accept-update').is_hidden()
+            assert frame.locator('#reload').inner_text() == 'View applied changes'
+            frame.locator('#reload').click()
+            wait(frame, 'document.getElementById("changes-dialog").open')
+            assert frame.locator('#changes-title').inner_text() == 'Applied changes'
+            assert 'Nothing else needs accepting' in frame.locator('#changes-description').inner_text()
+            frame.locator('#changes-cancel').click()
             assert not frame.evaluate('matsugitWorkspace.state.conflict')
             source.write_text(source.read_text().replace('Agent delivery advanced.','Agent delivery.'))
             frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')

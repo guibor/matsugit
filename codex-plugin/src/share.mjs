@@ -2,8 +2,9 @@
 // and one next step, and drives the existing reviewed operations underneath:
 // move-and-publish the first time, two-way exchange afterwards, pull when only
 // someone else changed the deck. Nothing is sent without the final click.
-import {createElement, Share2, X, Copy} from 'lucide';
+import {createElement, Share2, X, Copy, Check, LoaderCircle, Presentation, FileText, ExternalLink} from 'lucide';
 import {mergeResult} from './merge-result.mjs';
+import {copyLink} from './copy-link.mjs';
 
 const $ = id => document.getElementById(id);
 const BUTTON = {'Not pushed': 'Share', 'Changes not pushed': 'Share changes', Pushed: 'Sent',
@@ -42,17 +43,47 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   const dialog = $('share-dialog'), go = $('share-go'), progress = $('share-progress');
   let step = null, context = null, contextOwner = null, visit = 0, showingOutcome = false, monitoring = false, linkSignature;
   $('share').append(createElement(Share2), document.createElement('span'));
-  $('share-close').append(createElement(X)); $('share-copy').append(createElement(Copy), 'Copy link');
+  $('share-close').append(createElement(X));
+  let copyAttempt = 0;
+  function copyIcon(button, icon, label) {
+    button.replaceChildren(createElement(icon)); button.title = label;
+    button.setAttribute('aria-label', label);
+  }
+  copyIcon($('share-copy'), Copy, 'Copy link');
+  function clearCopy() {
+    copyAttempt++;
+    $('share-copy-status').textContent = '';
+    $('share-copy-fallback').hidden = true;
+    $('share-copy-url').value = '';
+  }
+  async function copy(button, url, label = 'Link') {
+    if (button.getAttribute('aria-busy') === 'true') return;
+    const current = ++copyAttempt, owner = view(), opened = visit;
+    $('share-copy-fallback').hidden = true;
+    $('share-copy-status').textContent = 'Copying link...';
+    button.setAttribute('aria-disabled', 'true'); button.setAttribute('aria-busy', 'true');
+    copyIcon(button, LoaderCircle, 'Copying link');
+    const copied = await copyLink(url, dialog);
+    button.removeAttribute('aria-disabled'); button.removeAttribute('aria-busy');
+    copyIcon(button, Copy, `Copy ${label.toLowerCase()} link`);
+    if (current !== copyAttempt || owner !== view() || opened !== visit || !dialog.open || !button.isConnected) return;
+    if (copied) {
+      copyIcon(button, Check, `${label} link copied`);
+      $('share-copy-status').textContent = `${label} link copied.`;
+    } else {
+      $('share-copy-status').textContent = 'Clipboard access is blocked. Copy the selected link.';
+      $('share-copy-fallback').hidden = false;
+      const input = $('share-copy-url'); input.value = url; input.focus(); input.select();
+    }
+  }
   $('share-close').onclick = () => dialog.close();
   $('share-later').onclick = () => dialog.close();
   dialog.addEventListener('cancel', event => { if (isBusy()) event.preventDefault(); });
-  dialog.addEventListener('close', () => { visit++; step = null; });
+  dialog.addEventListener('close', () => { visit++; step = null; clearCopy(); });
   for (const [id, target] of [['share-advanced-sync', 'git-sync'], ['share-advanced-publish', 'publish'], ['share-advanced-status', 'publication-state']])
     $(id).onclick = () => { if (isBusy()) return; dialog.close(); $(target).click(); };
-  $('share-copy').onclick = async () => {
-    try { await navigator.clipboard.writeText($('share-link').href); progress.textContent = 'Link copied.'; }
-    catch { progress.textContent = 'Could not copy. Select the link above instead.'; }
-  };
+  $('share-copy').onclick = () => copy($('share-copy'), $('share-link').href);
+  $('share-link').onclick = event => { event.preventDefault(); openLink($('share-link').href); };
   const view = () => state.session || state.uri;
   const knownLinks = () => {
     const receipt = publication.receipt(), local = contextOwner === view() ? context : null;
@@ -85,17 +116,17 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const root = $('share-links');
     root.hidden = !list.length;
     root.replaceChildren(...list.map(item => {
-      const row = document.createElement('li'), open = document.createElement('button'), copy = document.createElement('button');
+      const row = document.createElement('li'), open = document.createElement('button'), copyButton = document.createElement('button');
       open.type = 'button'; open.className = 'share-open'; open.dataset.link = item.key;
-      const label = document.createElement('strong'); label.textContent = item.label;
+      const label = document.createElement('strong'); label.textContent = `Open ${item.label.toLowerCase()}`;
       const detail = document.createElement('span'); detail.textContent = item.detail;
-      open.append(label, detail); open.title = item.url; open.onclick = () => openLink(item.url);
-      copy.type = 'button'; copy.className = 'share-copy-link'; copy.textContent = 'Copy link'; copy.title = 'Copy ' + item.url;
-      copy.onclick = async () => {
-        try { await navigator.clipboard.writeText(item.url); progress.textContent = `${item.label} link copied.`; }
-        catch { progress.textContent = `Could not copy. The link is ${item.url}`; }
-      };
-      row.append(open, copy); return row;
+      const words = document.createElement('span'); words.className = 'share-link-label'; words.append(label, detail);
+      open.append(createElement(item.key === 'slides' ? Presentation : item.key === 'document' ? FileText : ExternalLink), words);
+      open.title = item.url; open.onclick = () => openLink(item.url);
+      copyButton.type = 'button'; copyButton.className = 'share-copy-link'; copyButton.dataset.link = item.key;
+      copyIcon(copyButton, Copy, `Copy ${item.label.toLowerCase()} link`);
+      copyButton.onclick = () => copy(copyButton, item.url, item.label);
+      row.append(open, copyButton); return row;
     }));
   }
   function paint({title, detail = '', action = '', next = null, link = null, linkLabel = 'Open the shared deck', pick = false, steps = null, outcome = false, links = knownLinks()}) {
@@ -176,6 +207,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
 
   async function begin() {
     const current = ++visit;
+    clearCopy();
     context = null; progress.textContent = '';
     if (!view()) { paint({title: 'Save this deck as a file first', detail: 'Sharing works on a deck that is saved on this computer.'}); return; }
     paint({title: 'Checking...'});

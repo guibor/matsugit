@@ -154,6 +154,8 @@
   <ul id="share-links" aria-label="Open the shared deck" hidden></ul>
   <p id="share-link-row" hidden><a id="share-link" target="_blank" rel="noopener noreferrer"></a><button id="share-copy" type="button"></button></p>
   <div class="share-actions"><button id="share-go" class="delivery-primary" hidden></button><button id="share-later" type="button" hidden>Not now</button></div>
+  <p id="share-copy-status" role="status" aria-live="polite"></p>
+  <label id="share-copy-fallback" hidden>Link<input id="share-copy-url" type="text" readonly spellcheck="false" /></label>
   <pre id="share-progress" role="status" aria-live="polite"></pre>
   <details id="share-advanced"><summary>More options</summary>
     <p>You do not need these. They open the detailed views for people who work with Git directly.</p>
@@ -203,6 +205,7 @@
 <dialog id="recovery-dialog" aria-labelledby="recovery-title"><div class="recovery-heading"><h2 id="recovery-title">Recover workspaces</h2><button id="close-recovery" title="Close" aria-label="Close"></button></div><div id="recovery-items"></div></dialog>
 <dialog id="changes-dialog" aria-labelledby="changes-title">
   <h2 id="changes-title">External changes</h2>
+  <p id="changes-description"></p>
   <div id="changes-list"></div>
   <section id="changes-result-panel" hidden><h3>Resulting draft</h3><textarea id="changes-result" aria-label="Resulting draft" readonly></textarea></section>
   <p id="changes-status" role="status"></p>

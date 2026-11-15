@@ -44,7 +44,12 @@ export function changeReview() {
     catch (error) { $('changes-status').textContent = error.message; }
     finally { busy = false; controls(); }
   };
-  return {isOpen: () => dialog.open, open(value, base, org, onCalculate, onApply) {
+  return {isOpen: () => dialog.open, open(value, base, org, onCalculate, onApply, applied = false) {
+    $('changes-title').textContent = applied ? 'Applied changes' : 'Compare incoming changes';
+    $('changes-description').textContent = applied
+      ? 'These changes are already in your draft. Nothing else needs accepting. You can inspect them here or adjust which changes to keep.'
+      : 'These changes have not been accepted yet. Compare them with your draft before applying.';
+    $('changes-cancel').textContent = applied ? 'Close' : 'Cancel';
     plan = value; calculate = onCalculate; apply = onApply; candidate = null;
     accepted = plan.external.filter(p => !('text' in p)).map(() => true);
     $('changes-result-panel').hidden = true; $('changes-status').textContent = '';
@@ -60,7 +65,7 @@ export function changeReview() {
           accepted[id] = checkbox.checked; candidate = null; controls();
           $('changes-result-panel').hidden = true; $('changes-status').textContent = '';
         };
-        label.append(checkbox, `Accept external change at line ${change.line}`);
+        label.append(checkbox, `${applied ? 'Keep applied' : 'Accept incoming'} change at line ${change.line}`);
         const diff = document.createElement('div'); diff.className = 'change-diff';
         for (const [kind, content] of [['before',change.before], ['after',change.after]]) {
           const column = document.createElement('div'), caption = document.createElement('small');

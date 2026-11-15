@@ -373,6 +373,11 @@ export function checkSummary(findings) {
   return {problems, tips, label: problems ? `${problems} to fix` : tips ? `${tips} ${tips === 1 ? 'tip' : 'tips'}` : 'No problems'};
 }
 
+const SLIDE_ONLY = new Set(['title-continued', 'slide-empty', 'title-long', 'slide-dense', 'table-dense', 'rendered-fit']);
+export function findingsForFormat(findings, format) {
+  return format === 'document' ? findings.filter(item => !SLIDE_ONLY.has(item.code)) : findings;
+}
+
 // A tool missing from this computer is not a problem in the deck. Say what to
 // install, in words a first-time user can act on, and keep Check out of it.
 // Everyone here works with an agent, so "ask the agent" is always an option.

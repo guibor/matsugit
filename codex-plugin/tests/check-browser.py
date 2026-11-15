@@ -106,6 +106,17 @@ try:
         assert frame.locator('#check-panel').is_hidden()
 
         # The picker works from the top of the file, where the old menu did nothing.
+        frame.locator('#auto').uncheck()
+        replace(original + '\n\n## Long section\n\n' + 'Detailed explanation. ' * 100)
+        wait(frame, 'document.getElementById("check-label").textContent.includes("tip")', 20)
+        frame.locator('[data-format="document"]').click()
+        wait(frame, 'document.getElementById("check-label").textContent === "No problems"', 20)
+        wait(frame, SETTLED)
+        frame.locator('[data-format="slides"]').click()
+        wait(frame, 'document.getElementById("check-label").textContent.includes("tip")', 20)
+        wait(frame, SETTLED)
+        replace(original)
+        wait(frame, 'document.getElementById("check-label").textContent === "No problems"', 20)
         frame.evaluate('matsugitWorkspace.editor.dispatch({selection: {anchor: 0}})')
         frame.locator('#insert').click()
         assert frame.locator('#gallery-dialog').is_visible()

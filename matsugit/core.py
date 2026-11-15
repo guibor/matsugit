@@ -561,6 +561,8 @@ def render(settings, output, edit_url=None, *, source_text=None,
         '<link rel="stylesheet" href="runtime/media.css">\n'
         '<link rel="stylesheet" href="runtime/canvas.css">\n'
         '<link rel="stylesheet" href="runtime/layout.css">\n'
+        '<link rel="stylesheet" href="runtime/document-fold.css">\n'
+        '<script defer src="runtime/document-fold.js"></script>\n'
         '<script defer src="runtime/media.js"></script>\n'
         '<script defer src="runtime/canvas.js"></script>\n'
         '<script defer src="runtime/fit.js"></script>\n'

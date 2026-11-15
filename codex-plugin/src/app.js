@@ -129,11 +129,15 @@ function paintNotice() {
   $('notice-recreate').hidden = !missing; $('notice-download').hidden = !missing;
   $('notice-recreate').disabled = state.saving || state.loading || state.merging || state.delivering || tables?.pending();
   $('reload').hidden = !state.conflict && !state.incomingReady && !incomingDocument && !(state.fileReceipt && externalChange);
+  const pendingReview = !!state.conflict || !!state.incomingReady || !!incomingDocument;
+  $('reload').textContent = state.conflict ? 'Resolve changes' : pendingReview ? 'Compare changes' : 'View applied changes';
+  $('reload').classList.toggle('notice-primary', !!state.conflict);
   $('accept-update').hidden = !state.incomingReady || !!state.conflict;
   $('accept-update').textContent = state.accepting ? 'Checking update...' : dirty() ? 'Combine changes' : 'Accept update';
+  $('accept-update').classList.add('notice-primary');
   $('accept-update').disabled = state.accepting || state.loading || state.saving || state.merging || state.delivering || tables?.pending();
   $('reload').disabled = state.loading || state.saving || state.merging || state.delivering || tables?.pending();
-  $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : 'Review the latest file changes';
+  $('reload').title = state.conflict ? 'Compare your draft with the saved file before writing' : pendingReview ? 'Compare before accepting' : 'These changes are already in your draft. Inspect or adjust them; no further acceptance is required.';
   $('notice-save').hidden = !state.fileReceipt || state.conflict || state.incomingReady || !dirty();
   $('notice-save').disabled = $('save').disabled;
   $('notice-dismiss').hidden = !state.fileReceipt || state.conflict || state.incomingReady || !!incomingDocument;
@@ -265,7 +269,7 @@ const rail = slideRail({root: $('slide-rail'), text: () => editor.state.doc.toSt
     if (state.layout !== 'render') editor.focus();
   }});
 railMoved = rail.moved;
-check = checkPanel({editor, isOrg, enabled: editing, renderError: () => state.renderError,
+check = checkPanel({editor, isOrg, enabled: editing, format: () => state.format, renderError: () => state.renderError,
   renderedFindings: () => state.revisions.slides === state.revision && fitBase === state.bases.slides ? [...fitFindings.values()] : [],
   show: showSource, toggled: paintNotice, changed: list => rail.findings(list),
   askAgent: (slide, suggestion) => agentSlide.open(slide, suggestion)});
@@ -471,6 +475,7 @@ function showPreview() {
 function changeFormat(format) {
   if (format === state.format && state.rendered?.[format]) return;
   state.format = format;
+  check?.refresh();
   state.renderedRevision = state.revisions[format] ?? -1;
   for (const button of document.querySelectorAll('[data-format]')) button.setAttribute('aria-pressed', String(button.dataset.format === format));
   if (state.rendered?.[format]) showPreview();
@@ -1498,7 +1503,7 @@ async function reviewAllChanges() {
         await applyMerged(record.data, candidate, snapshot);
         externalChange = null;
       } finally { state.merging = false; refreshControls(); }
-    });
+    }, record.appliedText !== null);
   } catch (error) { notice(error.message); }
 }
 let reviewedIncoming;

@@ -2,7 +2,7 @@
 // findings with Show / Fix / Ask AI. Fixes edit the draft as one Undo step and
 // never save; the check itself never renders or calls a model.
 import {createElement, CircleCheck, TriangleAlert, Lightbulb, X} from 'lucide';
-import {checkDeck, checkSummary, rendererFinding} from './check.mjs';
+import {checkDeck, checkSummary, rendererFinding, findingsForFormat} from './check.mjs';
 import {storyModel} from './story-model.mjs';
 import {slideSpacing, layoutControl} from './layout-edit.mjs';
 
@@ -18,7 +18,7 @@ function prose(text) {
   return fragment;
 }
 
-export function checkPanel({editor, isOrg, enabled, renderError, renderedFindings = () => [], show, askAgent, toggled = () => {}, changed = () => {}}) {
+export function checkPanel({editor, isOrg, enabled, renderError, format = () => 'slides', renderedFindings = () => [], show, askAgent, toggled = () => {}, changed = () => {}}) {
   const chip = $('check-status'), panel = $('check-panel'), list = $('check-list'), feedback = $('check-feedback');
   let findings = [], timer, revision = null;
   $('check-close').append(createElement(X));
@@ -41,7 +41,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, renderedFinding
       const spacing = slideSpacing(text(),finding.from);
       if (spacing && !spacing.active) finding.fix = {label:'Try compact spacing', changes:[slideSpacing(text(),finding.from,true)]};
     }
-    return found.sort((a,b) => Number(b.severity === 'problem') - Number(a.severity === 'problem'));
+    return findingsForFormat(found, format()).sort((a,b) => Number(b.severity === 'problem') - Number(a.severity === 'problem'));
   }
   function item(finding) {
     const row = document.createElement('li'), head = document.createElement('div'), body = document.createElement('p');
@@ -49,7 +49,7 @@ export function checkPanel({editor, isOrg, enabled, renderError, renderedFinding
     row.className = 'check-item'; row.dataset.severity = finding.severity; row.dataset.code = finding.code;
     head.className = 'check-where';
     const kind = document.createElement('span'); kind.className = 'check-kind'; kind.textContent = finding.severity === 'problem' ? 'To fix' : 'Tip';
-    const place = finding.slide ? `Slide ${finding.slide}: ${finding.title}` : finding.title ? `Section: ${finding.title}`
+    const place = finding.slide ? `${format() === 'document' ? 'Section' : 'Slide'} ${finding.slide}: ${finding.title}` : finding.title ? `Section: ${finding.title}`
       : finding.code === 'renderer' ? 'Preview' : 'Top of the file';
     head.append(kind, document.createTextNode(place + (finding.line ? `, line ${finding.line}` : '')));
     body.className = 'check-message'; body.append(prose(finding.message));
@@ -84,8 +84,9 @@ export function checkPanel({editor, isOrg, enabled, renderError, renderedFinding
     chip.dataset.kind = summary.problems ? 'problem' : summary.tips ? 'tip' : 'ok';
     $('check-icon').replaceChildren(createElement(summary.problems ? TriangleAlert : summary.tips ? Lightbulb : CircleCheck));
     $('check-label').textContent = summary.label;
-    chip.title = summary.problems ? 'Some slides need fixing. Open the list.' : summary.tips ? 'Slides work. Open suggestions.' : 'No problems found in the slide structure';
-    $('check-summary').textContent = !findings.length ? 'No problems found. Fit is checked as slides are displayed; still review the whole deck.'
+    const documentMode = format() === 'document';
+    chip.title = summary.problems ? 'Open issues for this view.' : summary.tips ? 'Open suggestions for this view.' : documentMode ? 'No document problems found' : 'No problems found in the slide structure';
+    $('check-summary').textContent = !findings.length ? documentMode ? 'No document problems found.' : 'No problems found. Fit is checked as slides are displayed; still review the whole deck.'
       : [summary.problems && `${summary.problems} to fix`, summary.tips && `${summary.tips} ${summary.tips === 1 ? 'tip' : 'tips'}`].filter(Boolean).join(', ');
     if (!panel.hidden) list.replaceChildren(...findings.map(item));
     changed(findings);

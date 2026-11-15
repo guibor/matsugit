@@ -18,6 +18,8 @@ html[data-display-mode=inline] #app{height:var(--inline-editor-height,760px);min
 #notice[data-kind=review]{border-left:3px solid #b07a23}
 .notice-copy{flex:1;min-width:180px;line-height:1.5}.notice-copy strong,.notice-copy span{display:block}.notice-copy span{color:var(--muted)}
 .notice-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.notice-actions button{border:1px solid var(--border);font-size:12px}
+.notice-actions .notice-primary{background:var(--accent);color:#fff;border-color:var(--accent);padding:7px 12px;font-weight:600;min-height:36px}
+.notice-actions .notice-primary:hover{filter:brightness(.92)}
 #notice [hidden]{display:none}#notice-dismiss{width:28px;height:28px;min-height:28px;border:0!important;padding:5px}
 #notice-save{color:var(--accent)}body.presenting #notice{display:none}
 #merge-context{font-size:12px;line-height:1.5;overflow-wrap:anywhere;color:var(--muted);white-space:pre-line}
@@ -498,8 +500,21 @@ footer{justify-content:flex-end}
 /* Shared deck links: one row each, open and copy. */
 #share-links{list-style:none;margin:10px 0 4px;padding:0;display:grid;gap:6px}#share-links[hidden]{display:none}
 #share-links li{display:flex;gap:6px;align-items:stretch}
-.share-open{flex:1;display:flex;align-items:baseline;gap:8px;text-align:left;border:1px solid var(--border);border-radius:8px;padding:7px 11px;min-width:0}
-.share-open:hover{border-color:var(--accent);background:var(--muted-bg)}.share-open strong{font-size:13px}.share-open span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.share-copy-link{flex:none;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:12px}
+.share-open{flex:1;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--accent);background:var(--muted-bg);border-radius:6px;padding:10px 12px;min-width:0;min-height:48px;color:var(--accent);cursor:pointer}
+.share-open svg{width:20px;height:20px;flex:none}
+.share-link-label{display:grid;gap:3px;min-width:0}
+.share-open strong{font-size:14px;color:var(--accent)}
+.share-link-label>span{font-size:12px;color:var(--muted);white-space:normal;overflow-wrap:anywhere}
+.share-copy-link,#share-copy{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;min-height:44px;padding:0;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--muted-bg)}
+.share-copy-link svg,#share-copy svg{width:18px;height:18px}
+.share-open:hover,.share-copy-link:hover,#share-copy:hover{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.share-open:focus-visible,.share-copy-link:focus-visible,#share-copy:focus-visible,#share-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.share-open:active,.share-copy-link:active,#share-copy:active{filter:brightness(.9)}
+.share-copy-link[aria-busy] svg,#share-copy[aria-busy] svg{animation:share-copy-spin 1s linear infinite}
+@keyframes share-copy-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.share-copy-link[aria-busy] svg,#share-copy[aria-busy] svg{animation:none}}
+#share-copy-status{font-size:13px;overflow-wrap:anywhere}#share-copy-status:empty,#share-copy-fallback[hidden]{display:none}
+#share-copy-fallback{display:grid;gap:5px;font-size:12px}#share-copy-url{box-sizing:border-box;width:100%;min-width:0;padding:9px}
+#share-link{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--accent);border-radius:6px;overflow-wrap:anywhere}
 #more-published{display:grid;gap:2px;padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid var(--border)}#more-published[hidden]{display:none}
 #more-published>span{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px 2px}

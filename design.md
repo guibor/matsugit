@@ -1,5 +1,17 @@
 # matsugit design
 
+Share links use host navigation and separate icon-only clipboard controls.
+`copy-link.mjs` first copies a temporary selection inside the active modal,
+then tries the asynchronous Clipboard API with a bounded wait. If neither
+succeeds, Share selects a readonly URL for manual copying. Feedback is scoped
+to the current document and dialog visit; copying never saves or publishes.
+
+`findingsForFormat` filters slide-only advice from the reading-mode check panel.
+Accepted external edits retain the existing reversible comparison flow but are
+labelled as applied, distinct from pending changes. `document-fold.js` adds
+disclosures to Quarto reading sections only; screen-only CSS folds bodies,
+fragment navigation expands ancestors, and print always retains all content.
+
 How the code is organised and where the main functions live. For behaviour and
 limits, read `README.org` and `docs/`; for requirements, `prd.org`.
 

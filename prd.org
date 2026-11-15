@@ -1,5 +1,20 @@
 #+title: matsugit product requirements
 
+* Changed requirement: usable shared links (2026-11-15)
+
+Share provides distinct Open slides/document buttons and accessible copy icons.
+Copy reports success only after a clipboard API succeeds, tries a modal-safe
+fallback, and selects the full URL for manual copy when the host blocks both.
+HTTP internal Pages links remain supported. Copy does not save or publish.
+
+* Changed requirement: focused reading and clear acceptance (2026-11-15)
+
+Document mode omits slide density and measured slide-fit advice, while retaining
+source errors and document preview failures. Reading sections have quiet,
+keyboard-accessible disclosure buttons and start expanded; printing expands all
+content. Folding never changes source. Pending acceptance has a prominent
+action; an applied update offers optional inspection, not another acceptance.
+
 * Changed requirement: one opening title (2026-11-15)
 
 Metadata and an authored opening cover must not create duplicate title slides

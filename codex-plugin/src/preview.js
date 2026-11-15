@@ -159,7 +159,10 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       if (format === 'slides' && window.Reveal?.isReady()) {
         const indices = Reveal.getIndices(el.closest('section'));
         Reveal.slide(indices.h, indices.v);
-      } else if (format === 'document') el.scrollIntoView({block: 'start'});
+      } else if (format === 'document') {
+        el.dispatchEvent(new Event('matsugit-reveal', {bubbles:true}));
+        el.scrollIntoView({block: 'start'});
+      }
       break;
     }
   });

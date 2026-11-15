@@ -4,11 +4,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {checkDeck, applyFix, checkSummary, rendererFinding, setupProblem} from '../src/check.mjs';
+import {checkDeck, applyFix, checkSummary, rendererFinding, setupProblem, findingsForFormat} from '../src/check.mjs';
+
+test('reading mode excludes slide fit and density, not document structure errors', () => {
+  const findings = ['rendered-fit','slide-dense','title-long','table-dense','slide-empty','title-continued','block-open','renderer','block-name'].map(code=>({code}));
+  assert.deepEqual(findingsForFormat(findings, 'document').map(f=>f.code), ['block-open','renderer','block-name']);
+  assert.deepEqual(findingsForFormat(findings, 'slides'), findings);
+});
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const python = process.env.MATSUGIT_PYTHON || 'python3';
 const H = '---\ntitle: T\nslide-layout: structured\n---\n\n';
+test('Pages subtitle failures are caught locally with a targeted body-heading fix', () => {
+  const text = H + '## Concepts\n\nBody text.\n\n### Definition\n\nMore text.\n';
+  const finding = checkDeck(text).find(f => f.code === 'claim-extra');
+  assert.equal(finding.severity, 'problem');
+  assert.equal(finding.fix.label, 'Make it a sub-heading');
+  assert.equal(applyFix(text, finding.fix), text.replace('### Definition', '#### Definition'));
+});
 test('density respects authored slide breaks, not rules inside code or notes', () => {
   const passage = 'Evidence '.repeat(90);
   assert.ok(checkDeck(H+'## Title\n\n'+passage+'\n\n'+passage).some(f=>f.code==='slide-dense'));

@@ -54,6 +54,16 @@ jobs:
         run: |
           python3 -m pip install --require-hashes -r matsugit/dependencies/export.txt
           python3 -m playwright install --with-deps chromium
+      - name: Shared links and reading controls
+        env:
+          MATSUGIT_TEST_SITE_URL: http://team.example.invalid/docs
+          MATSUGIT_STANDARD_MCP: '1'
+        run: |
+          python3 codex-plugin/tests/document-fold-browser.py
+          python3 codex-plugin/tests/share-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/share-browser.py
+          python3 codex-plugin/tests/check-browser.py
+          MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/check-browser.py
       - name: Draft safety and publication UI
         run: |
           MATSUGIT_TITLE_PDF=1 python3 -m unittest discover -s tests -p test_title_exports.py -v
