@@ -25,6 +25,23 @@ test('agent provenance is bounded and only accompanies the exact observed file r
   } finally { store.close(); fs.rmSync(directory,{recursive:true,force:true}); }
 });
 
+test('agent provenance follows an initial directory alias, not a replaced workspace path', () => {
+  const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'matsugit-provenance-alias-'));
+  const actual = path.join(directory,'actual'), alias = path.join(directory,'alias');
+  fs.mkdirSync(actual); fs.symlinkSync(actual,alias,'dir');
+  const file = path.join(alias,'deck.md'), store = new WorkspaceStore(directory);
+  try {
+    fs.writeFileSync(file,'before'); const opened = store.open(file);
+    const saved = store.save(opened.session,'after',opened.etag);
+    store.recordAgentWrite(file,opened.etag,saved.etag);
+    assert.deepEqual(store.source(opened.session).agentBases,[opened.etag]);
+    fs.writeFileSync(path.join(actual,'other.md'),'other');
+    fs.unlinkSync(path.join(actual,'deck.md'));
+    fs.symlinkSync('other.md',path.join(actual,'deck.md'));
+    assert.throws(() => store.source(opened.session), /path changed/);
+  } finally { store.close(); fs.rmSync(directory,{recursive:true,force:true}); }
+});
+
 test('source reads remain bounded when the file grows after its size check', t => {
   const directory = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'matsugit-read-limit-'));
   const file = path.join(directory, 'note.md');

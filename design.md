@@ -358,6 +358,20 @@ from the original theme metrics after fonts/media load so repeated renders do no
 accumulate shrinkage. Preview, standalone HTML and PDF must use the same decision;
 PowerPoint must be checked separately rather than assumed to inherit browser fit.
 
+## Protected Agent Updates
+
+`incoming-transition.mjs` is the pure incoming-update gate. Only exact server-
+observed agent ancestry permits reconciliation, never direct replacement.
+Autosave and draft dirtiness are not inputs to that permission. Existing review,
+table, restore, delivery and Redo states pause automatic reconciliation.
+`planExternalEdit` still decides whether edits conflict. The checkpoint and final
+file/draft checks precede mutation; concurrent typing invalidates the attempt.
+Automatic scoped updates are isolated CodeMirror undo events. Unknown filesystem
+writes keep acceptance and the previous author-only undo behaviour. A combined
+draft differing from disk stays unsaved until normal Save or opted-in autosave.
+Provenance keys use the same canonical initial path as workspace sessions; this
+does not loosen rejection of symlinks swapped beneath an open document.
+
 ## Bounded Automatic Fit
 
 The shared fit runtime restores original inline styles before each pass, leaves

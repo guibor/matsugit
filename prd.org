@@ -34,9 +34,9 @@ the formatting. Rendering uses no model tokens; an agent is optional.
   checks, recovery, and review of external changes.
 - R6. Preview never publishes. Export and publication are separate, explicit,
   reviewed actions.
-- Incoming file edits require acceptance before changing the open draft.
-  Clean updates take one click; independent two-sided edits combine on request;
-  actual overlaps open the existing comparison. Routine updates are not errors.
+- Verified scoped agent edits combine automatically only when independent of
+  the current draft. Ordinary file edits require acceptance. Overlaps and
+  uncertain rewrites require comparison; unsaved typing is always retained.
 - Story offers a temporary full-slide preview without losing position or edits.
 - A top-level export boundary keeps working material in the editor, workspace
   preview and Git, but excludes it from delivered outputs, including native CI.
@@ -288,6 +288,16 @@ Immediate, in priority order:
   that already fit, readable text floors, consistent regions and preview/export parity.
   Keep titles/claims fixed by default; share sizes among semantic peers within a
   slide, without allowing a dense slide to shrink the rest of the deck.
+
+* Changed requirement: protected automatic agent updates (2026-11-15)
+- Evolve acceptance-only updates for verified scoped edits, not arbitrary writers.
+- Reconcile against the current draft, checkpoint first, and revalidate both
+  draft and incoming file before applying. Typing during merge triggers retry.
+- Autosave affects persistence only. Off retains the combined unsaved draft;
+  on saves only through the existing version-checked save after reconciliation.
+- Agent updates are isolated undo steps. Overlaps open comparison; pending
+  tables, restores, Redo and uncertain history do not get automatic application.
+- Keep existing stale whole-file rewrite protection and unknown-writer prompts.
 
 * Automatic fitting implementation
 - Shared browser runtime: bounded peer sizing after spacing reduction.

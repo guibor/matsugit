@@ -75,8 +75,9 @@ assume that the file contains all of their current typing.
   require the author's conflict review. Use Story for adding/moving slides.
 - Keep each edit to the slide or passage you were asked about, so it does not
   touch lines the author is likely to be typing in.
-- The workspace offers an Update ready prompt before applying incoming edits.
-  The author accepts a clean update in one click, or combines independent edits.
+- Verified scoped edits combine automatically with the current draft only when
+  independent, with a notice and an isolated Undo step. Unsaved typing is kept
+  regardless of autosave. Unknown file writers still get an Update ready prompt.
   Overlaps and ambiguous stale rewrites use comparison; both versions are kept.
   If the author is resolving a conflict, wait for them before editing again.
 

@@ -101,7 +101,7 @@ file version. The dialog never writes to disk. **Keep editing my draft** keeps
 the conflict unresolved; reconcile or download the text before choosing a file.
 Repeated host opens cannot silently replace a draft or use a native confirmation
 dialog that an embedded host might suppress.
-Incoming file edits show a neutral **Update ready** prompt before changing the
+Ordinary file edits show a neutral **Update ready** prompt before changing the
 open workspace. **Accept update** applies a clean file update in one click;
 **Combine changes** merges a pending draft and opens comparison for overlaps.
 **Review changes** lets the author inspect changes before accepting. Autosave
@@ -109,8 +109,13 @@ waits while an incoming update is pending. The exact incoming revision is
 rechecked before acceptance, and the previous draft is checkpointed.
 These checks cannot prevent another program from writing the file itself;
 the retained editor copy is independent. Agent edits made through the scoped
-tools carry a verified parent revision, avoiding historical guesses. Ordinary
-filesystem edits do not claim agent attribution.
+tools carry a verified parent revision. Independent scoped edits combine with
+the current draft automatically, after a checkpoint and final file/draft checks.
+An isolated Undo step reverses the agent update without removing earlier typing.
+Overlaps open comparison. Pending table edits, Redo, restores and existing reviews
+pause automatic application. Autosave controls only whether the combined draft
+is later saved; turning it off never weakens draft protection. Ordinary filesystem
+edits do not inherit agent attribution, including stale whole-file rewrites.
 
 Story's eye button, **Preview slide**, opens the full rendered slide in a
 temporary dialog. Close or Escape returns to the same Story position. It uses

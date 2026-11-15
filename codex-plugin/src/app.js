@@ -15,6 +15,7 @@ import {gallery} from './gallery.mjs';
 import {share} from './share.mjs';
 import {slideRail} from './slide-rail.mjs';
 import {textChanges, savedEditHistory, planExternalEdit, wholeFileReview} from './external-edits.mjs';
+import {incomingTransition} from './incoming-transition.mjs';
 import {checkPanel} from './check-panel.mjs';
 import {rendererFinding, setupProblem} from './check.mjs';
 import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, Download, Undo2, Redo2, RefreshCw, PanelsTopLeft, Plus, History, RotateCcw, Trash2, X, Braces, Presentation, ChevronLeft, ChevronRight, ArrowLeft, Minimize2, Maximize2, Copy, Table2, Check, LoaderCircle, GitCompareArrows} from 'lucide';
@@ -786,9 +787,14 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
       if (state.incomingReady || state.externalPending) { state.incomingReady = null; state.externalPending = null; notice(); refreshControls(); }
       return !state.conflict;
     }
-    // The file may already have been written by the other editor. Do not replace
-    // the author's open draft until they accept this exact incoming revision.
-    if (!force && !accept && data.etag !== state.etag && data.text !== text()) {
+    const autoAgent = !force && !accept && incomingTransition({currentEtag:state.etag,
+      incomingEtag:data.etag, agentBases:data.agentBases,
+      blocked:state.conflict || state.delivering || state.restorePending || wholesaleHistory
+        || !!redoDepth(editor.state) || tables.pending() || !!incomingDocument
+        || $('incoming-dialog').open || mergeReview.isOpen() || externalReview.isOpen()}) === 'reconcile-agent';
+    // Unknown writers still need acceptance. Verified agents may only enter the
+    // guarded merge path below, including when the author has not saved.
+    if (!force && !accept && !autoAgent && data.etag !== state.etag && data.text !== text()) {
       if (state.conflict && externalChange?.data.etag === data.etag) return false;
       if (state.incomingReady?.etag === data.etag) return false;
       if (externalChange?.data.etag !== data.etag) {
@@ -814,7 +820,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
       finally { state.merging = false; refreshControls(); }
       return true;
     }
-    if ((state.conflict || dirty() || savedHistory.pending || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
+    if ((autoAgent || state.conflict || dirty() || savedHistory.pending || tables.pending() || undoDepth(editor.state) || redoDepth(editor.state)) && data.text !== text() && !force) {
       // Acceptance permits combining independent edits, never guessing overlaps.
       const key = `${state.revision}:${data.etag}`;
       const settled = (accept || !redoDepth(editor.state)) && !tables.pending() && !incomingDocument
@@ -830,7 +836,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
         mergeAttempt = key;
         const snapshot = mergeSnapshot();
         state.merging = true; refreshControls();
-        let retry = false;
+        let retry = false, reviewAgent = false;
         try {
           const decision = await planExternalEdit({base:snapshot.base, local:snapshot.text, incoming:data.text,
             history:savedHistory, checkedBase:!!data.agentBases?.includes(state.etag), merge:async (base, local, incoming) => {
@@ -842,7 +848,8 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
             state.incomingReady = null;
             state.ancestor = decision.base; state.reviewWhole = !!decision.whole;
             state.ambiguousExternal = !!decision.ambiguous; state.conflict = true; notice();
-          } else await applyExternal(data, decision.text, snapshot, decision.versions);
+            reviewAgent = autoAgent;
+          } else await applyExternal(data, decision.text, snapshot, decision.versions, {agent:autoAgent});
         } catch(error) {
           // Typing during the merge is not a conflict: try again in a moment.
           if (sequence === loadSequence && (state.revision !== snapshot.revision || error.retryExternal)) { mergeAttempt = null; retry = true; }
@@ -850,6 +857,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
         }
         finally { state.merging = false; }
         if (retry) setTimeout(() => reload(), 500);
+        else if (reviewAgent) await reviewForSave();
       }
     } else {
       if (force) savedHistory.clear();
@@ -907,10 +915,11 @@ async function applyMerged(data, merged, snapshot, receipt = 'reviewed') {
   scheduleRecovery(); scheduleRender(); refreshControls();
 }
 // Bring another writer's change into the open editor as small edits, so the
-// cursor stays put, typing continues, and Undo still undoes only the author's
-// own changes. `merged` is the incoming file, plus the author's text when the
-// two were combined; a difference from the file is then saved as usual.
-async function applyExternal(data, merged, snapshot, history) {
+// cursor stays put and typing continues. Automatic scoped edits get their own
+// undo step; accepted ordinary file updates preserve author-only undo.
+// `merged` includes the author's unsaved text. Only normal Save/autosave may
+// persist that difference from the incoming file.
+async function applyExternal(data, merged, snapshot, history, {agent = false} = {}) {
   checkMergeSnapshot(snapshot);
   if (!data.etag) throw Error('The host did not provide a file version; cannot safely combine the changes.');
   if (new TextEncoder().encode(merged).length > 2 * 1024 * 1024) throw Error('Combined draft exceeds the 2 MiB editor limit.');
@@ -925,11 +934,16 @@ async function applyExternal(data, merged, snapshot, history) {
     throw Object.assign(Error('The file changed again; checking the latest version.'), {retryExternal:true});
   const changes = textChanges(text(), merged);
   if (changes.length && !wholesaleHistory && !redoDepth(editor.state)) {
-    // Outside the undo history: Undo keeps taking back the author's own edits.
+    // Verified automatic edits are one isolated, undoable step. Ordinary file
+    // updates retain the existing author-only undo behaviour.
     const wasLoading = state.loading;
     state.loading = true;
-    editor.dispatch({changes, annotations: Transaction.addToHistory.of(false)});
-    state.loading = wasLoading; state.revision++;
+    try {
+      editor.dispatch({changes, annotations: agent
+        ? [Transaction.addToHistory.of(true), isolateHistory.of('full')]
+        : Transaction.addToHistory.of(false)});
+    } finally { state.loading = wasLoading; }
+    state.revision++;
   } else if (changes.length) {
     // Rebase undo onto the incoming file, as one step for the author's part,
     // so Undo can never erase the other writer's change. Keep the cursor.
@@ -944,7 +958,7 @@ async function applyExternal(data, merged, snapshot, history) {
   state.reviewWhole = false; state.ambiguousExternal = false;
   savedHistory.rebase(history);
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
-  state.fileReceipt = merged === latest.text ? 'updated' : 'merged';
+  state.fileReceipt = agent ? 'agent-merged' : merged === latest.text ? 'updated' : 'merged';
   notice();
   scheduleRecovery(); scheduleRender(); refreshControls(); check?.schedule(); scheduleAutosave();
 }

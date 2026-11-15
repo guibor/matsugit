@@ -43,3 +43,13 @@ function first, retaining existing browser tests unchanged. Use generated event
 sequences with reordered/duplicated replies and failure injection. Add other
 machines only where their invariants expose a concrete gap. No new state-machine
 dependency is needed for this audit, and no save/merge refactor is bundled with fit.
+
+* Protected incoming transitions (2026-11-15)
+The incoming gate is now explicit in =incoming-transition.mjs=: unchanged,
+review, or reconcile-agent. Attribution only permits a version-checked merge,
+never a draft replacement. Autosave is deliberately not an input. Unknown
+writers and blocked states retain acceptance. Conflicts retain both texts.
+The existing asynchronous owner still checks sequence, revision, table draft
+and file etag after checkpoints and merge responses, retrying raced edits.
+Automatic agent changes are isolated undo events. The wider draft/save state
+machine remains incremental work; this is not a complete app.js extraction.

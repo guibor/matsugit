@@ -34,4 +34,8 @@ test('external-change receipts distinguish retained drafts, combined drafts and 
   assert.match(changeNotice({fileReceipt:'reviewed'},true).detail, /unchanged until you save/);
   assert.match(changeNotice({fileReceipt:'updated'},false).detail, /no local edits/);
   assert.match(changeNotice({fileReceipt:'updated'},true).detail, /unsaved edits/);
+  assert.equal(changeNotice({fileReceipt:'agent-merged'},true).title, 'Agent changes combined');
+  assert.match(changeNotice({fileReceipt:'agent-merged'},true).detail, /unsaved edits are kept/);
+  assert.match(changeNotice({fileReceipt:'agent-merged'},true).detail, /not saved yet/);
+  assert.match(changeNotice({fileReceipt:'agent-merged'},false).detail, /Undo/);
 });

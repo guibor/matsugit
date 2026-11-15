@@ -131,6 +131,7 @@ export class WorkspaceStore {
   }
   recordAgentWrite(file, before, after) {
     if (before === after) return;
+    file = checkedPath(file);
     const previous = this.agentWrites.get(file);
     this.agentWrites.delete(file);
     this.agentWrites.set(file, {etag:after, bases:[before, ...(previous?.etag === before ? previous.bases : [])].slice(0,64)});

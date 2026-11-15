@@ -25,6 +25,9 @@ export function changeNotice(state, dirty) {
   if (state.externalPending) return {kind:'info', title:'Update waiting', detail:state.externalPending};
   if (state.incomingReady) return {kind:'info', title:state.incomingReady.agent ? 'Agent update ready' : 'File update ready',
     detail:dirty ? 'Your draft is kept. Combine the edits or compare both versions.' : 'Accept the incoming edits when you are ready. Your view has not changed.'};
+  if (state.fileReceipt === 'agent-merged') return {kind:'info', title:'Agent changes combined',
+    detail:dirty ? 'Your unsaved edits are kept. Undo reverses the agent update; the combined draft is not saved yet.'
+      : 'Your draft matches the agent-updated file. Undo reverses the update in your draft.'};
   if (state.fileReceipt === 'merged') return {kind:'info', title:dirty ? 'Changes combined in your draft' : 'Draft matches the updated file',
     detail:dirty ? 'Your edits and the independent file edits are together. Not saved to the file yet.' : 'No file was written by the merge.'};
   if (state.fileReceipt === 'reviewed') return {kind:'info', title:dirty ? 'Reviewed draft ready' : 'Draft matches the reviewed file',

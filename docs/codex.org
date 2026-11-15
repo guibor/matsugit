@@ -748,7 +748,7 @@ Save remains explicit by default. Opt in with =More > Save automatically=.
 A writable file is then saved after typing stops (about a second and a half).
 The header shows =Saving soon=, then =Saved to file=. It is the same
 version-checked Save as the button: if the file changed elsewhere since it was
-read, nothing is written, the header says =Changed elsewhere= and the existing
+read, nothing is written, the header asks for review and the existing
 review compares the versions. Autosave waits while a table edit is open or a
 merge, review or share is running. It does not send anything to a project;
 sharing stays a separate, confirmed step.
@@ -758,17 +758,19 @@ get right. The rules are:
 
 - Your typing is never written over a newer file, and a newer file is never
   written over your typing without being combined with it.
-- When the agent (or any other program) changes the file and you have typed in
-  this session, the workspace combines the two by itself if they touch different
-  lines. The change arrives in the editor as small edits: the cursor stays
-  where it is, you keep typing, and Undo takes back only your own changes.
+- Verified scoped agent edits combine automatically only when independent of
+  the current draft. The changes arrive as small edits: your cursor stays put
+  and Undo reverses the agent update separately from your typing. Other file
+  writers require acceptance; accepted ordinary updates keep author-only Undo.
+  With autosave off, the combined draft stays unsaved. With autosave on, only
+  the successfully reconciled draft goes through the normal checked Save.
 - A whole-file rewrite can resemble either a stale edit or an intentional
   deletion. The workspace does not guess which one it is. It compares the
   current base and retained pre-save versions. If the results disagree, your
   draft stays in the editor and the file stays untouched until you review.
 - When both changed the same lines nothing is guessed: the file is left as the
   other writer wrote it, your version stays in the editor, the header says
-  =Changed elsewhere= and autosave stops until you have reviewed the two.
+  =Review changes= and autosave stops until you have reviewed the two.
 
 Limits. Saved-version protection lasts for this open workspace, until an
 explicit review is accepted; it does not identify reads made by other programs.

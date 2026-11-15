@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
             result = tool('matsugit_edit_slide', edit_id=first['edit_id'],
                           edits=[{'old': 'Original delivery.', 'new': 'Agent delivery.'}])
             assert result['outcome'] == 'saved'
-            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
+            frame.evaluate('matsugitWorkspace.reload()')
             wait(frame, TEXT + '.includes("Agent delivery.") && !matsugitWorkspace.state.merging')
             assert 'My evidence.' in frame.evaluate(TEXT)
             assert 'My evidence.' not in source.read_text()
@@ -112,11 +112,9 @@ with tempfile.TemporaryDirectory(prefix='matsugit-agent-browser-') as tmp:
             type_passage('Saved human revision.', 'My unsaved choice.')
             assert tool('matsugit_edit_slide', edit_id=snapshot['edit_id'],
                         edits=[{'old': 'Saved human revision.', 'new': 'Agent alternative.'}])['outcome'] == 'saved'
-            frame.evaluate('matsugitWorkspace.reload(false,true,null,true)')
             wait(frame, 'matsugitWorkspace.state.conflict && !matsugitWorkspace.state.merging')
             assert 'My unsaved choice.' in frame.evaluate(TEXT)
             assert 'Agent alternative.' in source.read_text()
-            frame.locator('#save').click()
             frame.locator('#merge-dialog').wait_for(state='visible')
             assert frame.locator('#merge-apply').is_disabled()
             assert 'My unsaved choice.' in frame.locator('#merge-local').input_value()
