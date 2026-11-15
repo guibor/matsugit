@@ -205,7 +205,7 @@ The same option is available from fit findings in Check; Undo restores it.
 An image with an explicit absolute height keeps that height, including shallow
 connectors between panels. Do not remove the author's dimensions to force a fit.
 Slide HTML, workspace previews and PDF apply bounded automatic fitting only
-when content overflows: reduce paragraph/list spacing, then share a modest
+when content overflows: gently reduce paragraph/list spacing (at most 10%), then share a modest
 text reduction across peer prose. Tables form separate complete size groups.
 Titles, claims, region headings, sources and explicit image sizes stay fixed.
 The default floor is 20 CSS pixels and maximum reduction is 12 percent.

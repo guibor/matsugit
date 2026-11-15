@@ -361,12 +361,14 @@ PowerPoint must be checked separately rather than assumed to inherit browser fit
 ## Bounded Automatic Fit
 
 The shared fit runtime restores original inline styles before each pass, leaves
-already-fitting slides untouched, reduces positive prose margins to 70%, then
+already-fitting slides untouched, reduces positive prose margins in 2% steps
+only as needed, never below 90% of the original spacing, then
 tries common prose scales in 2% steps down to 88%. Each table has a separate
 group. Computed fonts are captured before mutation; only elements with direct
 text are scaled so container inheritance cannot shrink fixed region headings.
 Sources, titles, claims, media and code are excluded. Theme floors default to
 20px, with hard bounds of 16px and 80% scale. `.no-fit` opts out per slide.
+After text fitting, spacing is expanded again as far as the available room allows.
 Unresolved geometry remains visible to the existing fit checker. Media is
 reallocated at each candidate scale. Print and scroll views process all visible
 slides; PDF explicitly fits before capture. This does not change PPTX layout.

@@ -291,6 +291,8 @@ Immediate, in priority order:
 
 * Automatic fitting implementation
 - Shared browser runtime: bounded peer sizing after spacing reduction.
+- Preserve breathing room: gradual margin reduction capped at 10%, then restore
+  as much spacing as possible after text fitting. Already-fitting slides unchanged.
 - Fixed semantic hierarchy, explicit opt-out, no source mutations or hidden overflow.
 - Validate fit/reset/idempotence and real HTML/PDF; PowerPoint remains separate.
 

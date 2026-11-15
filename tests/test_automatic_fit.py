@@ -6,6 +6,42 @@ import tempfile
 
 
 class AutomaticFitTests(unittest.TestCase):
+    def test_spacing_changes_gradually_and_recovers_after_text_fit(self):
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            self.skipTest('Playwright required')
+        runtime = Path(__file__).resolve().parents[1] / 'matsugit/runtime/fit.js'
+        with sync_playwright() as p:
+            browser = p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE'))
+            page = browser.new_page()
+            page.set_content('''<style>
+              section {width:900px;font:28px/1 Arial}
+              .ff-body {display:flow-root} p{margin:50px 0}
+              </style><section><div class="ff-body"><p>Peer text</p></div></section>
+              <script>let height=200;const slide=document.querySelector('section');
+              window.Reveal={getConfig:()=>({width:900,height}),isReady:()=>false};</script>''')
+            page.add_script_tag(content=runtime.read_text())
+            # 3px measurement tolerance: only 1px must be recovered, not 30%.
+            page.evaluate('height=124;matsugitFit.fitSlide(slide)')
+            self.assertEqual(page.evaluate('getComputedStyle(slide.querySelector("p")).marginTop'), '49px')
+            self.assertEqual(page.evaluate('getComputedStyle(slide.querySelector("p")).fontSize'), '28px')
+            # Text fitting frees room; return spacing until the next step overflows.
+            page.evaluate('''height=2000;slide.querySelector('p').textContent='Some longer peer text. '.repeat(30);
+              matsugitFit.fitSlide(slide);height=slide.offsetHeight-15''')
+            result = page.evaluate('matsugitFit.fitSlide(slide)')
+            self.assertFalse(result['overflow'])
+            self.assertLess(result['scale'], 1)
+            margin = page.evaluate('parseFloat(getComputedStyle(slide.querySelector("p")).marginTop)')
+            self.assertGreater(margin, 45)
+            self.assertLessEqual(margin, 50)
+            if margin < 50:
+                page.evaluate('''value => {const p=slide.querySelector('p');
+                  p.style.setProperty('margin-top', `${value+1}px`, 'important');
+                  p.style.setProperty('margin-bottom', `${value+1}px`, 'important');}''', margin)
+                self.assertTrue(page.evaluate('matsugitFit.measure(slide).overflow'))
+            browser.close()
+
     @unittest.skipUnless(os.environ.get('QUARTO', shutil.which('quarto')), 'Quarto required')
     def test_real_renderer_and_pdf(self):
         try:
@@ -79,14 +115,18 @@ class AutomaticFitTests(unittest.TestCase):
               heading:getComputedStyle(slide.querySelector('h4')).fontSize,
               source:getComputedStyle(slide.querySelector('.source')).fontSize})''')
             self.assertEqual(baseline, after)
+            self.assertGreaterEqual(page.evaluate('parseFloat(getComputedStyle(peer).marginTop)'), 15 * .9)
+            self.assertGreaterEqual(page.evaluate('parseFloat(getComputedStyle(peer).marginBottom)'), 15 * .9)
             page.evaluate('matsugitFit.fitSlide(slide)')
             self.assertEqual(sizes, page.evaluate('[dense,peer].map(e=>parseFloat(getComputedStyle(e).fontSize))'))
             page.screenshot(path='/tmp/matsugit-auto-fit.png')
             page.evaluate('height=150')
             self.assertTrue(page.evaluate('matsugitFit.fitSlide(slide).unresolved'))
             self.assertGreaterEqual(page.evaluate('parseFloat(getComputedStyle(dense).fontSize)'), 28*.88-.01)
+            self.assertGreaterEqual(page.evaluate('parseFloat(getComputedStyle(peer).marginTop)'), 15 * .9)
             page.evaluate('height=2000;matsugitFit.fitSlide(slide)')
             self.assertEqual(page.evaluate('getComputedStyle(dense).fontSize'), '28px')
+            self.assertEqual(page.evaluate('getComputedStyle(peer).marginTop'), '15px')
             page.evaluate('height=150;slide.classList.add("no-fit");matsugitFit.fitSlide(slide)')
             self.assertEqual(page.evaluate('getComputedStyle(dense).fontSize'), '28px')
             page.evaluate('''slide.classList.remove('no-fit');

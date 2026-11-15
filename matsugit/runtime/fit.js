@@ -64,12 +64,18 @@
       .map(el => ({el, font:parseFloat(getComputedStyle(el).fontSize)}));
     const spaces = eligible.filter(el => el.matches('p,ul,ol,li')).map(el => ({el,
       top:parseFloat(getComputedStyle(el).marginTop), bottom:parseFloat(getComputedStyle(el).marginBottom)}));
-    for (const {el, top, bottom} of spaces) {
-      if (top > 0) set(el, 'margin-top', `${top * .7}px`);
-      if (bottom > 0) set(el, 'margin-bottom', `${bottom * .7}px`);
+    const spaceAt = factor => {
+      for (const {el, top, bottom} of spaces) {
+        if (top > 0) set(el, 'margin-top', `${top * factor}px`);
+        if (bottom > 0) set(el, 'margin-bottom', `${bottom * factor}px`);
+      }
+    };
+    let spacingStep = 0;
+    // Small overflows should not collapse the theme's paragraph rhythm.
+    while (report && (report.overflow || report.overlap) && spacingStep < 5) {
+      spaceAt(1 - ++spacingStep * .02);
+      report = check();
     }
-    slide.dataset.ffFitSpacing = 'compact';
-    report = check();
     const css = getComputedStyle(slide);
     const floor = Math.max(16, parseFloat(css.getPropertyValue('--ff-fit-min-font-size')) || 20);
     const minimum = Math.max(.8, Math.min(1, parseFloat(css.getPropertyValue('--ff-fit-min-scale')) || .88));
@@ -90,6 +96,19 @@
       report = check();
       if (scale <= minimum) break;
     }
+    // Text wrapping may free more room than needed. Return that room to spacing.
+    while (report && !report.overflow && !report.overlap && spacingStep > 0) {
+      spaceAt(1 - (spacingStep - 1) * .02);
+      const roomier = check();
+      if (!roomier || roomier.overflow || roomier.overlap) {
+        spaceAt(1 - spacingStep * .02);
+        report = check();
+        break;
+      }
+      spacingStep--;
+      report = roomier;
+    }
+    slide.dataset.ffFitSpacing = spacingStep ? 'compact' : 'normal';
     applied.set(slide, saved);
     slide.dataset.ffFitScale = String(scale);
     return report && {...report, adjusted:true, scale, unresolved:report.overflow || report.overlap};
