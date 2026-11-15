@@ -398,3 +398,13 @@ while its packages remain under the old version's site-packages directory.
 an actionable error instead of recursively launching itself. Tests in
 `tests/test_export_runtime.py` cover bounded fallback, failed/missing runtimes,
 and creation versus refresh of the isolated export environment.
+
+# Single Opening Title
+
+The authored source remains unchanged. Slide projection suppresses the generated
+metadata cover when the first rendered heading matches the metadata title or is
+marked `cover`, unless `slide-title-page` is explicit. The decision is included
+in preview metadata so a cover-policy change requires a full render. Reading
+projection replaces only a matching opening H1/H2 with its anchor, preserving
+the claim and all body content. Later matching headings remain real sections.
+The shared projection applies to preview, export and installed Pages CI.

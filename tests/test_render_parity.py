@@ -36,6 +36,24 @@ class EmbeddedCSS(HTMLParser):
             kind, _, value = url.partition(',')
             self.styles += base64.b64decode(value).decode() if ';base64' in kind else unquote(value)
 
+
+class Headings(HTMLParser):
+    def __init__(self, html):
+        super().__init__(); self.items = []; self.current = None; self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('h1', 'h2', 'h3'):
+            self.current = []
+
+    def handle_data(self, text):
+        if self.current is not None:
+            self.current.append(text)
+
+    def handle_endtag(self, tag):
+        if tag in ('h1', 'h2', 'h3') and self.current is not None:
+            self.items.append(' '.join(''.join(self.current).split()))
+            self.current = None
+
 # Only the final HTML renderer is replaced in the fast contract test. Pandoc,
 # normalization, layout, theme copying and the installed CI entrypoint are real.
 STUB = '''
@@ -128,6 +146,10 @@ class RenderParityTests(unittest.TestCase):
                         for name in ('index.html','slides.html'):
                             for folder in (local,repo/'.matsugit-ci/site/demo',previews[0 if name=='index.html' else 1]):
                                 html = (folder/name).read_text()
+                                self.assertEqual(Headings(html).items.count('Synthetic parity deck'), 1,
+                                                 f'{folder}/{name}: repeated title')
+                                self.assertIn('Cover evidence stays visible.', html)
+                                self.assertNotIn('id="title-slide"', html)
                                 self.assertEqual('SourceSentinel' in html,flag)
                                 self.assertEqual('NotesSentinel' in html,flag or name=='slides.html')
                                 self.assertIn('LITERAL_NOTES',html)

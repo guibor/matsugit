@@ -56,6 +56,7 @@ jobs:
           python3 -m playwright install --with-deps chromium
       - name: Draft safety and publication UI
         run: |
+          MATSUGIT_TITLE_PDF=1 python3 -m unittest discover -s tests -p test_title_exports.py -v
           python3 -m unittest discover -s tests -p test_fixed_media.py -v
           python3 -m unittest discover -s tests -p test_automatic_fit.py -v
           python3 codex-plugin/tests/layout-edit-browser.py

@@ -1,5 +1,13 @@
 #+title: matsugit product requirements
 
+* Changed requirement: one opening title (2026-11-15)
+
+Metadata and an authored opening cover must not create duplicate title slides
+by default. Explicit slide-title-page settings still win. The reading document
+deduplicates a matching opening H1 or H2 without removing its anchor, claim or
+body. Preview, HTML/PDF/PPTX and Pages CI use the same policy. Do not rewrite the
+source or remove later headings merely because their text matches the title.
+
 High-level requirements. README.org and docs/ describe behaviour in detail;
 design.md explains how the code is organised.
 

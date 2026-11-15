@@ -544,7 +544,7 @@ def render(settings, output, edit_url=None, *, source_text=None,
         if _transform:
             slide_ast = _transform(slide_ast, 'slides')
         slide_render_ast = slide_ast
-        if not ast['meta'].get('slide-title-page', {'c':True})['c']:
+        if not slide_ast['meta'].get('slide-title-page', {'c':True})['c']:
             # Pandoc generates its cover from title metadata; keep the reading title intact.
             slide_render_ast = dict(slide_ast, meta={k:v for k,v in slide_ast['meta'].items()
                                                     if k not in ('title', 'subtitle')})

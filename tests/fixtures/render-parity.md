@@ -6,6 +6,12 @@ publish-sources: false
 include-notes: false
 ---
 
+## Synthetic parity deck {#authored-cover .cover}
+
+### One authored opening
+
+Cover evidence stays visible.
+
 # Evidence
 
 ## Decision

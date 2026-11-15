@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from matsugit import core
 from matsugit.document import document
+from matsugit.layout import slides
 
 
 def heading(level, text):
@@ -24,6 +25,22 @@ def source(blocks):
 
 
 class DocumentTests(unittest.TestCase):
+    def test_opening_h2_title_keeps_anchor_claim_and_body_once(self):
+        ast = source([{'t':'RawBlock','c':['html','<!-- author note -->']},
+                      heading(2,'Example'), heading(3,'Opening claim'), paragraph('Cover evidence'),
+                      heading(2,'Example'), paragraph('Later section')])
+        before = deepcopy(ast)
+        result = document(ast)['blocks']
+        self.assertEqual(ast, before)
+        self.assertEqual(result[1], {'t':'Div','c':[['example',[],[]],[]]})
+        self.assertEqual(result[2]['c'][1], [paragraph('Opening claim')])
+        self.assertEqual(result[3], paragraph('Cover evidence'))
+        self.assertEqual(result[4], heading(2,'Example'))
+
+    def test_duplicate_title_after_real_intro_is_not_removed(self):
+        ast = source([paragraph('Introduction'), heading(2,'Example'), paragraph('Body')])
+        self.assertEqual(document(ast), ast)
+
     def test_claim_becomes_lead_without_rewriting_source_or_other_headings(self):
         ast = source([heading(1,'Example'), heading(1,'Section'), heading(2,'Slide'),
                       heading(3,'The claim'), paragraph('Evidence'), heading(3,'A real subsection'),
@@ -48,6 +65,52 @@ class DocumentTests(unittest.TestCase):
         ast = source([heading(2,'Topic'), {'t':'Div','c':[['',['notes'],[]],[paragraph('Private')]]}, paragraph('Public')])
         self.assertNotIn('Private', str(document(ast)))
         self.assertIn('Private', str(ast))
+
+
+class CoverTests(unittest.TestCase):
+    def test_matching_first_slide_uses_authored_cover_without_source_edits(self):
+        for layout in ('default', 'structured'):
+            with self.subTest(layout=layout):
+                ast = source([heading(2,'Example'), heading(3,'Claim'), paragraph('Evidence')])
+                ast['meta']['slide-layout']['c'] = layout
+                original = deepcopy(ast)
+                result = slides(ast)
+                self.assertFalse(result['meta']['slide-title-page']['c'])
+                self.assertEqual(result['meta']['title'], ast['meta']['title'])
+                self.assertIn('Evidence', str(result['blocks']))
+                self.assertEqual(ast, original)
+
+    def test_explicit_cover_and_title_page_choice_are_respected(self):
+        ast = source([heading(2,'An authored cover'), paragraph('Body')])
+        ast['blocks'][0]['c'][1][1] = ['cover']
+        self.assertFalse(slides(ast)['meta']['slide-title-page']['c'])
+        for choice in (True, False):
+            ast['meta']['slide-title-page'] = {'t':'MetaBool','c':choice}
+            self.assertEqual(slides(ast)['meta']['slide-title-page']['c'], choice)
+
+    def test_unrelated_first_slide_and_omitted_outline_keep_generated_cover(self):
+        for blocks in ([heading(2,'Topic'), paragraph('Body')],
+                       [heading(2,'Example'), heading(2,'Topic'), paragraph('Body')],
+                       [heading(2,'Topic'), paragraph('Body'), heading(2,'Example'), paragraph('Later')]):
+            self.assertNotIn('slide-title-page', slides(source(blocks))['meta'])
+
+    def test_formatted_title_and_comments_match_but_visible_intro_does_not(self):
+        ast = source([{'t':'RawBlock','c':['html','<!-- note -->']}, heading(1,'Example')])
+        ast['meta']['slide-layout']['c'] = 'default'
+        ast['blocks'][1]['c'][2] = [{'t':'Strong','c':[{'t':'Str','c':'Example'}]}]
+        self.assertFalse(slides(ast)['meta']['slide-title-page']['c'])
+        self.assertEqual(document(ast)['blocks'][1]['t'], 'Div')
+        ast['blocks'].insert(0, paragraph('Real introduction'))
+        self.assertNotIn('slide-title-page', slides(ast)['meta'])
+        self.assertEqual(document(ast), ast)
+
+    def test_cover_policy_change_forces_full_preview_not_heading_patch(self):
+        from matsugit.preview import annotate
+        ast = source([heading(2,'Example'), paragraph('Body')])
+        before = annotate(slides(ast), heading_slots=True)[1]
+        ast['blocks'][0]['c'][2] = [{'t':'Str','c':'Different'}]
+        after = annotate(slides(ast), heading_slots=True)[1]
+        self.assertNotEqual(before['shape'], after['shape'])
 
 
 class IndependentRenderTests(unittest.TestCase):

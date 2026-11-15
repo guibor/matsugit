@@ -46,6 +46,36 @@ def plain(node):
     return plain(value)
 
 
+def opening_heading(blocks):
+    """Ignore inert leading comments, never visible introductory content."""
+    for index, block in enumerate(blocks):
+        if block.get('t') == 'Null':
+            continue
+        if block.get('t') == 'RawBlock':
+            kind, text = block['c']
+            if kind == 'html' and text.strip().startswith('<!--') and text.strip().endswith('-->'):
+                continue
+        return index if block.get('t') == 'Header' and block['c'][0] in (1, 2) else None
+    return None
+
+
+def matches_title(heading, meta):
+    title = ' '.join(plain(meta.get('title')).split())
+    return bool(title) and ' '.join(plain(heading['c'][2]).split()) == title
+
+
+def cover_policy(ast):
+    # Run on the projected slides: omitted empty outlines are not covers.
+    # Record the decision in preview metadata so title edits invalidate patches.
+    if 'slide-title-page' not in ast['meta']:
+        index = opening_heading(ast['blocks'])
+        if index is not None:
+            heading = ast['blocks'][index]
+            if 'cover' in heading['c'][1][1] or matches_title(heading, ast['meta']):
+                ast['meta']['slide-title-page'] = {'t':'MetaBool', 'c':False}
+    return ast
+
+
 def has_content(blocks):
     # Comments and empty headings are scaffolding; images/code/tables are content.
     for block in blocks:
@@ -220,7 +250,7 @@ def slides(ast):
     meta = result['meta']
     layout = plain(meta.get('slide-layout')) or 'default'
     if layout == 'default' and not any(key in meta for key in ('slide-section-dividers', 'slide-empty-slides')):
-        return result
+        return cover_policy(result)
     section_dividers = meta.get('slide-section-dividers', {'c':True})['c']
     include_empty = meta.get('slide-empty-slides', {'c':False})['c']
     sections = groups(result['blocks'], layout)
@@ -242,4 +272,4 @@ def slides(ast):
                 blocks[0]['c'][1][0] += '-introduction'
             out.extend(blocks)
     result['blocks'] = out
-    return result
+    return cover_policy(result)
