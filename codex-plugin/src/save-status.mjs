@@ -21,7 +21,7 @@ export function saveStatus(state, dirty, tablePending = false) {
 export function changeNotice(state, dirty) {
   if (state.conflict) return {kind:'review', title:'Review changes',
     detail:state.ambiguousExternal ? 'This may replace text you already saved. Your draft is retained; review the versions before continuing.'
-      : 'Your draft is retained. No file has been overwritten.'};
+      : 'Your draft is kept separately from the updated file. Compare both versions before saving.'};
   if (state.externalPending) return {kind:'info', title:'Update waiting', detail:state.externalPending};
   if (state.incomingReady) return {kind:'info', title:state.incomingReady.agent ? 'Agent update ready' : 'File update ready',
     detail:dirty ? 'Your draft is kept. Combine the edits or compare both versions.' : 'Accept the incoming edits when you are ready. Your view has not changed.'};

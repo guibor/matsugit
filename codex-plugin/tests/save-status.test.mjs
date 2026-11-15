@@ -28,7 +28,7 @@ test('recovery status is never used as evidence that the source file was saved',
 
 test('external-change receipts distinguish retained drafts, combined drafts and clean updates', () => {
   assert.equal(changeNotice({}, true), null);
-  assert.match(changeNotice({conflict:true, fileReceipt:'merged'},true).detail, /No file has been overwritten/);
+  assert.match(changeNotice({conflict:true, fileReceipt:'merged'},true).detail, /draft is kept separately from the updated file/);
   assert.equal(changeNotice({fileReceipt:'merged'},true).title, 'Changes combined in your draft');
   assert.match(changeNotice({fileReceipt:'merged'},true).detail, /Not saved/);
   assert.match(changeNotice({fileReceipt:'reviewed'},true).detail, /unchanged until you save/);

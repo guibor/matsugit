@@ -248,8 +248,8 @@ def resolve(frame, page, log):
         raise
     deadline = time.monotonic() + 20
     while frame.evaluate('document.getElementById("merge-dialog").open') and time.monotonic() < deadline:
-        if frame.locator('#merge-both').is_visible() and frame.locator('#merge-apply').is_enabled():
-            frame.locator('#merge-apply').click()
+        # The first click owns the asynchronous save. A second click can race
+        # with dialog.close() and wait forever on a now-hidden button.
         time.sleep(.2)
     if frame.evaluate('document.getElementById("merge-dialog").open'):
         status = frame.locator('#merge-status').inner_text()
