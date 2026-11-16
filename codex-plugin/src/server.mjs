@@ -139,10 +139,13 @@ serveStdio(() => {
     }));
   server.registerTool('matsugit_browser', {title: 'Open matsugit in the browser',
     description: 'Open the matsugit workspace (the same editor with document and slide previews, Story, Check, Add, Share) in the user\'s default browser, for when this chat cannot show the matsugit panel or the user asks for a browser tab. Give an existing Markdown/Org file, or nothing for the sample deck. Private to this computer; stops five minutes after the tab closes. Returns the address to tell the user. Never publishes.',
-    inputSchema: z.object({path: z.string().optional(), ...viewOptions}), annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
-    guard(async ({path: file, ...options}) => {
+    inputSchema: z.object({path: z.string().optional(), etag: z.string().optional(), ...viewOptions}),
+    _meta: {ui: {visibility: ['app', 'model']}}, annotations: {readOnlyHint: true, destructiveHint: false, openWorldHint: false}},
+    guard(async ({path: file, etag, ...options}) => {
       const data = file ? store.open(file) : null;
-      return result(browserResult(await openInBrowser(data ? data.path : null, {view: options}), data ? data.name : 'matsugit-tour.md'));
+      if (etag !== undefined && (!data || data.etag !== etag))
+        throw Error('The file changed before opening the browser. Accept or review its latest changes first; your draft is unchanged.');
+      return result({...browserResult(await openInBrowser(data ? data.path : null, {view: options}), data ? data.name : 'matsugit-tour.md'), runtime_host:os.hostname()});
     }));
   server.registerTool('matsugit_reconnect', {description:'Reconnect an existing panel to the same local document after a plugin restart. Read-only; does not open a second panel, save or publish.', ...appOnly,
     inputSchema:z.object({path:z.string()}), annotations:readOnly},

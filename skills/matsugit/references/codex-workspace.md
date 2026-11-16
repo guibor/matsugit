@@ -1,5 +1,12 @@
 # Codex workspace
 
+Use the globe button, **Open in browser**, in the workspace toolbar to edit the
+same local file in a browser tab. With unsaved writing, choose **Save and open**
+or **Cancel**. Pending conflicts and table edits must be resolved first. This is
+not publication or an export. The dialog identifies the computer running the
+browser workspace; its loopback link works only on that computer. A remote
+server still requires an explicitly configured private tunnel.
+
 Cursor uses this same workspace bundle through standard MCP Apps; use
 `/matsugit-story` to open narrative editing there. The native Emacs companion is
 `editors/emacs/matsugit-story.el` in the checkout (`M-x matsugit-story`). It uses

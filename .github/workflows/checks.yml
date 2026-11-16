@@ -97,3 +97,5 @@ jobs:
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/agent-edits-browser.py
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/render-fit-browser.py
           python3 codex-plugin/tests/browser-fallback-browser.py
+          python3 codex-plugin/tests/browser-button-browser.py
+          MATSUGIT_TEST_HOST=cursor MATSUGIT_STANDARD_MCP=1 python3 codex-plugin/tests/browser-button-browser.py

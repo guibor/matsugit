@@ -1,5 +1,13 @@
 # matsugit design
 
+The toolbar's browser action uses the existing token-protected loopback workspace.
+It opens the same file, not an exported copy. A dirty draft requires explicit
+Save and open; failed saves, incoming edits and unfinished table edits stop the
+handoff. The browser tool checks the supplied file revision without writing.
+The dialog retains a clickable fallback address and identifies the runtime host;
+remote localhost is not a remotely accessible URL. Browser-hosted workspaces hide
+the redundant action. The browser starts with autosave off and the chosen view.
+
 Check findings are filtered for the active output before adding its renderer
 failure. This prevents hidden slide findings from masking a real document
 failure. Column/row and slide-setting checks carry explicit slide scope;

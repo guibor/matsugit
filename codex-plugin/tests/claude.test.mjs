@@ -40,6 +40,9 @@ test('in Claude Code the open tools put the workspace in the browser and return 
   const client = await connect('claude-code');
   try {
     assert.ok((await client.listTools()).tools.some(tool => tool.name === 'matsugit_browser'));
+    const stale = await client.callTool({name:'matsugit_browser', arguments:{path:deck, etag:'old-revision'}});
+    assert.equal(stale.isError, true);
+    assert.match(JSON.stringify(stale.content), /file changed/);
     const options = {path: deck, layout: 'story', format: 'slides', editor: 'visual', autosave: false};
     const [opened, simultaneous] = await Promise.all([1, 2].map(() => client.callTool({name: 'matsugit_open', arguments: options})));
     assert.equal(opened.isError, undefined, JSON.stringify(opened.content));

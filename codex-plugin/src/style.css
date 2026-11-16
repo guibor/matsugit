@@ -37,6 +37,8 @@ body.presenting #source-pane,body.presenting #divider{display:none}
 .ff-export-boundary{border-top:2px dashed var(--border);border-bottom:1px solid var(--border);padding:8px 0;margin:12px 0;font-size:12px;font-weight:600;color:var(--muted);text-align:center}
 .delivery-dialog{width:min(580px,calc(100vw - 24px));max-height:85dvh;border:1px solid var(--border);border-radius:6px;padding:18px;background:var(--bg);color:var(--fg)}
 .delivery-dialog::backdrop{background:#0005}.delivery-dialog label:not(.auto){display:grid;gap:6px;margin:12px 0}
+#browser-dialog p{line-height:1.5;overflow-wrap:anywhere}#browser-dialog [hidden]{display:none}#browser-link{display:inline-block;padding:8px 12px;border:1px solid var(--border);border-radius:4px;color:var(--accent)}#browser-link:hover{background:var(--muted-bg)}#browser-link:focus-visible{outline:2px solid var(--accent)}
+#browser-open[hidden]{display:none}
 .export-file-actions{display:flex;flex-wrap:wrap;gap:8px}.export-file-actions button{display:inline-flex;align-items:center;gap:6px}.export-file-actions svg{width:16px;height:16px}#export-local-target{display:block;overflow-wrap:anywhere;margin-top:8px}#export-saved-path{box-sizing:border-box;width:100%;margin-top:8px;min-width:0}
 #export-ready [hidden]{display:none}
 .delivery-dialog select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;width:100%}

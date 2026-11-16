@@ -42,6 +42,7 @@ import {slideAgentSender} from './slide-agent-request.mjs';
 import {fileDownloads} from './download.mjs';
 import {setupCheck} from './setup-check.mjs';
 import {historyPanel} from './history-panel.mjs';
+import {browserButton} from './browser-button.mjs';
 
 const $ = id => document.getElementById(id);
 const app = new App({name: 'matsugit', version});
@@ -207,6 +208,9 @@ $('more-panel').addEventListener('click', event => { if (event.target.closest('b
 document.addEventListener('pointerdown', event => { if (!$('more-wrap').contains(event.target)) moreMenu(false); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('more-panel').hidden) { moreMenu(false); $('more').focus(); } });
 const setupDiagnostics = setupCheck({call, workspaceVersion:version});
+browserButton({call, save,
+  current:() => ({...state, dirty:dirty(), pendingTable:tables?.pending()}),
+  openLink: url => app.getHostCapabilities()?.openLinks ? app.openLink({url}) : window.open(url, '_blank', 'noopener')});
 $('setup-check').onclick = () => { moreMenu(false); setupDiagnostics.open($('more')); };
 $('notice-setup').onclick = () => setupDiagnostics.open($('notice-setup'));
 // Autosave: write the draft to its file shortly after typing stops. It uses
@@ -376,6 +380,7 @@ const connectedCall = sessionConnection({request:rawCall,
   }});
 async function call(name, args) { return connectedCall(name, args); }
 function refreshControls() {
+  $('browser-open').disabled = !!demo || !state.path || !state.etag || state.loading || state.saving || state.merging;
   story?.refresh();
   publication?.update();
   $('history-open').disabled = !!demo || state.loading || state.saving || state.merging || state.delivering;
@@ -1378,6 +1383,7 @@ function hostContext(context) {
   button.setAttribute('aria-label', button.title);
   button.replaceChildren(createElement(expanded ? Minimize2 : Maximize2));
   const host = app.getHostVersion();
+  $('browser-open').hidden = host?.name === 'matsugit in the browser';
   $('workspace-version').title = `matsugit workspace ${version}; ${host?.name || context.userAgent || 'host'} ${host?.version || ''}; ${context.displayMode || 'default'} view`;
   editor.requestMeasure();
 }

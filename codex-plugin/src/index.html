@@ -14,6 +14,7 @@
       <button id="save" title="Save file" aria-label="Save file" disabled></button>
       <button id="download" title="Download or export" aria-label="Download or export"></button>
       <button id="present" title="Present document" aria-label="Present document"></button>
+      <button id="browser-open" title="Open in browser" aria-label="Open in browser" aria-haspopup="dialog" aria-controls="browser-dialog" disabled></button>
       <div id="more-wrap">
         <button id="more" title="More" aria-label="More" aria-haspopup="true" aria-expanded="false" aria-controls="more-panel"></button>
         <div id="more-panel" hidden>
@@ -299,6 +300,13 @@
     <button id="publish-confirm" class="delivery-primary">Commit and push</button>
   </div>
   <pre id="publish-progress" role="status" aria-live="polite"></pre>
+</dialog>
+<dialog id="browser-dialog" class="delivery-dialog" aria-labelledby="browser-title">
+  <div class="recovery-heading"><h2 id="browser-title">Open in browser</h2><button id="browser-close" title="Close" aria-label="Close"></button></div>
+  <p id="browser-status" role="status" aria-live="polite"></p>
+  <button id="browser-confirm" class="delivery-primary">Open in browser</button>
+  <a id="browser-link" href="#" hidden>Open browser editor</a>
+  <button id="browser-cancel">Cancel</button>
 </dialog>
 <script>/* APP_SCRIPT */</script>
 </body></html>

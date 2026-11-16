@@ -42,6 +42,10 @@ bottom is your deck: click a slide to go there, and a dot marks any slide that
 needs attention. Double-click something on a slide to jump to that spot in the
 text.
 
+Prefer a full browser tab? Click the globe (=Open in browser=) in the toolbar.
+It opens the same file in the browser editor. Unsaved writing prompts for
+=Save and open= or =Cancel=; nothing is published.
+
 ** Add a slide by picture
 
 [[file:docs/images/codex/08-add-picker.png]]

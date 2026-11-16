@@ -1,5 +1,15 @@
 #+title: matsugit product requirements
 
+* Changed requirement: browser editing from the plugin (2026-11-16)
+
+Codex and Cursor panels expose an Open in browser toolbar action. It opens the
+same Markdown/Org file in the existing browser editor, without publishing or
+creating an export. Unsaved writing requires Save and open or Cancel; conflicts
+and pending table edits must be resolved first. Saving remains version-checked.
+Show the runtime machine and a fallback link; do not claim a browser opened just
+because its launch was requested. Retain the plugin draft and normal external
+change review when the browser subsequently saves. Do not expose a public server.
+
 * Changed requirement: checks belong to the active output (2026-11-15)
 
 Reading mode must not show slide-only heading, claim, takeaway, column-count,

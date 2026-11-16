@@ -2,6 +2,7 @@
 // tools put it in the user's browser instead, through browser.mjs beside this file.
 import {spawn} from 'node:child_process';
 import path from 'node:path';
+import os from 'node:os';
 import {fileURLToPath} from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -84,7 +85,7 @@ export async function openInBrowser(file, {script = path.join(here, 'browser.mjs
     return {url: existing.url, path: file || null, reused: true, launched: openUrl(existing.url, env)};
   }
   const child = spawn(process.execPath, [script, file || '', JSON.stringify(options)],
-    {detached: true, stdio: ['ignore', 'pipe', 'ignore'], env});
+    {detached: true, stdio: ['ignore', 'pipe', 'ignore'], env, cwd: file ? path.dirname(file) : os.tmpdir()});
   const pending = (async () => {
     try {
       const data = JSON.parse(await ready(child, timeoutMs));
