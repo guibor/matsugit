@@ -42,6 +42,8 @@ jobs:
         run: |
           npm run build --prefix codex-plugin
           npm test --prefix codex-plugin
+          node vscode-extension/build.mjs
+          npm test --prefix vscode-extension
       - name: Fast Python contracts
         env:
           QUARTO: ''
@@ -67,6 +69,12 @@ jobs:
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/check-browser.py
           python3 codex-plugin/tests/document-check-browser.py
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/document-check-browser.py
+      - name: Native VS Code editor and save/review contract
+        run: |
+          curl --fail --silent --show-error --location https://update.code.visualstudio.com/1.146.0/linux-x64/stable --output /tmp/vscode.tar.gz
+          echo 'cbdb7bde3d358c7297cf1d9d6adc16dfb1d0179501fb2c152df48593e39e3600  /tmp/vscode.tar.gz' | sha256sum --check
+          tar -xzf /tmp/vscode.tar.gz -C /tmp
+          VSCODE_EXECUTABLE=/tmp/VSCode-linux-x64/code python3 vscode-extension/tests/browser.py
       - name: Draft safety and publication UI
         run: |
           MATSUGIT_TITLE_PDF=1 python3 -m unittest discover -s tests -p test_title_exports.py -v

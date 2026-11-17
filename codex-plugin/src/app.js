@@ -48,6 +48,7 @@ const $ = id => document.getElementById(id);
 const app = new App({name: 'matsugit', version});
 const extensions = new OpenAIExtensions(app);
 const demo = window.MATSUGIT_DEMO;
+const nativeDocument = window.matsugitNativeDocument;
 const downloadFile = fileDownloads(demo ? null : app);
 const state = {name: 'Untitled.md', base: '', etag: null, writable: false, conflict: false,
   path:null, autosave:false, editorMode:'raw', storyPreview:false, storyMode:'overview', storySize:'large',
@@ -113,7 +114,7 @@ function actionFeedback(id, phase, message) {
   if (phase === 'done' || phase === 'error') actionTimers.set(id, setTimeout(() => actionFeedback(id, ''), 2500));
 }
 const text = () => editor.state.doc.toString();
-const dirty = () => text() !== state.base;
+const dirty = () => text() !== state.base || !!nativeDocument?.dirty;
 function paintNotice() {
   const receipt = changeNotice(state, dirty());
   const message = noticeMessage || (incomingDocument ? 'Another document is waiting. Your current draft is retained.' : receipt?.detail || state.standingNotice || '');
@@ -167,7 +168,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicS
       for (const button of document.querySelectorAll('[data-depth]'))
         button.setAttribute('aria-pressed', String(button.dataset.depth === '0' && !foldedRanges(update.state).size));
     }
-    if (update.docChanged && !state.loading) { state.revision++; refreshControls(); scheduleRender(); }
+    if (update.docChanged && !state.loading) { state.revision++; nativeDocument?.edit(text()); refreshControls(); scheduleRender(); }
     if (update.docChanged) check?.schedule();
     // Undoing such a change would also take back whatever another writer put
     // inside the replaced range, so external changes then rebase the history.
@@ -733,6 +734,7 @@ async function render(manual = true) {
   }
 }
 async function resourceRead({uri = state.uri, session = state.session} = {}) {
+  if (nativeDocument) return nativeDocument.read();
   if (uri) {
     const response = await extensions.resources.read({uri, representation: 'text'});
     const item = response.contents[0];
@@ -802,6 +804,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
     }
     if (!force && data.etag === state.etag) {
       if (state.incomingReady || state.externalPending) { state.incomingReady = null; state.externalPending = null; notice(); refreshControls(); }
+      if (!state.conflict) nativeDocument?.resume(text());
       return !state.conflict;
     }
     const autoAgent = !force && !accept && incomingTransition({currentEtag:state.etag,
@@ -856,7 +859,8 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
         let retry = false, reviewAgent = false;
         try {
           const decision = await planExternalEdit({base:snapshot.base, local:snapshot.text, incoming:data.text,
-            history:savedHistory, checkedBase:!!data.agentBases?.includes(state.etag), merge:async (base, local, incoming) => {
+            history:nativeDocument && data.dirty ? {incomplete:false,versions:[]} : savedHistory,
+            checkedBase:!!data.agentBases?.includes(state.etag), merge:async (base, local, incoming) => {
               checkMergeSnapshot(snapshot);
               return (await call('matsugit_merge', {base, local, incoming})).merge;
             }});
@@ -889,6 +893,7 @@ async function reloadNow(force = false, manual = false, expectedEtag = null, acc
       scheduleRecovery();
     }
     refreshControls();
+    if (!state.conflict && !state.externalPending) nativeDocument?.resume(text());
     return !state.conflict && !state.externalPending;
   } catch (error) {
     if (sequence === loadSequence && read === readSequence) { notice(error.message); refreshControls(); }
@@ -928,6 +933,7 @@ async function applyMerged(data, merged, snapshot, receipt = 'reviewed') {
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
   state.conflict = false; state.incomingReady = null; state.externalPending = null; state.ancestor = null; state.reviewWhole = false; state.ambiguousExternal = false; savedHistory.clear();
   state.fileReceipt = receipt;
+  nativeDocument?.resume(merged);
   notice();
   scheduleRecovery(); scheduleRender(); refreshControls();
 }
@@ -976,6 +982,7 @@ async function applyExternal(data, merged, snapshot, history, {agent = false} = 
   savedHistory.rebase(history);
   if (externalChange?.data.etag === data.etag) externalChange.appliedText = merged;
   state.fileReceipt = agent ? 'agent-merged' : merged === latest.text ? 'updated' : 'merged';
+  nativeDocument?.resume(merged);
   notice();
   scheduleRecovery(); scheduleRender(); refreshControls(); check?.schedule(); scheduleAutosave();
 }
@@ -1006,12 +1013,17 @@ async function save({review = true, auto = false} = {}) {
     if (!await reload()) { if (review) await reviewForSave(); return false; }
   }
   if (state.conflict) { if (review) await reviewForSave(); return false; }
+  if (nativeDocument) {
+    try { nativeDocument.edit(text()); await nativeDocument.flush(); }
+    catch (error) { notice(error.message); return false; }
+  }
   const value = text(), sequence = loadSequence;
   readSequence++;
   state.saving = true; refreshControls(); status('Saving');
   try {
     if (state.uri) await checkpoint('before-save',state.base);
-    const result = state.uri ? await extensions.resources.write(state.uri, {text: value, ifMatch: state.etag})
+    const result = nativeDocument ? await nativeDocument.save({text:value,etag:state.etag})
+      : state.uri ? await extensions.resources.write(state.uri, {text: value, ifMatch: state.etag})
       : await call('matsugit_save', {session: state.session, text: value, etag: state.etag});
     if (sequence !== loadSequence) return false;
     if (result.outcome === 'saved') {
@@ -1103,6 +1115,7 @@ async function load(data, {acceptRevision = null} = {}) {
     const source = sourceText(data);
     if (new TextEncoder().encode(source).length > 2 * 1024 * 1024 || source.includes('\0')) throw Error('Invalid source or document exceeds the 2 MiB editor limit.');
     state.base = source; state.etag = data.etag; state.readOnly = !!data.readOnly;
+    nativeDocument?.bind(source, !!data.dirty);
     state.writable = !!data.writable; replaceText(state.base, {baseline:true});
     // Start at the first heading, not inside the settings at the top: the
     // formatted view then shows them as one quiet line, and Follow shows a slide.
@@ -1625,6 +1638,7 @@ document.modelContext?.registerTool({name: 'matsugit_replace_source', descriptio
   }});
 // Expose only the editor model to the isolated local UI test harness.
 window.matsugitWorkspace = {editor, state, load, render, save, reload, flushRecovery, tables};
+nativeDocument?.attach({refresh:refreshControls,error:notice,reconcile:() => reload()});
 async function boot() {
 if (demo) {
   await load(demo);

@@ -1,16 +1,26 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "matsugit",
-  "version": "0.36.10",
+  "version": "0.36.11",
   "description": "Edit Markdown and Org with matsugit document and slide previews in Codex.",
-  "author": {"name": "matsugit"},
-  "extensions": {"com.openai": {"interface": {
-    "displayName": "matsugit",
-    "shortDescription": "Markdown, documents and slides",
-    "longDescription": "A local source, rendered and split workspace with document and slide previews, presentation mode, exports and explicitly confirmed Git/CI publication. Requires Node 22+, Python 3.10+ and Quarto. Previewing never publishes.",
-    "developerName": "matsugit",
-    "category": "Productivity",
-    "capabilities": ["Interactive", "Read", "Write"],
-    "defaultPrompt": "Show me how matsugit works with a quick sample deck."
-  }}}
+  "author": {
+    "name": "matsugit"
+  },
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "matsugit",
+        "shortDescription": "Markdown, documents and slides",
+        "longDescription": "A local source, rendered and split workspace with document and slide previews, presentation mode, exports and explicitly confirmed Git/CI publication. Requires Node 22+, Python 3.10+ and Quarto. Previewing never publishes.",
+        "developerName": "matsugit",
+        "category": "Productivity",
+        "capabilities": [
+          "Interactive",
+          "Read",
+          "Write"
+        ],
+        "defaultPrompt": "Show me how matsugit works with a quick sample deck."
+      }
+    }
+  }
 }

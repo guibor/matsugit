@@ -1,0 +1,91 @@
+{
+  "name": "matsugit",
+  "displayName": "matsugit",
+  "description": "Edit the story, formatted Markdown and slides in one local workspace.",
+  "version": "0.36.11",
+  "publisher": "guibor",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/guibor/matsugit"
+  },
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.cjs",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "matsugit.open",
+        "title": "matsugit: Open Document",
+        "icon": "$(preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "matsugit.open",
+          "when": "resourceExtname == .md || resourceExtname == .org || resourceExtname == .markdown",
+          "group": "navigation"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "matsugit.editor",
+        "displayName": "matsugit",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          },
+          {
+            "filenamePattern": "*.org"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "matsugit",
+      "properties": {
+        "matsugit.nodePath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Approved Node.js 22+ executable; empty uses the installed profile or PATH. No dependencies are downloaded automatically."
+        },
+        "matsugit.pythonPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional Python 3.10+ executable."
+        },
+        "matsugit.configPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional matsugit configuration file, including an existing corporate work profile."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

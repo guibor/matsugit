@@ -1,5 +1,15 @@
 #+title: matsugit product requirements
 
+* Changed requirement: ship the VS Code editor (2026-11-17)
+
+The Git release must provide an installable native editor, not only a parked
+preview branch. Install without npm builds or automatic prerequisite downloads.
+Use the existing workspace over a CustomTextEditorProvider; VS Code owns the
+buffer, native saves and backups. Unreviewed external buffer changes must block
+stale draft writes. Keep the Cursor/Codex adapter paths unchanged. Package work
+profiles under separate extension identities without including corporate content
+in the public distribution. Test in an isolated real VS Code instance.
+
 * Changed requirement: browser editing from the plugin (2026-11-16)
 
 Codex and Cursor panels expose an Open in browser toolbar action. It opens the

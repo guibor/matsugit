@@ -1,0 +1,9 @@
+**
+!package.json
+!README.md
+!LICENSE
+!host.js
+!native.js
+!dist/extension.cjs
+!runtime/server.mjs
+!runtime/THIRD-PARTY-NOTICES.txt

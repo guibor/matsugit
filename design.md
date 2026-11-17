@@ -1,5 +1,14 @@
 # matsugit design
 
+The optional native-document bridge runs only in VS Code. Its custom text editor
+applies minimal WorkspaceEdits to VS Code's TextDocument without saving. Native
+revisions and exact base-text checks reject stale writes; observing an external
+revision blocks the bridge until the existing workspace review accepts it.
+Save uses the native document API, keeping conflict prompts and hot-exit ownership
+with VS Code. A separately packaged VSIX carries the same runtime and no npm
+installer; it can carry a separate trusted work-profile identity. No changes to
+the Markdown format or automatic registration in other hosts are required.
+
 The toolbar's browser action uses the existing token-protected loopback workspace.
 It opens the same file, not an exported copy. A dirty draft requires explicit
 Save and open; failed saves, incoming edits and unfinished table edits stop the

@@ -82,6 +82,14 @@ Git command.
 
 * Get started
 
+*VS Code.* From the Git checkout, run
+=python3 vscode-extension/package_vscode.py --install= (Windows: =py -3= instead
+of =python3=). Reload VS Code, open a Markdown or Org file, and run
+=Matsugit: Open Document= in the Command Palette. The editor-title preview
+button and =Reopen Editor With > Matsugit= also open the native editor tab.
+This installs a separate VSIX, not the Codex/Cursor plugin ZIP. See
+[[file:vscode-extension/README.md][VS Code installation and limits]].
+
 Native Windows work is an opt-in [[file:docs/windows.md][compatibility preview]], not yet a
 desktop-verified release. The existing Mac/Linux setup is unchanged.
 
