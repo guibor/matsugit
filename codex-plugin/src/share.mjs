@@ -290,8 +290,11 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       }).catch(() => {});
       return;
     }
-    paint({title: 'Up to date', detail: 'Everything you saved is in the shared project, and nobody else has changed this deck.', outcome: false,
-      link: knownLinks().length ? null : context.site_url || context.project_url, linkLabel: context.site_url ? 'Open the shared deck' : 'Open the project',
+    const links = knownLinks();
+    const hasPages = links.some(item => ['document', 'slides', 'site'].includes(item.key));
+    paint({title: 'Up to date', detail: 'Your saved source matches the shared project.' +
+      (hasPages ? ' The site build has not been verified.' : ' No Pages link is available here. Check the project’s Pages address in your publishing target; you do not need to share again.'), outcome: false,
+      links, link: links.length ? null : context.site_url || context.project_url, linkLabel: context.site_url ? 'Open the shared deck' : 'Open the project',
       steps: {save: 'done', send: 'done', site: 'unknown', project: destination(context)}});
   }
 

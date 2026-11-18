@@ -137,12 +137,17 @@ class SourceCITests(unittest.TestCase):
         cache.write_bytes(b'local cache')
         git(self.repo, 'config', 'core.excludesFile', os.devnull)
         self.assertIn(cache.name, git(self.repo, 'ls-files', '--others', '--exclude-standard'))
-        self.source.write_text('## Brief\n\n[Supporting note](/Users/example/private/analysis.md)\n')
+        self.source.write_text('## Brief\n\n[Supporting note](/Users/example/private/analysis.md)\n\n'
+                               '[Matrix A](/Users/example/private/A.csv) and [matrix B](../private/B.csv)\n\n'
+                               '[Unknown file type](file:///Users/example/private/sample.custom)\n')
         with patch.object(source_ci, 'identity', return_value=('git.example.invalid', 'team/docs', 'https://git.example.invalid/team/docs')):
             sha = publish(settings, confirmed=True)
             self.assertEqual(git(remote, 'rev-parse', 'main'), sha)
             shared = git(remote, 'show', 'main:topics/decks/deck/source.md')
             self.assertIn('Supporting note', shared)
+            for label in ('Matrix A', 'matrix B', 'Unknown file type'):
+                self.assertIn(label, shared)
+            self.assertNotIn('private/', shared)
             self.assertNotIn('/Users/example/', shared)
             self.assertNotIn('.pyc', git(remote, 'ls-tree', '-r', '--name-only', sha))
             self.assertEqual(cache.read_bytes(), b'local cache')

@@ -1,5 +1,12 @@
 #+title: matsugit product requirements
 
+* Changed requirement: publishing references and interrupted Share (2026-11-18)
+
+A local reference to a spreadsheet or other file outside the source project
+must not prevent CI publication of the document or disclose the linked file.
+An interrupted status lookup is not evidence that a push failed. Distinguish
+unconfirmed delivery from a failed job and from a verified Pages deployment.
+
 * Changed requirement: ship the VS Code editor (2026-11-17)
 
 The Git release must provide an installable native editor, not only a parked

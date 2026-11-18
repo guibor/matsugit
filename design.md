@@ -1,5 +1,11 @@
 # matsugit design
 
+CI source bundles distinguish navigation from embedding: an ordinary Markdown
+link to an absolute workstation path or a relative path outside the project
+becomes its label in the published copy. No linked file contents are read for
+that substitution. In-project assets and embedded resources keep their checks.
+Share may retry a lost status response once for the same job, never a push.
+
 The optional native-document bridge runs only in VS Code. Its custom text editor
 applies minimal WorkspaceEdits to VS Code's TextDocument without saving. Native
 revisions and exact base-text checks reject stale writes; observing an external

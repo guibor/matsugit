@@ -86,7 +86,7 @@ def prepare(settings, output, reviewed):
     """Normalize with Pandoc only. Never run Quarto render on the client."""
     from .converter import converter
     output.mkdir()
-    ast = normalize(dict(settings, _preview_pandoc=converter()), output, for_export=False, portable_note_links=True)
+    ast = normalize(dict(settings, _preview_pandoc=converter()), output, for_export=False, portable_links=True)
     from .canvas import contains
     if contains(ast):
         repo = settings['repo']
