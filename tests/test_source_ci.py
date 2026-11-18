@@ -102,6 +102,41 @@ class SourceCITests(unittest.TestCase):
         extra.unlink(); extra.symlink_to(self.source)
         with self.assertRaisesRegex(Error, 'symlink'): source_ci.check_destination(output, self.source)
 
+    def test_topics_renderer_bytecode_does_not_block_or_enter_publication(self):
+        scripts = self.repo / 'scripts'
+        scripts.mkdir()
+        entry = scripts / 'build_pages.py'
+        entry.write_text('# existing renderer\n')
+        git(self.repo, 'add', 'scripts')
+        git(self.repo, 'commit', '-m', 'Existing topics renderer')
+        remote = self.root / 'topics.git'
+        git(self.root, 'init', '--bare', str(remote))
+        git(self.repo, 'remote', 'set-url', 'origin', str(remote))
+        git(self.repo, 'push', 'origin', 'main')
+        settings = dict(self.settings, ci_layout='topics', source_dir='topics/decks')
+        cache = self.repo / '.matsugit-renderer/scripts/matsugit_semantics/__pycache__/canvas.cpython-313.pyc'
+        cache.parent.mkdir(parents=True)
+        cache.write_bytes(b'local cache')
+        git(self.repo, 'config', 'core.excludesFile', os.devnull)
+        self.assertIn(cache.name, git(self.repo, 'ls-files', '--others', '--exclude-standard'))
+        with patch.object(source_ci, 'identity', return_value=('git.example.invalid', 'team/docs', 'https://git.example.invalid/team/docs')):
+            sha = publish(settings, confirmed=True)
+            self.assertEqual(git(remote, 'rev-parse', 'main'), sha)
+            self.assertNotIn('.pyc', git(remote, 'ls-tree', '-r', '--name-only', sha))
+            self.assertEqual(cache.read_bytes(), b'local cache')
+            entry.write_text('# unpublished renderer edit\n')
+            with self.assertRaisesRegex(Error, 'build_pages.py'):
+                source_ci.plan(settings)
+            entry.write_text('# existing renderer\n')
+            extra = cache.with_suffix('.py')
+            extra.touch()
+            with self.assertRaisesRegex(Error, 'canvas.cpython-313.py'):
+                source_ci.plan(settings)
+            extra.unlink()
+            git(self.repo, 'add', '-f', str(cache))
+            with self.assertRaisesRegex(Error, 'canvas.cpython-313.pyc'):
+                source_ci.plan(settings)
+
     def test_publish_local_remote_source_only_and_repeat_is_noop(self):
         remote = self.root / 'remote.git'
         subprocess.run(['git', 'init', '--bare', str(remote)], check=True, capture_output=True)

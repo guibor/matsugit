@@ -22,7 +22,7 @@ def identity(repo, remote):
     return host, project, f"https://{host}/{project}"
 
 
-def preflight(settings, paths=None):
+def preflight(settings, paths=None, *, renderer_paths=()):
     repo = settings["repo"]
     branch = settings["branch"]
     if Path(git(repo, "rev-parse", "--show-toplevel")).resolve() != repo.resolve():
@@ -38,6 +38,13 @@ def preflight(settings, paths=None):
     if settings['source'].is_relative_to(repo):
         scope.append(str(settings['source'].relative_to(repo)))
     changes = git(repo, '--literal-pathspecs', 'status', '--porcelain', '--untracked-files=all', '--', *scope)
+    if renderer_paths:
+        # Never exempt indexed changes. Bytecode under the renderer is generated
+        # locally and is not part of the document bundle we stage or replace.
+        tracked = git(repo, '--literal-pathspecs', 'status', '--porcelain', '--untracked-files=no', '--', *renderer_paths)
+        untracked = git(repo, '--literal-pathspecs', 'ls-files', '--others', '--exclude-standard',
+                        '--exclude=**/__pycache__/*.pyc', '--', *renderer_paths)
+        changes = '\n'.join(filter(None, (changes, tracked, untracked)))
     if changes:
         raise Error(f'Publishing would use or replace paths with local changes in {repo}:\n{changes}\n'
                     'Reconcile these paths only; nothing stashed or published.')

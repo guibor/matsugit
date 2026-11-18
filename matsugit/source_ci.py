@@ -68,7 +68,7 @@ def plan(settings):
         raise Error('Target remote changed; review expected_remote')
     destination = inside(repo, str(Path(directory) / settings['slug']))
     renderer_paths = ['.matsugit-ci'] if kind == 'native' else ['scripts', '.matsugit-renderer', '.folioforge-renderer']
-    revision = preflight(settings, [str(destination.relative_to(repo)), *renderer_paths])
+    revision = preflight(settings, [str(destination.relative_to(repo))], renderer_paths=renderer_paths)
     check_destination(destination, settings['source'])
     data = {'build':'ci', 'ci_layout':kind, 'target':settings.get('target'),
             'repo':str(repo), 'remote':remote, 'project_url':base,
