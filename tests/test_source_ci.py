@@ -105,6 +105,20 @@ class SourceCITests(unittest.TestCase):
         output = self.root / 'topics'
         source_ci.prepare(settings, output, reviewed)
         self.assertFalse((output / 'theme').exists())
+        self.assertTrue((output / 'deck.md').is_file())
+        self.assertEqual(json.loads((output/source_ci.MANIFEST).read_text())['source_file'], 'deck.md')
+        # A previously shared bundle keeps its URL, even if its old name was generic.
+        old = self.repo/reviewed['directory']
+        old.parent.mkdir(parents=True)
+        output.rename(old)
+        (old/'deck.md').rename(old/'source.md')
+        manifest = json.loads((old/source_ci.MANIFEST).read_text())
+        manifest['source_file'] = 'source.md'
+        manifest['files']['source.md'] = manifest['files'].pop('deck.md')
+        (old/source_ci.MANIFEST).write_text(json.dumps(manifest))
+        git(self.repo, 'add', 'topics')
+        git(self.repo, 'commit', '-m', 'Old reviewed bundle')
+        self.assertEqual(targets.plan(settings)['destination'], str(old/'source.md'))
         self.assertIn('existing target CI', reviewed['theme'])
 
     def test_reject_modified_assets_untracked_files_and_symlinks(self):
@@ -143,7 +157,7 @@ class SourceCITests(unittest.TestCase):
         with patch.object(source_ci, 'identity', return_value=('git.example.invalid', 'team/docs', 'https://git.example.invalid/team/docs')):
             sha = publish(settings, confirmed=True)
             self.assertEqual(git(remote, 'rev-parse', 'main'), sha)
-            shared = git(remote, 'show', 'main:topics/decks/deck/source.md')
+            shared = git(remote, 'show', 'main:topics/decks/deck.md')
             self.assertIn('Supporting note', shared)
             for label in ('Matrix A', 'matrix B', 'Unknown file type'):
                 self.assertIn(label, shared)
@@ -151,6 +165,12 @@ class SourceCITests(unittest.TestCase):
             self.assertNotIn('/Users/example/', shared)
             self.assertNotIn('.pyc', git(remote, 'ls-tree', '-r', '--name-only', sha))
             self.assertEqual(cache.read_bytes(), b'local cache')
+            self.source.write_text('## Revised\n\n![Evidence](figure.svg)\n')
+            publish(settings, confirmed=True)
+            self.assertEqual(git(self.repo, 'status', '--porcelain', '--', 'topics'), '')
+            again = git(remote, 'show', 'main:topics/decks/deck.md')
+            self.assertIn('assets/', again)
+            self.assertIn('figure.svg', git(remote, 'ls-tree', '-r', '--name-only', 'main:topics/decks/assets'))
             entry.write_text('# unpublished renderer edit\n')
             with self.assertRaisesRegex(Error, 'build_pages.py'):
                 source_ci.plan(settings)

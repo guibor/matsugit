@@ -1,5 +1,10 @@
 # matsugit design
 
+Topics CI keeps a flat copy's ownership record under matsugit-publications,
+outside the Pages source tree. A subsequent publish verifies the saved digest
+before replacing the file. Content-named attachments can be added later without
+moving the document. Existing manifested bundles retain their own source name.
+
 Preview, rendered exports and CI source bundles distinguish navigation from embedding: an ordinary Markdown
 link to an absolute workstation path or a relative path outside the project
 becomes its label in the published copy. No linked file contents are read for

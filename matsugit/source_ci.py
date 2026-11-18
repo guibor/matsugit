@@ -56,7 +56,7 @@ def check_destination(destination, source):
         raise Error('Published source/assets were edited or files added. Reconcile the target bundle before publishing')
 
 
-def plan(settings):
+def plan(settings, *, has_assets=None):
     from . import canonical
     if canonical.selected(settings):
         return canonical.plan(settings)
@@ -67,9 +67,52 @@ def plan(settings):
     if settings.get('expected_remote') and remote != settings['expected_remote']:
         raise Error('Target remote changed; review expected_remote')
     destination = inside(repo, str(Path(directory) / settings['slug']))
+    source = settings['source']
+    name = 'source.org' if source.suffix.lower() == '.org' else 'source.md'
+    flat = False
+    if kind == 'topics':
+        preferred = source.stem + ('.org' if source.suffix.lower() == '.org' else '.md')
+        parent = destination.parent
+        record = repo / 'matsugit-publications' / directory / (preferred + '.json')
+        if record.resolve() != record or destination != repo / directory / settings['slug']:
+            raise Error('Publishing directory or ownership record is a symlink')
+        if destination.exists() and not record.exists():
+            check_destination(destination, source)
+            name = read_json(destination / MANIFEST)['source_file']
+            if name not in (preferred, 'source' + Path(preferred).suffix):
+                raise Error('Bundle belongs to a different source; choose another publishing name')
+        else:
+            name = preferred
+            flat = record.exists()
+            if not flat and has_assets is None:
+                # Choose the initial URL from actual normalized assets, not a guess
+                # based on Markdown syntax. A recorded flat URL never moves later.
+                from .converter import converter
+                with tempfile.TemporaryDirectory(prefix='matsugit-layout-') as tmp:
+                    normalize(dict(settings, _preview_pandoc=converter()), Path(tmp),
+                              for_export=False, editable_source=False, source_text=None)
+                    has_assets = (Path(tmp) / 'assets').exists()
+            flat = flat or not has_assets
+            if flat:
+                target = parent / name
+                other = target.with_suffix('.org' if target.suffix == '.md' else '.md')
+                if other.exists() or target.is_symlink():
+                    raise Error('Another document already owns this Pages URL')
+                if record.exists():
+                    owned = read_json(record)
+                    if (not target.is_file() or owned.get('slug') != settings['slug'] or
+                            owned.get('digest') != hashlib.sha256(target.read_bytes()).hexdigest()):
+                        raise Error('Published document changed; reconcile before publishing')
+                elif target.exists():
+                    raise Error('Refusing to replace an existing document')
+                destination = target
     renderer_paths = ['.matsugit-ci'] if kind == 'native' else ['scripts', '.matsugit-renderer', '.folioforge-renderer']
-    revision = preflight(settings, [str(destination.relative_to(repo))], renderer_paths=renderer_paths)
-    check_destination(destination, settings['source'])
+    scope = [str(destination.relative_to(repo))]
+    if flat:
+        scope.append(str(record.relative_to(repo)))
+    revision = preflight(settings, scope, renderer_paths=renderer_paths)
+    if not flat:
+        check_destination(destination, source)
     data = {'build':'ci', 'ci_layout':kind, 'target':settings.get('target'),
             'repo':str(repo), 'remote':remote, 'project_url':base,
             'provider':settings.get('provider', 'github' if host == 'github.com' else 'gitlab'),
@@ -78,6 +121,10 @@ def plan(settings):
             'revision':revision, 'source_sha256':hashlib.sha256(settings['source'].read_bytes()).hexdigest(),
             'site_url':settings.get('site_url'), 'deployment':settings.get('deployment', 'ci'),
             'warning':'Only source, referenced assets and renderer inputs are pushed. Existing CI rules decide when builds run. Hosting access is unchanged.'}
+    data.update(source_file=name, destination=str(destination if flat else destination/name))
+    if flat:
+        data['flat_record'] = scope[1]
+        data['directory'] = str(destination.parent.relative_to(repo))
     data['fingerprint'] = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
     return data
 
@@ -100,10 +147,15 @@ def prepare(settings, output, reviewed):
     source_name = 'source.org' if settings['source'].suffix.lower() == '.org' else 'source.md'
     if source_name == 'source.org':
         (output / 'source.md').unlink()
+    name = reviewed.get('source_file', source_name)
+    if name != source_name:
+        (output / source_name).rename(output / name)
+    source_name = name
     if reviewed['ci_layout'] == 'native':
         install_theme(settings, output)
     edit_part = '/edit/' if reviewed['provider'] == 'github' else '/-/edit/'
-    edit = reviewed['project_url'] + edit_part + quote(settings['branch'], safe='') + '/' + quote(reviewed['directory'] + '/' + source_name)
+    relative_source = reviewed['directory'] + '/' + source_name
+    edit = reviewed['project_url'] + edit_part + quote(settings['branch'], safe='') + '/' + quote(relative_source)
     write_json(output / MANIFEST, {
         'version':1, 'source_file':source_name, 'ci_layout':reviewed['ci_layout'],
         'handout':bool(settings.get('handout')), 'edit_url':edit,
@@ -124,21 +176,46 @@ def publish(settings, confirmed=False, deploy=False):
     with tempfile.TemporaryDirectory(prefix='matsugit-source-') as temporary:
         bundle = Path(temporary) / 'bundle'
         prepare(settings, bundle, reviewed)
-        if plan(settings)['fingerprint'] != reviewed['fingerprint']:
+        has_assets = (bundle / 'assets').exists()
+        if plan(settings, has_assets=has_assets)['fingerprint'] != reviewed['fingerprint']:
             raise Error('Source or target changed while preparing; review again')
         git(repo, 'fetch', remote, branch)
         upstream = git(repo, 'rev-parse', 'FETCH_HEAD')
         if git(repo, 'rev-list', '--count', f'{upstream}..HEAD') != '0':
             raise Error('Target has unpublished/divergent commits; publish them separately first')
-        fast_forward(repo, upstream, reviewed['directory'])
-        updated = plan(settings)
+        output_path = str(Path(reviewed['destination']).relative_to(repo)) if reviewed.get('flat_record') else reviewed['directory']
+        fast_forward(repo, upstream, output_path)
+        updated = plan(settings, has_assets=has_assets)
         if any(updated[key] != reviewed[key] for key in reviewed if key not in ('revision', 'fingerprint')):
             raise Error('Source or publishing target changed during pull; review again')
-        dest = inside(repo, reviewed['directory'])
-        if dest.exists():
-            shutil.rmtree(dest)
-        shutil.copytree(bundle, dest)
-        scope = ('--', reviewed['directory'])
+        dest = inside(repo, output_path)
+        paths = [output_path]
+        if updated.get('flat_record'):
+            record = inside(repo, updated['flat_record'])
+            paths.append(updated['flat_record'])
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            # A later edit may introduce assets. Keep the existing document URL,
+            # and only add immutable, content-named assets. Never sweep siblings.
+            for asset in sorted((bundle / 'assets').glob('*')):
+                target = dest.parent / 'assets' / asset.name
+                if target.resolve() != target or (target.exists() and target.read_bytes() != asset.read_bytes()):
+                    raise Error('Conflicting asset at ' + str(target))
+                paths.append(target.relative_to(repo).as_posix())
+            preflight(settings, paths)
+            for asset in (bundle / 'assets').glob('*'):
+                target = dest.parent / 'assets' / asset.name
+                if not target.exists():
+                    target.parent.mkdir(exist_ok=True)
+                    with target.open('xb') as out, asset.open('rb') as inp:
+                        shutil.copyfileobj(inp, out)
+            shutil.copyfile(bundle / updated['source_file'], dest)
+            record.parent.mkdir(parents=True, exist_ok=True)
+            write_json(record, {'slug':settings['slug'], 'digest':hashlib.sha256(dest.read_bytes()).hexdigest()})
+        else:
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(bundle, dest)
+        scope = ('--', *paths)
         if git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', *scope) or git(repo, 'rev-parse', 'HEAD') != updated['revision']:
             raise Error('Git state changed; source bundle retained locally, not committed')
         git(repo, '--literal-pathspecs', 'add', *scope)

@@ -71,6 +71,20 @@ class CanonicalTests(unittest.TestCase):
         self.assertEqual(source.read_bytes(), before)
         self.assertTrue(source.is_symlink())
 
+    def test_topics_first_share_keeps_basename_and_only_groups_assets_when_needed(self):
+        scripts = self.repo/'scripts'
+        scripts.mkdir()
+        (scripts/'build_pages.py').touch()
+        settings = dict(self.settings, ci_layout='topics', source_dir='topics/team')
+        path = Path(targets.plan(settings)['destination'])
+        self.assertEqual(path, self.repo/'topics/team'/settings['slug']/'Deck.md')
+        self.source.write_text('## Plain\n')
+        path = Path(targets.plan(settings)['destination'])
+        self.assertEqual(path, self.repo/'topics/team/Deck.md')
+        publish(settings, confirmed=True)
+        self.assertEqual(self.source.resolve(), path)
+        self.assertEqual(git(self.remote, 'show', 'main:topics/team/Deck.md'), '## Plain')
+
     def test_collision_traversal_symlink_and_changed_plan_refused(self):
         for path in ('../escape.md', '.git/config'):
             with self.assertRaises(Error): adopt.plan(self.source, self.repo, path)

@@ -54,7 +54,15 @@ def plan(settings):
         folder = inside(repo, str(Path(directory) / settings['slug']))
         if folder.exists():
             raise Error('Move-and-link requires a new destination folder; reconcile an existing published copy explicitly')
-        destination = folder / ('source.org' if source.suffix.lower() == '.org' else 'source.md')
+        if kind == 'topics':
+            folder = folder if len(adopt.inventory(source)) > 1 else folder.parent
+            destination = folder / source.name
+            if source.suffix.lower() not in ('.md', '.org'):
+                raise Error('Topics CI renders .md and .org; rename the source before moving it')
+            if destination.with_suffix('.md' if source.suffix.lower() == '.org' else '.org').exists():
+                raise Error('Another document already owns this Pages URL')
+        else:
+            destination = folder / ('source.org' if source.suffix.lower() == '.org' else 'source.md')
         relocation = adopt.plan(source, repo, str(destination.relative_to(repo)))
     inventory = adopt.inventory(source, root=repo if source.is_relative_to(repo) and kind == 'topics' else None)
     if not relocation:

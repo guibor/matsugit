@@ -1,5 +1,10 @@
 #+title: matsugit product requirements
 
+* Changed requirement: preserve document names in topics CI (2026-11-18)
+
+New shared Markdown documents keep their filename. A first publication without
+attachments does not need its own directory. Keep existing shared URLs stable.
+
 * Changed requirement: publishing references and interrupted Share (2026-11-18)
 
 A local reference to a spreadsheet or other file outside the source project
