@@ -140,7 +140,10 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     $('share-link-row').hidden = !url;
     if (url) { $('share-link').href = url; $('share-link').textContent = linkLabel; }
   }
-  const fail = error => paint({title: 'That did not work', detail: error.message + '\n\nNothing was lost. Your deck is still on this computer.'});
+  const fail = error => {
+    progress.textContent = '';
+    paint({title: error.unconfirmed ? 'Could not confirm the result' : 'That did not work', detail:error.message});
+  };
   async function saved() {
     if (!dirty()) return true;
     progress.textContent = 'Saving your deck...';

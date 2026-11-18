@@ -1,6 +1,7 @@
 import {createElement, X, Upload, Plus, GitPullRequestArrow, Download, FolderDown} from 'lucide';
 import {exportMime} from './download.mjs';
 import {gitExchange} from './git-exchange.js';
+import {deliveryJob} from './delivery-job.mjs';
 
 export function delivery({call, state, text, theme, notice, download, downloadFile, demo, reload, load, follow, hasUnsaved, refreshControls, publication, mergeReview}) {
   const $ = id => document.getElementById(id);
@@ -19,12 +20,7 @@ export function delivery({call, state, text, theme, notice, download, downloadFi
   async function run(action, args, progress) {
     const owner = scope();
     const view = state.session || state.uri;
-    let job = await call('matsugit_action', {...owner, action, ...args});
-    while (job.state === 'running') {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      job = await call('matsugit_action_status', {...owner, job:job.job});
-      progress.textContent = job.log || 'Working...';
-    }
+    const job = await deliveryJob(call, owner, action, args, progress);
     if (job.workspace && view === (state.session || state.uri)) {
       // Publishing moved the document. Follow it; typing done meanwhile stays
       // an ordinary unsaved draft of the file at its new path.
