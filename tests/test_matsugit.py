@@ -100,6 +100,25 @@ QUARTO = os.environ.get("QUARTO", shutil.which("quarto"))
 
 @unittest.skipUnless(QUARTO, "Set QUARTO for real rendering tests")
 class RenderTests(CoreTests):
+    def test_cli_and_workspace_render_the_same_portable_links(self):
+        from matsugit.preview import render as preview
+        cli = Path(__file__).resolve().parents[1] / 'bin/matsugit'
+        original = ('## Brief\n\n[Research note](/Users/example/private/research.md) and '
+                    '[Matrix table](/Users/example/private/matrix.csv). [Website](https://example.invalid/ref)\n')
+        self.source.write_text(original)
+        output = self.root / 'html'
+        run([cli, 'render', self.source, '--output', output, '--theme', 'default'])
+        workspace = self.root / 'preview'
+        draft = original.replace('Research note', 'Unsaved note label')
+        preview(config(self.source, {'quarto':QUARTO, 'theme':'default'}), workspace, draft)
+        for path, label in ((output/'index.html', 'Research note'), (output/'slides.html', 'Research note'),
+                            (workspace/'index.html', 'Unsaved note label')):
+            html = path.read_text()
+            for expected in (label, 'Matrix table', 'href="https://example.invalid/ref"'):
+                self.assertIn(expected, html)
+            self.assertNotIn('href="/Users/example/private/', html)
+        self.assertEqual(self.source.read_text(), original)
+
     def test_unsaved_snapshot_keeps_original_and_relative_assets(self):
         original = self.source.read_text()
         (self.root / 'image.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="80" height="40" fill="blue"/></svg>')

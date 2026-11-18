@@ -363,7 +363,7 @@ def mermaid_block(attributes, code):
     return {"t": "Div", "c": [[identifier, ["ff-media", "ff-diagram", *[c for c in classes if c != "mermaid"]], values], [cell]]}
 
 
-def normalize(settings, output, *, source_text=None, editable_source=True, for_export=True, portable_links=False):
+def normalize(settings, output, *, source_text=None, editable_source=True, for_export=True):
     source = settings["source"]
     fmt = {".md": "markdown", ".markdown": "markdown", ".qmd": "markdown", ".org": "org"}.get(source.suffix.lower())
     if not fmt:
@@ -435,7 +435,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
             node['c'][0][2] = list(map(list, values.items()))
         if kind == "CodeBlock" and "mermaid" in node["c"][0][1]:
             return mermaid_block(*node["c"])
-        if portable_links and kind == "Link":
+        if kind == "Link":
             attrs, label, (href, _) = node["c"]
             url = urlsplit(href)
             path = Path(unquote(url.path))
@@ -477,7 +477,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
 
     ast = visit(ast)
     if local_links:
-        print(f'Publishing {local_links} local file link(s) as text. Use a web URL for a clickable shared link.',
+        print(f'Rendering {local_links} local file link(s) as text. Use a web URL for a clickable shared link.',
               file=sys.stderr)
     if fmt == 'org' and editable_source:
         (output / 'source.org').write_text(write_org(ast, pandoc), encoding='utf-8')

@@ -1,6 +1,6 @@
 # matsugit design
 
-CI source bundles distinguish navigation from embedding: an ordinary Markdown
+Preview, rendered exports and CI source bundles distinguish navigation from embedding: an ordinary Markdown
 link to an absolute workstation path or a relative path outside the project
 becomes its label in the published copy. No linked file contents are read for
 that substitution. In-project assets and embedded resources keep their checks.

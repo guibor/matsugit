@@ -4,6 +4,8 @@
 
 A local reference to a spreadsheet or other file outside the source project
 must not prevent CI publication of the document or disclose the linked file.
+The same rule applies when Emacs renders HTML and when the workspace previews
+an unsaved draft. Keep the editable source unchanged.
 An interrupted status lookup is not evidence that a push failed. Distinguish
 unconfirmed delivery from a failed job and from a verified Pages deployment.
 
