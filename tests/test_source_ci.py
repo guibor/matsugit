@@ -108,6 +108,11 @@ class SourceCITests(unittest.TestCase):
         git(self.repo, 'remote', 'set-url', 'origin', str(remote))
         git(self.repo, 'push', 'origin', 'main')
         before = (self.repo / 'matsugit.gitlab-ci.yml').read_bytes()
+        (self.repo/'unrelated.md').write_text('Unpublished draft')
+        git(self.repo, 'add', 'unrelated.md')
+        (self.repo/'unrelated.md').write_text('Newer unpublished draft')
+        (self.repo/'scratch').write_text('Keep me')
+        dirty = git(self.repo, 'status', '--porcelain')
         with patch.object(source_ci, 'identity', return_value=('git.example.invalid', 'team/docs', 'https://git.example.invalid/team/docs')):
             sha = publish(self.settings, confirmed=True)
             self.assertEqual(sha, publish(self.settings, confirmed=True))
@@ -116,7 +121,36 @@ class SourceCITests(unittest.TestCase):
         self.assertTrue(all(p.startswith('matsugit-site/deck/') for p in changed))
         self.assertFalse(any(p.endswith('.html') for p in changed))
         self.assertEqual(before, (self.repo / 'matsugit.gitlab-ci.yml').read_bytes())
-        self.assertEqual(git(self.repo, 'status', '--porcelain'), '')
+        self.assertEqual(git(self.repo, 'status', '--porcelain'), dirty)
+        self.assertEqual(git(self.repo, 'show', ':unrelated.md'), 'Unpublished draft')
+        self.assertEqual((self.repo/'unrelated.md').read_text(), 'Newer unpublished draft')
+        target = self.repo/'matsugit-site/deck/source.md'
+        target.write_text('An edit to the actual destination')
+        with patch.object(source_ci, 'identity', return_value=('git.example.invalid','team/docs','https://git.example.invalid/team/docs')):
+            with self.assertRaisesRegex(Error, 'local changes'):
+                publish(self.settings, confirmed=True)
+        self.assertEqual(target.read_text(), 'An edit to the actual destination')
+
+    def test_remote_change_to_destination_refused_before_fast_forward(self):
+        # Two real commits with the second one available only on the remote.
+        remote = self.root/'upstream.git'
+        git(self.root, 'init', '--bare', str(remote))
+        git(self.repo, 'remote', 'set-url', 'origin', str(remote))
+        git(self.repo, 'push', 'origin', 'main')
+        author = self.root/'other-checkout'
+        git(self.root, 'clone', '-b', 'main', str(remote), str(author))
+        path = author/'matsugit-site/deck/source.md'
+        path.parent.mkdir(parents=True)
+        path.write_text('Someone else published here')
+        git(author, 'add', '.')
+        git(author, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@localhost', 'commit', '-m', 'Remote change')
+        git(author, 'push', 'origin', 'main')
+        before = git(self.repo, 'rev-parse', 'HEAD')
+        with patch.object(source_ci, 'identity', return_value=('git.example.invalid','team/docs','https://git.example.invalid/team/docs')):
+            with self.assertRaisesRegex(Error, 'remote changed'):
+                publish(self.settings, confirmed=True)
+        self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), before)
+        self.assertEqual(git(remote, 'show', 'main:matsugit-site/deck/source.md'), path.read_text())
 
     @unittest.skipUnless(os.environ.get('QUARTO'), 'Set QUARTO to verify CI HTML rendering')
     def test_installed_ci_renders_document_and_slides(self):

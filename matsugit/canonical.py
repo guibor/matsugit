@@ -18,8 +18,13 @@ def preflight(settings, paths):
         raise Error('Choose the target checkout root')
     if git(repo, 'branch', '--show-current') != settings['branch']:
         raise Error(f"Switch the target to {settings['branch']} first")
-    if git(repo, 'diff', '--cached', '--name-only'):
+    gitdir = Path(git(repo, 'rev-parse', '--absolute-git-dir'))
+    if any((gitdir / name).exists() for name in ('MERGE_HEAD','CHERRY_PICK_HEAD','REVERT_HEAD','rebase-merge','rebase-apply','sequencer')):
+        raise Error('Finish the in-progress Git operation before publishing')
+    if not paths and git(repo, 'diff', '--cached', '--name-only'):
         raise Error('Staged changes exist; publish them separately first')
+    if paths and git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', '--', *paths) and git(repo, '--literal-pathspecs', 'diff', '--name-only', '--', *paths):
+        raise Error('The document has both staged and unstaged edits. Review its staged version before publishing.')
     # Unstaged and untracked work can coexist with a scoped publication. Git
     # rejects a fast-forward that would overwrite it, and publish() stages and
     # commits only the reviewed paths.
@@ -52,6 +57,11 @@ def plan(settings):
         destination = folder / ('source.org' if source.suffix.lower() == '.org' else 'source.md')
         relocation = adopt.plan(source, repo, str(destination.relative_to(repo)))
     inventory = adopt.inventory(source, root=repo if source.is_relative_to(repo) and kind == 'topics' else None)
+    if not relocation:
+        for asset in inventory:
+            if asset != source and not git(repo, '--literal-pathspecs', 'ls-tree', 'HEAD', '--', str(asset.relative_to(repo))):
+                raise Error(f'Referenced asset is not committed: {asset.name}. Commit it separately before publishing the document.')
+        inventory = [source]
     files = {str(path if not relocation else destination if path == source else destination.parent / path.relative_to(source.parent)): adopt.digest(path)
              for path in inventory}
     if kind == 'native' and relocation:
@@ -76,14 +86,16 @@ def plan(settings):
                 theme=settings['theme'] if kind == 'native' else 'Managed by existing target CI',
                 ci_layout=kind, files=files, revision=revision, site_url=settings.get('site_url'),
                 deployment=settings.get('deployment', 'ci'),
-                warning='Exact source and referenced assets are committed, including source-only comments. Existing CI rules/visibility remain unchanged. Original paths become local symlinks only when Move is selected.')
+                warning=('Exact source and referenced assets are committed; original paths become local symlinks.' if relocation else
+                         'Only the selected source is committed; the site uses the already committed assets.')
+                        + ' Source-only comments are included. Existing CI rules/visibility remain unchanged.')
     data['fingerprint'] = fingerprint(data)
     return data
 
 
 def publish(settings, confirmed=False, deploy=False):
     from .source_ci import MANIFEST
-    from .publish import request_deployment
+    from .publish import request_deployment, fast_forward
     reviewed = plan(settings)
     if not confirmed and input('Commit/push this canonical source (and move/link if selected)? [y/N] ').strip().lower() != 'y':
         return None
@@ -92,7 +104,7 @@ def publish(settings, confirmed=False, deploy=False):
     upstream = git(repo, 'rev-parse', 'FETCH_HEAD')
     if git(repo, 'rev-list', '--count', f'{upstream}..HEAD') != '0':
         raise Error('Unpublished/divergent commits exist. Reconcile/push them in Git first')
-    git(repo, '-c', 'merge.autoStash=false', 'merge', '--ff-only', upstream)
+    fast_forward(repo, upstream, str(Path(reviewed['destination']).relative_to(repo)))
     updated = plan(settings)
     if any(updated[k] != reviewed[k] for k in reviewed if k not in ('revision', 'fingerprint')):
         raise Error('Source/assets or target changed during pull. Reload and review again; nothing overwritten')
@@ -127,19 +139,17 @@ def publish(settings, confirmed=False, deploy=False):
                 raise
     if any(adopt.digest(p) != digest for p, digest in updated['files'].items()):
         raise Error('Files changed before staging. Canonical files retained; review before publishing')
-    if git(repo, 'rev-parse', 'HEAD') != updated['revision'] or git(repo, 'diff', '--cached', '--name-only'):
+    if preflight(settings, [] if updated['relocation'] else paths) != updated['revision']:
         raise Error('Git state changed; files retained, not committed')
-    git(repo, 'add', '--', *paths)
-    staged = set(filter(None, git(repo, 'diff', '--cached', '--name-only', '-z').split('\0')))
-    if staged - set(paths):
-        raise Error('Unexpected staged files; review the index, nothing committed')
+    git(repo, '--literal-pathspecs', 'add', '--', *paths)
+    staged = git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', '--', *paths)
     for path, digest in updated['files'].items():
         relative = str(Path(path).relative_to(repo))
         blob = git(repo, 'rev-parse', f':{relative}')
         if blob != git(repo, 'hash-object', '--no-filters', path):
             raise Error('Git filters or a concurrent edit changed staged bytes; review index before committing')
     if staged:
-        git(repo, 'commit', '-m', f"Publish {Path(updated['destination']).name} source", '--', *paths)
+        git(repo, '--literal-pathspecs', 'commit', '--only', '-m', f"Publish {Path(updated['destination']).name} source", '--', *paths)
     sha = git(repo, 'rev-parse', 'HEAD')
     if git(repo, 'remote', 'get-url', remote) != updated['remote']:
         raise Error('Remote changed; local commit retained, not pushed')

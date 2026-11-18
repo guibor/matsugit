@@ -22,16 +22,36 @@ def identity(repo, remote):
     return host, project, f"https://{host}/{project}"
 
 
-def preflight(settings):
+def preflight(settings, paths=None):
     repo = settings["repo"]
     branch = settings["branch"]
     if Path(git(repo, "rev-parse", "--show-toplevel")).resolve() != repo.resolve():
         raise Error("--repo must be the checkout root")
     if git(repo, "branch", "--show-current") != branch:
         raise Error(f"Switch the target checkout to {branch} first")
-    if git(repo, "status", "--porcelain"):
-        raise Error("Target checkout has local changes; commit or move them first (nothing was stashed)")
+    gitdir = Path(git(repo, 'rev-parse', '--absolute-git-dir'))
+    if any((gitdir / name).exists() for name in ('MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD',
+                                                  'rebase-merge', 'rebase-apply', 'sequencer')):
+        raise Error(f'Finish the in-progress Git operation in {repo}; nothing published')
+    # Rendered output also regenerates the common site index from sibling manifests.
+    scope = list(paths) if paths is not None else [settings['site_dir']]
+    if settings['source'].is_relative_to(repo):
+        scope.append(str(settings['source'].relative_to(repo)))
+    changes = git(repo, '--literal-pathspecs', 'status', '--porcelain', '--untracked-files=all', '--', *scope)
+    if changes:
+        raise Error(f'Publishing would use or replace paths with local changes in {repo}:\n{changes}\n'
+                    'Reconcile these paths only; nothing stashed or published.')
     return git(repo, "rev-parse", "HEAD")
+
+
+def fast_forward(repo, upstream, destination):
+    if git(repo, 'rev-parse', 'HEAD') == upstream:
+        return
+    if git(repo, '--literal-pathspecs', 'diff', '--name-only', 'HEAD', upstream, '--', destination):
+        raise Error(f'The remote changed {destination} since the target checkout was updated. Review that change before publishing; nothing replaced.')
+    if git(repo, 'diff', '--cached', '--name-only'):
+        raise Error(f'Target {repo} needs a fast-forward and has staged work. Finish the staged commit or reconcile the branch first.')
+    git(repo, '-c', 'merge.autoStash=false', 'merge', '--ff-only', '--no-overwrite-ignore', upstream)
 
 
 def check_destination(dest, source):
@@ -109,7 +129,7 @@ def publish(settings, confirmed=False, deploy=False):
         ahead = git(repo, "rev-list", "--count", f"{upstream}..HEAD")
         if ahead != "0":
             raise Error("Target has unpublished/divergent commits; publish them separately first")
-        git(repo, "merge", "--ff-only", upstream)
+        fast_forward(repo, upstream, subdir)
         revision = preflight(settings)
         if hashlib.sha256(settings["source"].read_bytes()).hexdigest() != source_digest:
             raise Error("Source changed during rendering/pull; rerun to render the new version")
@@ -124,11 +144,11 @@ def publish(settings, confirmed=False, deploy=False):
         shutil.copytree(artifact, dest)
         site_index(site)
         site_marker.write_text('{"version": 1}\n')
-        if git(repo, "diff", "--cached", "--name-only") or git(repo, "rev-parse", "HEAD") != revision:
+        if git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', '--', settings['site_dir']) or git(repo, "rev-parse", "HEAD") != revision:
             raise Error("Git state changed while rendering; outputs retained, not committed")
         paths = [subdir, str(Path(settings["site_dir"]) / "index.html"), str(site_marker.relative_to(repo))]
-        git(repo, "add", "--", *paths)
-        git(repo, "commit", "-m", f"Publish {settings['slug']} document and slides", "--", *paths)
+        git(repo, '--literal-pathspecs', "add", "--", *paths)
+        git(repo, '--literal-pathspecs', "commit", "--only", "-m", f"Publish {settings['slug']} document and slides", "--", *paths)
         sha = git(repo, "rev-parse", "HEAD")
         if git(repo, 'remote', 'get-url', remote) != original_remote:
             raise Error('Remote changed; local publication commit retained, not pushed')

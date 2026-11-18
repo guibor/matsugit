@@ -7,7 +7,7 @@ import tempfile
 from urllib.parse import quote
 
 from .core import Error, git, inside, normalize, install_theme, read_json, write_json
-from .publish import preflight, identity
+from .publish import preflight, identity, fast_forward
 
 MANIFEST = 'matsugit-source.json'
 
@@ -60,7 +60,6 @@ def plan(settings):
     from . import canonical
     if canonical.selected(settings):
         return canonical.plan(settings)
-    revision = preflight(settings)
     kind, directory = layout(settings)
     repo = settings['repo']
     host, _, base = identity(repo, settings['remote'])
@@ -68,6 +67,8 @@ def plan(settings):
     if settings.get('expected_remote') and remote != settings['expected_remote']:
         raise Error('Target remote changed; review expected_remote')
     destination = inside(repo, str(Path(directory) / settings['slug']))
+    renderer_paths = ['.matsugit-ci'] if kind == 'native' else ['scripts', '.matsugit-renderer', '.folioforge-renderer']
+    revision = preflight(settings, [str(destination.relative_to(repo)), *renderer_paths])
     check_destination(destination, settings['source'])
     data = {'build':'ci', 'ci_layout':kind, 'target':settings.get('target'),
             'repo':str(repo), 'remote':remote, 'project_url':base,
@@ -129,7 +130,7 @@ def publish(settings, confirmed=False, deploy=False):
         upstream = git(repo, 'rev-parse', 'FETCH_HEAD')
         if git(repo, 'rev-list', '--count', f'{upstream}..HEAD') != '0':
             raise Error('Target has unpublished/divergent commits; publish them separately first')
-        git(repo, 'merge', '--ff-only', upstream)
+        fast_forward(repo, upstream, reviewed['directory'])
         updated = plan(settings)
         if any(updated[key] != reviewed[key] for key in reviewed if key not in ('revision', 'fingerprint')):
             raise Error('Source or publishing target changed during pull; review again')
@@ -137,15 +138,16 @@ def publish(settings, confirmed=False, deploy=False):
         if dest.exists():
             shutil.rmtree(dest)
         shutil.copytree(bundle, dest)
-        if git(repo, 'diff', '--cached', '--name-only') or git(repo, 'rev-parse', 'HEAD') != updated['revision']:
+        scope = ('--', reviewed['directory'])
+        if git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', *scope) or git(repo, 'rev-parse', 'HEAD') != updated['revision']:
             raise Error('Git state changed; source bundle retained locally, not committed')
-        git(repo, 'add', '--', reviewed['directory'])
-        if not git(repo, 'diff', '--cached', '--name-only'):
+        git(repo, '--literal-pathspecs', 'add', *scope)
+        if not git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', *scope):
             print('Source bundle is unchanged; no new commit')
             if deploy:
                 request_deployment(settings, reviewed['provider'], reviewed['project_url'])
             return git(repo, 'rev-parse', 'HEAD')
-        git(repo, 'commit', '-m', f"Publish {settings['slug']} source for CI", '--', reviewed['directory'])
+        git(repo, '--literal-pathspecs', 'commit', '--only', '-m', f"Publish {settings['slug']} source for CI", *scope)
         sha = git(repo, 'rev-parse', 'HEAD')
         if git(repo, 'remote', 'get-url', remote) != reviewed['remote']:
             raise Error('Remote changed; commit retained locally, not pushed')

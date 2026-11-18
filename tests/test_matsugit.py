@@ -244,9 +244,11 @@ class PublishTests(CoreTests):
         self.assertEqual((self.repo / "README").read_text(), "unrelated\n")
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
 
-    def test_staged_work_refused(self):
+    def test_unrelated_staged_work_is_not_published(self):
         (self.repo / "README").write_text("user edit")
         git(self.repo, "add", "README")
-        with self.assertRaisesRegex(Error, "local changes"):
-            preflight(self.settings)
+        with patch("matsugit.publish.identity", return_value=("github.com", "test/repo", "https://example.invalid/repo")), \
+             patch("matsugit.publish.render", side_effect=self.fake_render):
+            publish(self.settings, confirmed=True)
+        self.assertEqual(git(self.remote, 'show', 'main:README'), 'unrelated')
         self.assertEqual(git(self.repo, "diff", "--cached", "--name-only"), "README")
