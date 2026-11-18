@@ -11,6 +11,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 from urllib.parse import quote, unquote, urlsplit
 
@@ -362,7 +363,7 @@ def mermaid_block(attributes, code):
     return {"t": "Div", "c": [[identifier, ["ff-media", "ff-diagram", *[c for c in classes if c != "mermaid"]], values], [cell]]}
 
 
-def normalize(settings, output, *, source_text=None, editable_source=True, for_export=True):
+def normalize(settings, output, *, source_text=None, editable_source=True, for_export=True, portable_note_links=False):
     source = settings["source"]
     fmt = {".md": "markdown", ".markdown": "markdown", ".qmd": "markdown", ".org": "org"}.get(source.suffix.lower())
     if not fmt:
@@ -381,6 +382,8 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
     asset_limit = resource_limit('MATSUGIT_MAX_ASSET_BYTES', 128 * 1024 * 1024)
     asset_budget = resource_limit('MATSUGIT_MAX_TOTAL_ASSET_BYTES', 512 * 1024 * 1024)
     copied = {}
+
+    local_note_links = 0
 
     def resource(value, canvas=False):
         nonlocal asset_budget
@@ -416,6 +419,7 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
         return {'t':'Div', 'c':[['',classes,values],[content]]}
 
     def visit(node):
+        nonlocal local_note_links
         if isinstance(node, list):
             return [visit(item) for item in node]
         if not isinstance(node, dict):
@@ -431,6 +435,18 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
             node['c'][0][2] = list(map(list, values.items()))
         if kind == "CodeBlock" and "mermaid" in node["c"][0][1]:
             return mermaid_block(*node["c"])
+        if portable_note_links and kind == "Link":
+            attrs, label, (href, _) = node["c"]
+            url = urlsplit(href)
+            path = Path(unquote(url.path))
+            if (url.scheme in ('', 'file') and not url.netloc and path.is_absolute()
+                    and path.suffix.lower() in ('.md', '.markdown', '.org', '.qmd')):
+                # A workstation address is not a publishable attachment. Do not
+                # resolve or read it, or leave an unusable link in the shared copy.
+                local_note_links += 1
+                if not label or plain(label) in (href, unquote(href), str(path)):
+                    label = [{'t':'Str', 'c':path.name}]
+                return {'t':'Span', 'c':[attrs, visit(label)]}
         if kind in {"Image", "Link"}:
             node["c"][-1][0] = resource(node["c"][-1][0])
         if kind in {"RawBlock", "RawInline"} and node["c"][0] == "html":
@@ -460,6 +476,9 @@ def normalize(settings, output, *, source_text=None, editable_source=True, for_e
         return node
 
     ast = visit(ast)
+    if local_note_links:
+        print(f'Publishing {local_note_links} local note link(s) as text. Use a web URL for a clickable shared link.',
+              file=sys.stderr)
     if fmt == 'org' and editable_source:
         (output / 'source.org').write_text(write_org(ast, pandoc), encoding='utf-8')
 

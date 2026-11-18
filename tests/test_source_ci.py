@@ -77,6 +77,24 @@ class SourceCITests(unittest.TestCase):
             source_ci.prepare(self.settings, self.root / 'canvas-old', reviewed)
         self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), before)
 
+    def test_external_workstation_note_is_a_label_not_a_published_asset(self):
+        other = self.root / 'private-technical-note.md'
+        other.write_text('PRIVATE NOTE BODY')
+        self.source.write_text(f'## Brief\n\nSee [the *analysis*]({other.as_posix()}#details) and [online](https://example.invalid/notes).\n')
+        original = self.source.read_bytes()
+        reviewed = targets.plan(self.settings)
+        source_ci.prepare(self.settings, self.root/'portable', reviewed)
+        md = (self.root/'portable/source.md').read_text()
+        self.assertIn('the *analysis*', md)
+        self.assertIn('https://example.invalid/notes', md)
+        self.assertNotIn(other.as_posix(), md)
+        self.assertNotIn('PRIVATE NOTE BODY', md)
+        self.assertFalse((self.root/'portable/assets').exists())
+        self.assertEqual(self.source.read_bytes(), original)
+        self.source.write_text(f'![Private]({other.as_posix()})')
+        with self.assertRaisesRegex(Error, 'outside the source project'):
+            source_ci.prepare(self.settings, self.root/'blocked', targets.plan(self.settings))
+
     def test_topics_uses_existing_ci_and_does_not_ship_a_new_theme(self):
         scripts = self.repo / 'scripts'; scripts.mkdir()
         (scripts / 'build_pages.py').write_text('# existing renderer\n')
@@ -119,9 +137,13 @@ class SourceCITests(unittest.TestCase):
         cache.write_bytes(b'local cache')
         git(self.repo, 'config', 'core.excludesFile', os.devnull)
         self.assertIn(cache.name, git(self.repo, 'ls-files', '--others', '--exclude-standard'))
+        self.source.write_text('## Brief\n\n[Supporting note](/Users/example/private/analysis.md)\n')
         with patch.object(source_ci, 'identity', return_value=('git.example.invalid', 'team/docs', 'https://git.example.invalid/team/docs')):
             sha = publish(settings, confirmed=True)
             self.assertEqual(git(remote, 'rev-parse', 'main'), sha)
+            shared = git(remote, 'show', 'main:topics/decks/deck/source.md')
+            self.assertIn('Supporting note', shared)
+            self.assertNotIn('/Users/example/', shared)
             self.assertNotIn('.pyc', git(remote, 'ls-tree', '-r', '--name-only', sha))
             self.assertEqual(cache.read_bytes(), b'local cache')
             entry.write_text('# unpublished renderer edit\n')
