@@ -1,0 +1,19 @@
+/* The page follows the viewport; only running prose has a reading measure. */
+@media screen {
+  body.quarto-light, body.quarto-dark { font-size: .875rem; line-height: 1.45; }
+  main.content { min-width: 0; }
+  main.content :is(h1, h2, h3, h4) { line-height: 1.22; }
+  main.content h1 { font-size: 1.7rem; }
+  main.content h2 { font-size: 1.3rem; margin-block: 1.3em .45em; }
+  main.content h3 { font-size: 1.1rem; margin-block: 1em .4em; }
+  main.content h4 { font-size: 1rem; }
+  main.content :is(p, ul, ol) { margin-bottom: .65em; }
+  main.content :is(p, blockquote) { max-width: 90ch; }
+  main.content table { width: 100%; font-size: .95em; }
+  main.content table :is(th, td) { padding: .32em .55em; vertical-align: top; overflow-wrap: anywhere; }
+  main.content table code { white-space: normal; overflow-wrap: anywhere; }
+  main.content table p:last-child { margin-bottom: 0; }
+}
+@media screen and (max-width: 640px) {
+  main.content table { display: block; overflow-x: auto; }
+}

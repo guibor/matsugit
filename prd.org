@@ -1,5 +1,9 @@
 #+title: matsugit product requirements
 
+* Reading documents on screen (2026-11-19)
+Tables in HTML documents should grow with the reading viewport. Use smaller,
+zoomable body type, with a separate line-length limit for running prose.
+
 * Document previews and prose headings (2026-11-19)
 Emacs previews only the selected format. In structured slides, keep a later
 H3 as a body heading without rewriting the user's Markdown outline.

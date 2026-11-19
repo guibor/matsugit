@@ -1,5 +1,10 @@
 # matsugit design
 
+The HTML reading format uses Quarto's responsive grid and a screen-only
+stylesheet after theme CSS. Themes retain their colors and fonts. Tables use
+the content track; running prose has its own reading measure. Reveal output
+does not load the reading stylesheet.
+
 Document preview does not invoke slide layout. For structured slides, only
 a leading H3 supplies the claim; later H3 headings inside the same H2 are
 projected as body headings. This projection does not edit the source.
