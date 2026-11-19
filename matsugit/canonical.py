@@ -165,6 +165,8 @@ def publish(settings, confirmed=False, deploy=False):
         git(repo, 'push', remote, f'{sha}:refs/heads/{branch}')
     except Error as error:
         raise Error(f'Push failed. Canonical files, symlinks and local commit {sha} are retained. Review and retry git push in {repo}. {error}') from error
+    from .links import report_published
+    report_published(settings, updated['destination'], updated['project_url'], updated['provider'])
     if deploy:
         request_deployment(settings, updated['provider'], updated['project_url'])
     return sha

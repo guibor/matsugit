@@ -34,6 +34,10 @@
 
 (defgroup matsugit nil "Documents and slides from one source." :group 'tools)
 (defcustom matsugit-program "matsugit" "Matsugit CLI executable." :type 'string :group 'matsugit)
+(defcustom matsugit-open-after-publish t
+  "Open the published document after a successful Matsugit publish.
+If the hosting address is unknown, open the published source instead."
+  :type 'boolean :group 'matsugit)
 (defcustom matsugit-remote-program "matsugit" "CLI executable on a TRAMP source host." :type 'string :group 'matsugit)
 (defcustom matsugit-theme-directories nil "Directories containing installed theme packs." :type '(repeat directory) :group 'matsugit)
 
@@ -139,6 +143,19 @@ Resolve the remote launcher there and strip TRAMP prefixes only for that host."
                    args))
      " ")))
 
+(defun matsugit--publish-finished (buffer status)
+  "Open the published document reported in BUFFER on successful STATUS."
+  (with-current-buffer buffer
+    (remove-hook 'compilation-finish-functions #'matsugit--publish-finished t)
+    (when (and matsugit-open-after-publish (equal (string-trim status) "finished"))
+      (save-excursion
+        (goto-char (point-max))
+        (when (re-search-backward "^Git publication complete\\. Site deployment not verified\\.$" nil t)
+          (when (re-search-forward "^Matsugit \\(?:document\\|source\\): \\(https?://[^[:space:]]+\\)$" nil t)
+            (let ((url (match-string-no-properties 1)))
+              (condition-case err (browse-url url)
+                (error (message "Published. Open %s (%s)" url (error-message-string err)))))))))))
+
 (defun matsugit--run (args &optional preview-target)
   "Run ARGS asynchronously, showing progress in a compilation buffer."
   (let ((buffer (get-buffer "*matsugit*")))
@@ -150,6 +167,9 @@ Resolve the remote launcher there and strip TRAMP prefixes only for that host."
           'compilation-mode (lambda (_) "*matsugit*"))))
     (with-current-buffer buffer
       (setq-local matsugit--preview-target preview-target)
+      (when (equal (car args) "publish")
+        (goto-address-mode 1)
+        (add-hook 'compilation-finish-functions #'matsugit--publish-finished nil t))
       (add-hook 'compilation-finish-functions #'matsugit--preview-finished nil t))
     buffer))
 

@@ -73,6 +73,19 @@ def links(receipt):
     return result
 
 
+def report_published(settings, destination, project_url, provider):
+    """Print navigation for the actual Git destination, without polling CI."""
+    receipt = describe(settings['repo'], destination, settings)
+    urls = links(dict(receipt, branch=settings['branch'], site_url=settings.get('site_url'),
+                      project_url=project_url, provider=provider))
+    print('Git publication complete. Site deployment not verified.')
+    if 'document' not in urls:
+        print('No document URL is configured for this target; use the source link.')
+    for key in ('document', 'slides', 'source'):
+        if key in urls:
+            print(f'Matsugit {key}: {urls[key]}', flush=True)
+
+
 def build_step(log):
     """Which part of a running site build the log has reached. Quarto-based
     renderers print one line per output; matsugit's own prints the format."""

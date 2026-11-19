@@ -161,6 +161,8 @@ def publish(settings, confirmed=False, deploy=False):
             raise Error('Remote changed; local publication commit retained, not pushed')
         git(repo, "push", remote, f"{sha}:refs/heads/{branch}")
         print(f"Pushed {sha}. Hosting availability has not been verified.", flush=True)
+        from .links import report_published
+        report_published(dict(settings, ci_layout='native'), dest / source_name, base, provider)
         if deploy:
             request_deployment(settings, provider, base)
         return sha

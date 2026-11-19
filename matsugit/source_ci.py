@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 from .core import Error, git, inside, normalize, install_theme, read_json, write_json
 from .publish import preflight, identity, fast_forward
+from .links import report_published
 
 MANIFEST = 'matsugit-source.json'
 
@@ -221,6 +222,7 @@ def publish(settings, confirmed=False, deploy=False):
         git(repo, '--literal-pathspecs', 'add', *scope)
         if not git(repo, '--literal-pathspecs', 'diff', '--cached', '--name-only', *scope):
             print('Source bundle is unchanged; no new commit')
+            report_published(settings, updated['destination'], updated['project_url'], updated['provider'])
             if deploy:
                 request_deployment(settings, reviewed['provider'], reviewed['project_url'])
             return git(repo, 'rev-parse', 'HEAD')
@@ -233,6 +235,7 @@ def publish(settings, confirmed=False, deploy=False):
         except Error as error:
             raise Error(f'Push failed; local source commit {sha} is retained in {repo}. Review it and retry git push there; no commit was discarded. {error}') from error
         print(f'Pushed source {sha}. CI build/deployment is not yet verified.', flush=True)
+        report_published(settings, updated['destination'], updated['project_url'], updated['provider'])
         if deploy:
             request_deployment(settings, reviewed['provider'], reviewed['project_url'])
         return sha

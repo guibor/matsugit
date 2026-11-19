@@ -7,6 +7,25 @@
 (require 'matsugit-browser)
 (require 'matsugit-tables)
 
+(ert-deftest matsugit-publish-opens-only-confirmed-result ()
+  (let (opened)
+    (cl-letf (((symbol-function 'browse-url) (lambda (url &rest _) (push url opened))))
+      (with-temp-buffer
+        (insert "Matsugit document: https://ignored.invalid/\n")
+        (matsugit--publish-finished (current-buffer) "finished\n")
+        (should-not opened)
+        (insert "Git publication complete. Site deployment not verified.\n"
+                "Matsugit source: https://git.invalid/doc.md\n")
+        (matsugit--publish-finished (current-buffer) "exited abnormally with code 1\n")
+        (should-not opened)
+        (matsugit--publish-finished (current-buffer) "finished\n")
+        (should (equal (pop opened) "https://git.invalid/doc.md"))
+        (insert "Git publication complete. Site deployment not verified.\n"
+                "Matsugit document: http://pages.invalid/doc.html\n"
+                "Matsugit slides: http://pages.invalid/doc-slides.html\n")
+        (matsugit--publish-finished (current-buffer) "finished\n")
+        (should (equal opened '("http://pages.invalid/doc.html")))))))
+
 (ert-deftest matsugit-export-forwards-document-view-without-publishing ()
   (let (command)
     (cl-letf (((symbol-function 'matsugit--source) (lambda () "/tmp/source.md"))

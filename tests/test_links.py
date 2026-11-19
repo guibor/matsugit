@@ -1,10 +1,23 @@
 """Links to a shared deck and the progress of its site build."""
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
 
-from matsugit.links import build_step, links
+from matsugit.links import build_step, links, report_published
 
 
 class LinkTests(unittest.TestCase):
+    def test_publish_reports_actual_destination_not_original_name(self):
+        repo = Path.cwd()
+        settings = dict(repo=repo, branch='main', ci_layout='topics', site_url='http://pages.invalid')
+        with redirect_stdout(StringIO()) as output:
+            report_published(settings, repo / 'topics/deck/source.md', 'https://git.invalid/docs', 'gitlab')
+        self.assertEqual(output.getvalue().splitlines()[1:], [
+            'Matsugit document: http://pages.invalid/topics/deck/source.html',
+            'Matsugit slides: http://pages.invalid/topics/deck/source-slides.html',
+            'Matsugit source: https://git.invalid/docs/-/blob/main/topics/deck/source.md'])
+
     def receipt(self, **changes):
         value = {'provider': 'gitlab', 'project_url': 'https://git.example.invalid/team/docs', 'branch': 'main',
                  'source_path': 'matsugit-site/deck/source.md', 'site_url': 'https://team.example.invalid/docs/',
