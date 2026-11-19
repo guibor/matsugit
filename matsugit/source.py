@@ -12,7 +12,7 @@ except ImportError:
 
 DISPLAY = {'slide-layout', 'slide-section-dividers', 'slide-empty-slides',
            'slide-aspect-ratio', 'slide-title-page', 'publish-sources', 'include-notes',
-           'document-collapsible'}
+           'document-collapsible', 'document-toc'}
 BOOLEAN = DISPLAY - {'slide-layout', 'slide-aspect-ratio'}
 OPAQUE = {'src', 'example', 'export', 'comment', 'agent-comment'}
 

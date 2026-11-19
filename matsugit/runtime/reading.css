@@ -9,11 +9,27 @@
   main.content h4 { font-size: 1rem; }
   main.content :is(p, ul, ol) { margin-bottom: .65em; }
   main.content :is(p, blockquote) { max-width: 90ch; }
-  main.content table { width: 100%; font-size: .95em; }
-  main.content table :is(th, td) { padding: .32em .55em; vertical-align: top; overflow-wrap: anywhere; }
+  main.content table { width: 100%; margin-block: 1em 1.5em; border-collapse: collapse; font-size: .95em; line-height: 1.45; }
+  main.content table :is(th, td) { padding: .52em .75em; min-inline-size: 8ch; vertical-align: top; overflow-wrap: anywhere; border: 0; border-bottom: 1px solid color-mix(in srgb, currentColor 16%, transparent); box-shadow: none; }
+  main.content table thead th { background: color-mix(in srgb, currentColor 5%, transparent); color: inherit; font-weight: 650; border-bottom: 2px solid color-mix(in srgb, currentColor 32%, transparent); }
+  main.content table tbody :is(th, td) { background: transparent; }
   main.content table code { white-space: normal; overflow-wrap: anywhere; }
   main.content table p:last-child { margin-bottom: 0; }
 }
+main.content :not(pre) > code, main.content pre, main.content div.sourceCode,
+main.content pre.sourceCode, main.content pre code { background: transparent; box-shadow: none; }
+main.content :not(pre) > code { color: inherit; padding: 0; border: 0; font-size: .93em; }
+main.content pre { border: 0; border-inline-start: 2px solid currentColor; padding: .55em 1em; border-radius: 0; }
 @media screen and (max-width: 640px) {
   main.content table { display: block; overflow-x: auto; }
+}
+.matsugit-pocket-outline { display: none; }
+@media screen and (max-width: 991px) {
+  #quarto-margin-sidebar:has(#TOC) { display: none; }
+  .matsugit-pocket-outline { display: block; position: sticky; top: 0; z-index: 3; background: var(--bs-body-bg, white); border-bottom: 1px solid var(--bs-border-color, silver); }
+  .matsugit-pocket-outline summary { padding: .5em; cursor: pointer; font-weight: 600; }
+  .matsugit-pocket-outline nav { max-height: 45vh; overflow: auto; }
+  .matsugit-pocket-outline ul { padding-inline-start: 1.2em; list-style: none; }
+  .matsugit-pocket-outline a { display: block; padding-block: .22em; }
+  main.content :is(h1, h2, h3, section[id]) { scroll-margin-top: 3rem; }
 }

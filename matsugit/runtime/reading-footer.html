@@ -1,0 +1,18 @@
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const toc = document.querySelector('#quarto-margin-sidebar #TOC > ul');
+  const main = document.querySelector('main.content');
+  if (!toc || !main) return;
+  const details = document.createElement('details');
+  details.className = 'matsugit-pocket-outline';
+  const label = document.createElement('summary');
+  label.textContent = 'On this page';
+  const nav = document.createElement('nav');
+  nav.setAttribute('aria-label', 'Table of contents');
+  const list = toc.cloneNode(true);
+  list.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+  list.querySelectorAll('[data-scroll-target]').forEach(el => el.removeAttribute('data-scroll-target'));
+  nav.append(list); details.append(label, nav); main.prepend(details);
+  details.addEventListener('click', e => { if (e.target.closest('a')) details.open = false; });
+});
+</script>

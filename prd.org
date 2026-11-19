@@ -1,5 +1,9 @@
 #+title: matsugit product requirements
 
+* Navigable reading documents (2026-11-19)
+Keep a contents outline on wide and narrow screens unless =document-toc:
+false= is set. Code identifiers in prose and tables should not look like badges.
+
 * Reading documents on screen (2026-11-19)
 Tables in HTML documents should grow with the reading viewport. Use smaller,
 zoomable body type, with a separate line-length limit for running prose.

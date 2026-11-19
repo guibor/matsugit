@@ -1,5 +1,8 @@
 # matsugit design
 
+Reading navigation uses the renderer's heading IDs. The same YAML boolean,
+`document-toc: false`, hides both the desktop contents and its mobile disclosure.
+
 The HTML reading format uses Quarto's responsive grid and a screen-only
 stylesheet after theme CSS. Themes retain their colors and fonts. Tables use
 the content track; running prose has its own reading measure. Reveal output
