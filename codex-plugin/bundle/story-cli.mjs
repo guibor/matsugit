@@ -4729,11 +4729,12 @@ function checkDeck(source, org = false) {
           if (!index && !content2) return;
           add(
             "claim-extra",
-            "problem",
+            heading2 ? "tip" : "problem",
             claim.from,
-            index ? "A slide has one claim, directly under its title. This is a second one." : "The claim must come directly under the slide title, before any other content.",
+            heading2 ? "This heading is shown inside the slide, not as its subtitle." : index ? "A slide has one claim, directly under its title. This is a second one." : "The claim must come directly under the slide title, before any other content.",
             heading2 ? "Use `####` for a heading inside the slide, or start a new slide with `##`." : "Keep one claim for this slide.",
-            heading2 ? { label: "Make it a sub-heading", changes: [{ from: claim.from, to: claim.from + 3, insert: "####" }] } : void 0
+            heading2 ? { label: "Make it a sub-heading", changes: [{ from: claim.from, to: claim.from + 3, insert: "####" }] } : void 0,
+            "slides"
           );
         });
       }

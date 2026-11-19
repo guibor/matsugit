@@ -147,8 +147,11 @@
                 ((symbol-function 'make-temp-file) (lambda (&rest _) "/tmp/preview"))
                 ((symbol-function 'matsugit--run) (lambda (args target) (setq arguments args output target))))
         (matsugit-preview-slides)
-        (should (equal arguments (list "render" (concat "/tmp/example." extension) "--output" "/tmp/preview")))
-        (should (equal output "/tmp/preview/slides.html"))))))
+        (should (equal (last arguments 2) '("--only" "slides")))
+        (should (equal output "/tmp/preview/slides.html"))
+        (matsugit-preview-document)
+        (should (equal arguments (list "render" (concat "/tmp/example." extension) "--output" "/tmp/preview" "--only" "document")))
+        (should (equal output "/tmp/preview/index.html"))))))
 
 (ert-deftest matsugit-package-publish-needs-confirmation ()
   (cl-letf (((symbol-function 'matsugit--source) (lambda () "/tmp/example.md"))

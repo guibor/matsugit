@@ -44,6 +44,12 @@ class SourceVisibilityTests(unittest.TestCase):
 
 @unittest.skipUnless(QUARTO, 'Requires Quarto/Pandoc')
 class SourceVisibilityParserTests(unittest.TestCase):
+    def test_damaged_yaml_id_reports_source_line(self):
+        from matsugit.core import Error
+        text = '---\nsessions:\n- "00000000-0000-4000-8000-000000000000**\nslide-layout: structured\n---\n\n## Test\n'
+        with self.assertRaisesRegex(Error, 'YAML line 3: the quoted ID ends with'):
+            read(text, 'markdown', pandoc_command(QUARTO))
+        read(text.replace('**', '"'), 'markdown', pandoc_command(QUARTO))
     def test_markdown_org_parity_and_assets_are_filtered_before_resolution(self):
         for fmt, source in [('markdown', '---\npublish-sources: false\n---\n\n## Sources\n\n::: source\nPRIVATE_SENTINEL ![](missing.png)\n:::\n\n::: attribution\nVisible Author\n:::\n'),
                             ('org', '#+PUBLISH_SOURCES: false\n\n* Sources\n\n#+begin_source\nPRIVATE_SENTINEL [[file:missing.png]]\n#+end_source\n\n#+begin_attribution\nVisible Author\n#+end_attribution\n')]:

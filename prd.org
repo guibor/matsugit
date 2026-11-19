@@ -1,5 +1,9 @@
 #+title: matsugit product requirements
 
+* Document previews and prose headings (2026-11-19)
+Emacs previews only the selected format. In structured slides, keep a later
+H3 as a body heading without rewriting the user's Markdown outline.
+
 * Changed requirement: notify about upstream document edits (2026-11-19)
 
 Show when a colleague committed an edit to the open document, without adding

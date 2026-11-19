@@ -1,5 +1,9 @@
 # matsugit design
 
+Document preview does not invoke slide layout. For structured slides, only
+a leading H3 supplies the claim; later H3 headings inside the same H2 are
+projected as body headings. This projection does not edit the source.
+
 For a tracked file in a configured publishing checkout, foreground checks
 fetch its configured upstream without writing FETCH_HEAD or changing the
 working tree. Compare the file between the merge base and the upstream tip,

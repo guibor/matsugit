@@ -285,11 +285,12 @@ export function checkDeck(source, org = false) {
             && !enclosing(line.from)?.opaque && !blocks.some(block => block.opaque && block.open === line.index)
             && !(line.literal && /^\s*<!--/.test(line.text)));
           if (!index && !content) return;
-          add('claim-extra', 'problem', claim.from, index
+          add('claim-extra', heading ? 'tip' : 'problem', claim.from, heading
+            ? 'This heading is shown inside the slide, not as its subtitle.' : index
             ? 'A slide has one claim, directly under its title. This is a second one.'
             : 'The claim must come directly under the slide title, before any other content.',
             heading ? 'Use `####` for a heading inside the slide, or start a new slide with `##`.' : 'Keep one claim for this slide.',
-            heading ? {label: 'Make it a sub-heading', changes: [{from: claim.from, to: claim.from + 3, insert: '####'}]} : undefined);
+            heading ? {label: 'Make it a sub-heading', changes: [{from: claim.from, to: claim.from + 3, insert: '####'}]} : undefined, 'slides');
         });
       }
       if (arranged) {

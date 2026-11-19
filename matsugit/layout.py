@@ -208,8 +208,10 @@ def content(section, layout, include_empty):
             if block.get('t') == 'Header' and block['c'][0] == 3 and layout == 'structured':
                 if section['section']:
                     raise ValueError('An H3 subtitle needs an H2 slide title first')
-                if claim or has_content(body):
-                    raise ValueError('Put one H3 subtitle directly after H2 or a slide break; use H4 for body headings')
+                if claim or takeaway or has_content(body):
+                    block['c'][0] = 4
+                    body.append(prepare_divisions(block))
+                    continue
                 claim = div(['claim', 'ff-claim'], [{'t':'Para','c':block['c'][2]}])
             elif 'claim' in classes(block):
                 if claim:

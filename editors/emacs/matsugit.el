@@ -189,7 +189,10 @@ Resolve the remote launcher there and strip TRAMP prefixes only for that host."
                    (make-temp-file "matsugit-preview-" t))))
     (matsugit--run
      (append (list "render" source "--output" output)
-             (when (equal view "handout.html") '("--handout"))
+             (pcase view
+               ("index.html" '("--only" "document"))
+               ("slides.html" '("--only" "slides"))
+               ("handout.html" '("--only" "slides" "--handout")))
              (matsugit--options))
      (expand-file-name view output))))
 

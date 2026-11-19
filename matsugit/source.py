@@ -20,10 +20,21 @@ OPAQUE = {'src', 'example', 'export', 'comment', 'agent-comment'}
 def pandoc(command, text, reader, writer, *flags):
     # Local import keeps this module usable in the copied CI package too.
     try:
-        from .core import run
+        from .core import Error, run
     except ImportError:
-        from core import run
-    return run([*command, '-f', reader, '-t', writer, *flags], text=text)
+        from core import Error, run
+    try:
+        return run([*command, '-f', reader, '-t', writer, *flags], text=text)
+    except Error as error:
+        lines = text.splitlines() if reader == 'markdown' and 'YAML parse' in str(error) else []
+        if lines and lines[0].strip() == '---':
+            for number, line in enumerate(lines[1:], 2):
+                if line.rstrip() in ('---', '...'):
+                    break
+                if re.fullmatch(r'\s*-\s+"[\da-fA-F]{8}(?:-[\da-fA-F]{4}){3}-[\da-fA-F]{12}\*\*\s*', line):
+                    raise Error(f'YAML line {number}: the quoted ID ends with **. Replace the two stars '
+                                'with a closing double quote ("). No source was changed.') from error
+        raise
 
 
 def check_org(text):

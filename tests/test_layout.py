@@ -78,6 +78,15 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(body[0]['t'],'Div')
         self.assertIn(['aria-level','4'], body[0]['c'][0][2])
 
+    def test_late_h3_stays_in_body_without_changing_source(self):
+        ast = document([heading(2, 'Title'), heading(3, 'Claim'), para('Reading text'), heading(3, 'Detail')])
+        before = deepcopy(ast)
+        projected = slides(ast)
+        self.assertEqual(ast, before)
+        body = next(b for b in projected['blocks'] if b['t'] == 'Div' and 'ff-body' in b['c'][0][1])
+        self.assertIn('Detail', str(body))
+        self.assertIn("['aria-level', '4']", str(body))
+
     def test_manual_break_inherits_claim_and_no_blank_trailing_slide(self):
         ast = document([heading(1,'Section'),heading(2,'Title'),heading(3,'Claim'),para('First'),
                         {'t':'HorizontalRule'},para('Second'),{'t':'HorizontalRule'}])

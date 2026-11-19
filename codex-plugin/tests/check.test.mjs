@@ -34,10 +34,10 @@ test('document keeps shared syntax and chart errors, not slide settings or colum
   assert.equal(document.filter(f => f.code === 'setting-quoted').length, 1);
   for (const code of ['chart-table', 'block-open']) assert.ok(document.some(f => f.code === code), code);
 });
-test('Pages subtitle failures are caught locally with a targeted body-heading fix', () => {
+test('body headings are optional slide tips rather than render failures', () => {
   const text = H + '## Concepts\n\nBody text.\n\n### Definition\n\nMore text.\n';
   const finding = checkDeck(text).find(f => f.code === 'claim-extra');
-  assert.equal(finding.severity, 'problem');
+  assert.equal(finding.severity, 'tip');
   assert.equal(finding.fix.label, 'Make it a sub-heading');
   assert.equal(applyFix(text, finding.fix), text.replace('### Definition', '#### Definition'));
 });
@@ -77,8 +77,8 @@ const cases = [
   {code: 'chart-unit', renderer: 'fails', source: H + '## A\n\n::: {.chart type="bar"}\n| a | b |\n|---|---|\n| x | 1 |\n:::\n'},
   {code: 'chart-type', renderer: 'fails', source: H + '## A\n\n::: {.chart type="pie" unit="x"}\n| a | b |\n|---|---|\n| x | 1 |\n:::\n'},
   {code: 'chart-table', renderer: 'fails', source: H + '## A\n\n::: {.chart type="bar" unit="x"}\nNo table here.\n:::\n'},
-  {code: 'claim-extra', renderer: 'fails', fixed: true, source: H + '## A\n### one\n### two\n\ntext\n'},
-  {code: 'claim-extra', renderer: 'fails', fixed: true, source: H + '## A\n\ntext\n\n### late\n\nmore\n'},
+  {code: 'claim-extra', renderer: 'accepts', tip: true, fixed: true, source: H + '## A\n### one\n### two\n\ntext\n'},
+  {code: 'claim-extra', renderer: 'accepts', tip: true, fixed: true, source: H + '## A\n\ntext\n\n### late\n\nmore\n'},
   {code: 'claim-extra', renderer: 'fails', source: H + '## A\n### one\n\n::: claim\ntwo\n:::\n\ntext\n'},
   {code: 'claim-untitled', renderer: 'fails', source: H + '# S\n### c\n\ntext\n'},
   {code: 'heading-inside', renderer: 'fails', fixed: true, source: H + '## A\n\n:::: columns\n#### L\nx\n\n### R\ny\n::::\n'},
