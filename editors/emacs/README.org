@@ -52,7 +52,12 @@ the public package. Disabling =matsugit-mode= removes its local completion hooks
 | matsugit-select-theme | M-x | Override the theme for this buffer |
 | matsugit-select-target | M-x | Select an existing named publishing target |
 | matsugit-publish | C-c m P | Confirm a commit/push to the configured target |
-| matsugit-sync-from-git | M-x | Confirm a clean fast-forward; prefix checks only |
+| matsugit-sync-from-git | C-c m u | Get upstream changes; prefix checks only |
+
+In authoring mode, returning to a tracked document in a configured publishing
+checkout checks its upstream (at most once per minute per buffer). The mode
+line says “Update available” only if that document changed. Checking never
+saves, pulls or pushes. The original symlink is as good as the checkout path.
 
 See [[file:../../docs/emacs-story.org][Story controls]] for navigation, moves, edits, Undo and Save.
 Rendering, export and publishing save the source through normal Emacs file-change

@@ -168,6 +168,11 @@ try:
             git(other, 'commit', '-am', 'Colleague edit'); git(other, 'push')
 
         colleague('## One claim', '## One sharper claim')
+        # Simulate returning after the one-minute foreground-check cooldown.
+        frame.evaluate("""() => { const now = Date.now; Date.now = () => now() + 61000;
+          try { window.dispatchEvent(new Event('focus')); } finally { Date.now = now; } }""")
+        wait(frame, "document.getElementById('share').textContent.includes('Update available')")
+        assert '## One sharper claim' not in frame.evaluate(TEXT)
         frame.locator('#share').click()
         settled('Someone else changed this deck')
         frame.locator('#share-go').click()

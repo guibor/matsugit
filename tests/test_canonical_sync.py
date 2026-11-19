@@ -71,6 +71,32 @@ class CanonicalTests(unittest.TestCase):
         self.assertEqual(source.read_bytes(), before)
         self.assertTrue(source.is_symlink())
 
+    def test_document_update_follows_link_and_never_applies_incoming_edit(self):
+        dest = self.repo / 'road map.md'
+        dest.write_text('Original')
+        link = self.notes / dest.name
+        link.symlink_to(dest)
+        git(self.repo, 'add', dest.name)
+        git(self.repo, 'commit', '-m', 'Document')
+        git(self.repo, 'push')
+        other = self.other_checkout()
+        (other / 'other.md').write_text('Unrelated')
+        git(other, 'add', '.'); git(other, 'commit', '-m', 'Other'); git(other, 'push')
+        profile = {'publish_targets': {'docs': {'repo': str(self.repo)}}}
+        with patch.object(targets, 'settings', return_value=profile):
+            self.assertFalse(git_sync.document_update(link))
+            (other / dest.name).write_text('From web')
+            git(other, 'commit', '-am', 'Edit in browser'); git(other, 'push')
+            link.write_text('My unsent edits')
+            self.assertTrue(git_sync.document_update(link))
+            self.assertEqual(link.read_text(), 'My unsent edits')
+            with self.assertRaisesRegex(Error, 'overlap'):
+                git_sync.sync(link, confirmed=True)
+            link.write_text('Original')
+            git_sync.sync(link, confirmed=True)
+            self.assertEqual(link.read_text(), 'From web')
+            self.assertFalse(git_sync.document_update(link))
+
     def test_topics_first_share_keeps_basename_and_only_groups_assets_when_needed(self):
         scripts = self.repo/'scripts'
         scripts.mkdir()

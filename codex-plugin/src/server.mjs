@@ -82,7 +82,7 @@ serveStdio(() => {
       html:z.string().max(1024*1024).optional(), format:z.enum(['markdown','org']).optional()}), annotations:readOnly},
     guard(async args => appResult({converted:true}, await tables.run(args))));
   server.registerTool('matsugit_action', {description:'Explicit workspace export, target preview or confirmed publication. Publishing commits/pushes and may trigger existing CI.', ...appOnly,
-    inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository','sync-plan','sync','exchange-plan','exchange','publication-status','share-status']), session:z.string().optional(), check:z.boolean().optional(),
+    inputSchema:z.object({action:z.enum(['options','export','plan','publish','repositories','connect-repository','sync-plan','sync','exchange-plan','exchange','publication-status','share-status','document-update']), session:z.string().optional(), check:z.boolean().optional(),
       assets:z.array(z.string().max(4096)).max(100).optional(), message:z.string().min(1).max(500).optional(),
       provider:z.enum(['github','gitlab']).optional(), host:z.string().max(253).optional(), repository:z.string().max(512).optional(), page:z.number().int().min(1).max(1000).optional(),
       text:z.string().max(MAX_SOURCE).optional(), name:z.string().max(512).optional(), theme:z.string().max(80).optional(),

@@ -25,6 +25,39 @@ def fingerprint(data):
     return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
 
+def document_update(source):
+    """Check just this tracked file, only against its configured publishing remote."""
+    from .targets import settings
+    source = Path(source).expanduser().resolve(strict=True)
+    for profile in settings().get('publish_targets', {}).values():
+        if not isinstance(profile, dict) or not profile.get('repo'):
+            continue
+        repo = Path(profile['repo']).expanduser().resolve()
+        if not source.is_relative_to(repo):
+            continue
+        path = source.relative_to(repo).as_posix()
+        branch, remote = profile.get('branch', 'main'), profile.get('remote', 'origin')
+        if (Path(git(source.parent, 'rev-parse', '--show-toplevel')).resolve() != repo
+                or git(repo, 'branch', '--show-current') != branch
+                or remote.startswith('-')
+                or git(repo, 'config', '--get', f'branch.{branch}.remote') != remote
+                or git(repo, 'config', '--get', f'branch.{branch}.merge') != 'refs/heads/' + branch
+                or not git(repo, '--literal-pathspecs', 'ls-tree', 'HEAD', '--', path)):
+            return False
+        if profile.get('expected_remote') and git(repo, 'remote', 'get-url', remote) != profile['expected_remote']:
+            return False
+        # Leave FETCH_HEAD to explicit sync/publish. Never update the working tree.
+        git(repo, '-c', 'core.hooksPath=' + os.devnull, '-c', 'protocol.allow=never',
+            '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always',
+            '-c', 'protocol.file.allow=always', 'fetch', '--no-auto-maintenance',
+            '--no-write-fetch-head', '--no-tags', '--no-recurse-submodules',
+            remote, 'refs/heads/' + branch)
+        base = git(repo, 'merge-base', 'HEAD', '@{upstream}')
+        return bool(git(repo, '--literal-pathspecs', 'diff', '--name-only', '--no-renames',
+                        '--no-ext-diff', base, '@{upstream}', '--', path))
+    return False
+
+
 def changed_paths(repo):
     """Keep Git's NUL-delimited filenames intact, including spaces and newlines."""
     tracked = git(repo, 'diff', '--name-only', '--no-renames', '--no-ext-diff', '-z', 'HEAD', '--')

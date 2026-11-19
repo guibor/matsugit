@@ -85,6 +85,26 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   $('share-copy').onclick = () => copy($('share-copy'), $('share-link').href);
   $('share-link').onclick = event => { event.preventDefault(); openLink($('share-link').href); };
   const view = () => state.session || state.uri;
+  let checkedOwner, checkedAt = 0, incoming = false, currentLabel, generation = 0;
+  function paintIncoming() {
+    $('share').lastChild.textContent = incoming ? 'Update available' : shareLabel(currentLabel);
+    if (incoming) $('share').title = 'Review changes to this document from the shared project';
+  }
+  async function checkIncoming() {
+    const owner = view();
+    if (!owner || demo || state.loading || isBusy() || dialog.open || document.hidden) return;
+    if (checkedOwner === owner && Date.now() - checkedAt < 60000) return;
+    checkedOwner = owner; checkedAt = Date.now();
+    const attempt = ++generation;
+    try {
+      const job = await run('document-update', {}, {textContent: ''});
+      if (owner === view() && attempt === generation) {
+        incoming = !!job.result.incoming; paintIncoming();
+      }
+    } catch { /* Offline is unknown; never interrupt editing. */ }
+  }
+  window.addEventListener('focus', checkIncoming);
+  document.addEventListener('visibilitychange', checkIncoming);
   const knownLinks = () => {
     const receipt = publication.receipt(), local = contextOwner === view() ? context : null;
     return publishedLinks({...local, ...receipt, links: {...local?.links, ...receipt?.links}});
@@ -206,7 +226,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
       }
     } finally { monitoring = false; }
   }
-  function startWatch() { outcome(); void monitor(); }
+  function startWatch() { incoming = false; generation++; paintIncoming(); outcome(); void monitor(); }
 
   async function begin() {
     const current = ++visit;
@@ -361,6 +381,7 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
         if (planned.result.status !== 'updates-available') throw Error(planned.result.status === 'up-to-date' ? 'There was nothing new after all.'
           : 'The newer version cannot be added automatically here. "More options" below has the detailed view.');
         await run('sync', {text: before, plan: planned.job}, progress);
+        incoming = false; generation++; paintIncoming();
         const refreshed = text() === before && !dirty() ? await reload(true, true) : await reload();
         progress.textContent = '';
         paint(refreshed ? {title: 'Up to date', detail: 'You now have the latest version.'}
@@ -388,12 +409,14 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     if (dialog.open) paintLinks(knownLinks());
     const button = $('share');
     button.disabled = demo || state.loading || state.delivering || !(state.session || state.uri);
-    button.lastChild.textContent = shareLabel(label);
+    currentLabel = label;
+    if (view() !== checkedOwner) { incoming = false; void checkIncoming(); }
     button.dataset.state = label === 'Published' ? 'live' : label === 'CI failed' ? 'failed' : label === 'Changes not pushed' ? 'changes' : '';
     button.title = ({'Not pushed': 'Share this deck with others', 'Changes not pushed': 'You have saved changes that are not shared yet',
       Pushed: 'Sent to the project', Building: 'The project is rebuilding its site', Published: 'The site shows this version',
       'CI failed': 'The project\'s site build failed'})[label] || 'Share';
     button.setAttribute('aria-busy', String(label === 'Building' || monitoring && label === 'Pushed'));
+    paintIncoming();
     // A share made earlier may still be building: pick the watch up again.
     const receipt = publication.receipt();
     if (!monitoring && pending(receipt) && Date.now() - Date.parse(receipt.pushed_at || 0) < 30 * 60 * 1000) void monitor();

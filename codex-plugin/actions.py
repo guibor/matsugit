@@ -32,6 +32,9 @@ def main(request):
     os.environ.setdefault('GIT_SSH_COMMAND', 'ssh -o BatchMode=yes -o ConnectTimeout=15')
     os.environ['GH_PROMPT_DISABLED'] = '1'
     action = request['action']
+    if action == 'document-update':
+        from matsugit.git_sync import document_update
+        return {'incoming': document_update(request['path'])}
     if action == 'publication-status':
         from matsugit.publication import status
         return status(Path(request['path']), check=bool(request.get('check')))

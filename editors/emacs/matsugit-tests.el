@@ -7,6 +7,30 @@
 (require 'matsugit-browser)
 (require 'matsugit-tables)
 
+(ert-deftest matsugit-update-indicator-preserves-unsaved-buffer ()
+  (let ((source (make-temp-file "matsugit-shared-" nil ".md"))
+        (program (make-temp-file "matsugit-update-test-")))
+    (unwind-protect
+        (progn
+          (with-temp-file program
+            (insert "#!/bin/sh\n[ \"$1\" = document-update ] && echo incoming\n"))
+          (set-file-modes program #o700)
+          (with-temp-buffer
+            (setq buffer-file-name source)
+            (insert "unsaved typing")
+            (let ((matsugit-program program))
+              (matsugit-authoring-mode 1)
+              (let ((until (+ 3 (float-time))))
+                (while (and (not matsugit--incoming) (< (float-time) until))
+                  (accept-process-output nil 0.05)))
+              (should matsugit--incoming)
+              (should (eq (key-binding (kbd "C-c m u")) #'matsugit-sync-from-git))
+              (should (equal (buffer-string) "unsaved typing"))
+              (should (buffer-modified-p))
+              (matsugit-authoring-mode -1)
+              (should-not matsugit--incoming))))
+      (delete-file source) (delete-file program))))
+
 (ert-deftest matsugit-publish-opens-only-confirmed-result ()
   (let (opened)
     (cl-letf (((symbol-function 'browse-url) (lambda (url &rest _) (push url opened))))

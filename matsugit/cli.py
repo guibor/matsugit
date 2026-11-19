@@ -18,6 +18,8 @@ def main(argv=None):
     sync.add_argument('--check', action='store_true', help='Fetch and report only; leave working files untouched')
     sync.add_argument('--yes', action='store_true', help='Confirm fast-forward of a clean checkout')
     sync.add_argument('--json', action='store_true')
+    incoming = commands.add_parser('document-update', help='Check for incoming edits to a shared file; never pull or push')
+    incoming.add_argument('source', type=Path)
     adopt = commands.add_parser('adopt', help='Move exact source/assets into a checkout and leave local symlinks; no commit/push')
     adopt.add_argument('source', type=Path)
     adopt.add_argument('--repo', required=True, type=Path)
@@ -138,6 +140,10 @@ def main(argv=None):
             if args.yes:
                 adopt.apply(data)
             print(json.dumps(data, indent=2))
+            return 0
+        if args.command == 'document-update':
+            from .git_sync import document_update
+            print('incoming' if document_update(args.source) else 'none')
             return 0
         if args.command == 'sync':
             from .git_sync import sync

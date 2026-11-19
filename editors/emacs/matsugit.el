@@ -33,6 +33,8 @@
 (defvar matsugit-story-preview-function)
 
 (defgroup matsugit nil "Documents and slides from one source." :group 'tools)
+(defvar-local matsugit--incoming nil)
+(defvar-local matsugit--update-checked-at 0)
 (defcustom matsugit-program "matsugit" "Matsugit CLI executable." :type 'string :group 'matsugit)
 (defcustom matsugit-open-after-publish t
   "Open the published document after a successful Matsugit publish.
@@ -327,6 +329,8 @@ cloud account."
   (when (string-match-p "\\`finished" status)
     (dolist (source (matsugit--repo-buffers repo))
       (with-current-buffer source
+        (setq matsugit--incoming nil matsugit--update-checked-at (float-time))
+        (force-mode-line-update)
         (when (and (not (buffer-modified-p)) (file-exists-p buffer-file-name)
                    (not (verify-visited-file-modtime source)))
           (revert-buffer t t t))))

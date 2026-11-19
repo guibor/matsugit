@@ -1,5 +1,12 @@
 # matsugit design
 
+For a tracked file in a configured publishing checkout, foreground checks
+fetch its configured upstream without writing FETCH_HEAD or changing the
+working tree. Compare the file between the merge base and the upstream tip,
+not the working copy. Emacs and the workspace throttle checks on return to
+the document; offline checks do not interrupt typing. Getting the revision
+still uses explicit sync, with the usual fast-forward and draft checks.
+
 Topics CI keeps a flat copy's ownership record under matsugit-publications,
 outside the Pages source tree. A subsequent publish verifies the saved digest
 before replacing the file. Content-named attachments can be added later without

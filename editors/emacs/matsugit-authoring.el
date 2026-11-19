@@ -449,22 +449,63 @@ Scan only for explicit literal delimiters; never fontify a large buffer."
 (dolist (binding '(("b" . matsugit-open-browser) ("s" . matsugit-story)
                    ("d" . matsugit-preview-document) ("p" . matsugit-preview-slides)
                    ("i" . matsugit-insert) ("t" . matsugit-edit-table)
-                   ("e" . matsugit-export) ("P" . matsugit-publish)))
+                   ("e" . matsugit-export) ("P" . matsugit-publish)
+                   ("u" . matsugit-sync-from-git)))
   (define-key matsugit-authoring-mode-map (kbd (concat "C-c m " (car binding))) (cdr binding)))
 
 (defvaralias 'matsugit-mode 'matsugit-authoring-mode)
 
+(defun matsugit--check-document-update (&optional window)
+  (with-current-buffer (if (windowp window) (window-buffer window) (current-buffer))
+    (when (and (bound-and-true-p matsugit-authoring-mode) buffer-file-name
+               (not (file-remote-p buffer-file-name)) (file-regular-p buffer-file-name)
+               (> (- (float-time) matsugit--update-checked-at) 60)
+               (executable-find matsugit-program))
+      (let* ((owner (current-buffer)) (file buffer-file-name)
+             (start (float-time)) (output (generate-new-buffer " *matsugit update*")))
+        (setq matsugit--update-checked-at start)
+        (condition-case nil
+            (make-process
+             :name "matsugit-document-update" :buffer output :noquery t
+             :command (list matsugit-program "document-update" file)
+             :sentinel
+             (lambda (process _event)
+               (when (memq (process-status process) '(exit signal))
+                 (unwind-protect
+                     (when (and (zerop (process-exit-status process)) (buffer-live-p owner))
+                       (with-current-buffer owner
+                         (when (and (bound-and-true-p matsugit-authoring-mode)
+                                    (equal buffer-file-name file) (= start matsugit--update-checked-at))
+                           (setq matsugit--incoming
+                                 (when (equal (with-current-buffer output (string-trim (buffer-string))) "incoming")
+                                   " Update available (C-c m u)"))
+                           (force-mode-line-update))))
+                   (kill-buffer output)))))
+          (file-error (kill-buffer output)))))))
+
+(defun matsugit--check-focused-document ()
+  (when (frame-focus-state)
+    (matsugit--check-document-update (selected-window))))
+
+(add-function :after after-focus-change-function #'matsugit--check-focused-document)
+
 (define-minor-mode matsugit-authoring-mode
   "Contextual slash completion in editable Markdown and Org sources."
-  :lighter nil :keymap matsugit-authoring-mode-map
+  :lighter matsugit--incoming :keymap matsugit-authoring-mode-map
   (when matsugit-authoring-mode
     (condition-case err
         (matsugit-insert--check-buffer)
       (error (setq matsugit-authoring-mode nil) (signal (car err) (cdr err)))))
   (if matsugit-authoring-mode
       (progn
+        (matsugit--check-document-update)
+        (add-hook 'window-buffer-change-functions #'matsugit--check-document-update nil t)
+        (add-hook 'window-selection-change-functions #'matsugit--check-document-update nil t)
         (add-hook 'completion-at-point-functions #'matsugit-completion-at-point nil t)
         (add-hook 'post-self-insert-hook #'matsugit--complete-inserted-slash nil t))
+    (setq matsugit--incoming nil matsugit--update-checked-at 0)
+    (remove-hook 'window-buffer-change-functions #'matsugit--check-document-update t)
+    (remove-hook 'window-selection-change-functions #'matsugit--check-document-update t)
     (remove-hook 'completion-at-point-functions #'matsugit-completion-at-point t)
     (remove-hook 'post-self-insert-hook #'matsugit--complete-inserted-slash t)))
 

@@ -1,5 +1,12 @@
 #+title: matsugit product requirements
 
+* Changed requirement: notify about upstream document edits (2026-11-19)
+
+Show when a colleague committed an edit to the open document, without adding
+a dialog, interrupting typing, or treating unrelated project changes as edits.
+Keep fetching separate from applying. Use the existing Share and Emacs sync
+workflows; the original symlink must behave like the canonical file.
+
 * Changed requirement: preserve document names in topics CI (2026-11-18)
 
 New shared Markdown documents keep their filename. A first publication without

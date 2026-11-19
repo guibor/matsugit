@@ -16,7 +16,8 @@ export class WorkspaceActions {
     const owner = this.store.owner(args.session, hostPath);
     if (['export','plan','publish','sync','exchange'].includes(args.action)) checkedText(args.text);
     if (['plan', 'publish', 'sync-plan', 'sync', 'exchange-plan', 'exchange', 'publication-status', 'share-status'].includes(args.action) && !owner) throw Error('Open and save a local source file first');
-    const passive = ['publication-status', 'share-status'];
+    if (args.action === 'document-update' && !owner) throw Error('Open a shared file first');
+    const passive = ['publication-status', 'share-status', 'document-update'];
     if (!passive.includes(args.action) && [...this.jobs.values()].some(j => j.state === 'running' && j.owner === owner && !passive.includes(j.action))) throw Error('An export or publication is already running for this document');
     // A new review replaces this document's previous review, not its downloads
     // or another document's confirmation. Otherwise repeated checks exhaust jobs.
