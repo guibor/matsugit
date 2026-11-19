@@ -1,0 +1,85 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # Quarto 1.10.20 bundles Pandoc 3.10, which satisfies the table editor's
+  # Pandoc >=3.7.0.2 requirement through `quarto pandoc`.
+  QUARTO_CLI_VERSION: "1.10.20"
+  PYTHONUNBUFFERED: "1"
+jobs:
+  python:
+    name: Python suite (Quarto, charts, browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install Quarto, chart extra and Playwright
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "quarto-cli==${QUARTO_CLI_VERSION}" ".[charts,lint]"
+          python -m playwright install --with-deps chromium
+      - name: Locate tools
+        run: |
+          echo "QUARTO=$(command -v quarto)" >> "$GITHUB_ENV"
+          chrome=$(python -c "from playwright.sync_api import sync_playwright as s; p=s().start(); print(p.chromium.executable_path); p.stop()")
+          echo "CHROME=$chrome" >> "$GITHUB_ENV"
+          echo "FOLIOFORGE_CHROMIUM=$chrome" >> "$GITHUB_ENV"
+          quarto --version
+          quarto pandoc --version | head -1
+          echo "Chromium: $chrome"
+          git config --global user.name "Folioforge CI"
+          git config --global user.email "ci@example.invalid"
+          git config --global init.defaultBranch main
+      - name: Render synthetic fixtures for browser tests
+        run: |
+          out="$RUNNER_TEMP/folioforge-fixtures"
+          mkdir -p "$out"
+          python -m folioforge render tests/fixtures/structured.md --output "$out/structured"
+          python -m folioforge render tests/fixtures/evidence-media.md --output "$out/evidence-media"
+          python -m folioforge render skills/folioforge/assets/relationships.md --output "$out/relationships"
+          {
+            echo "FOLIOFORGE_LAYOUT_OUTPUT=$out/structured"
+            echo "FOLIOFORGE_EVIDENCE_OUTPUT=$out/evidence-media"
+            echo "FOLIOFORGE_RELATIONSHIPS_OUTPUT=$out/relationships"
+          } >> "$GITHUB_ENV"
+      - name: Run the full suite, including opt-in browser tests
+        env:
+          FOLIOFORGE_BROWSER_TESTS: "1"
+          FOLIOFORGE_MEDIA_BROWSER_TESTS: "1"
+          # Not enabled here:
+          # - test_rows_browser (FOLIOFORGE_ROWS_OUTPUT) asserts a
+          #   `table + .ff-division-heading` rule that only private theme packs
+          #   provide; the default theme renders it without a border.
+          # - test_org_browser (FOLIOFORGE_ORG_PREVIEWS) needs a recipe corpus
+          #   rendered with private themes.
+        run: python -m unittest discover -s tests -v
+
+  node:
+    name: Codex plugin (Node)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: codex-plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: codex-plugin/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm test
