@@ -1,5 +1,9 @@
 # matsugit design
 
+Reading layouts use smaller screen-only headings. Only unadorned pipe tables
+with a matching three-dash delimiter receive content-sized columns. Renderers
+leave ambiguous and explicitly sized layouts alone; the Markdown is untouched.
+
 Reading navigation uses the renderer's heading IDs. The same YAML boolean,
 `document-toc: false`, hides both the desktop contents and its mobile disclosure.
 Closing the desktop outline moves its disclosure into the article and frees

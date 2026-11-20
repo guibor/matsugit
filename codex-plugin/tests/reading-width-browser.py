@@ -22,6 +22,8 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as pw:
     for width in (390, 1440, 1920):
         page.set_viewport_size({"width": width, "height": 900})
         page.goto((output / "index.html").as_uri())
+        assert page.locator(".matsugit-auto-columns table").count() == 1
+        assert page.locator("main h2").first.evaluate("e=>getComputedStyle(e).fontSize") == "17px"
         if width == 390:
             box = page.locator(".matsugit-table-scroll")
             assert box.evaluate("b => {b.scrollLeft = 80; return b.scrollLeft > 0 && b.tabIndex === 0}")

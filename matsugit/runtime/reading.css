@@ -1,12 +1,14 @@
 /* The page follows the viewport; only running prose has a reading measure. */
 @media screen {
+  html:has(main.content) { font-size: 100%; }
   body.quarto-light, body.quarto-dark { font-size: .875rem; line-height: 1.45; }
   main.content { min-width: 0; }
   main.content :is(h1, h2, h3, h4) { line-height: 1.22; }
-  main.content h1 { font-size: 1.7rem; }
-  main.content h2 { font-size: 1.3rem; margin-block: 1.3em .45em; }
-  main.content h3 { font-size: 1.1rem; margin-block: 1em .4em; }
-  main.content h4 { font-size: 1rem; }
+  main.content :is(h1,h2,h3,h4,h5,h6) { line-height: 1.3; text-wrap: balance; }
+  main.content h1 { font-size: 1.375rem; font-weight: 700; margin-block: 0 .75rem; }
+  main.content h2 { font-size: 1.0625rem; font-weight: 700; margin-block: 1.15rem .3rem; }
+  main.content h3 { font-size: .9375rem; font-weight: 600; margin-block: .85rem .25rem; }
+  main.content :is(h4,h5,h6) { font-size: .875rem; font-weight: 600; margin-block: .65rem .2rem; }
   main.content :is(p, ul, ol) { margin-bottom: .65em; }
   main.content :is(p, blockquote) { max-width: 90ch; }
   main.content table { width: 100%; margin-block: 1em 1.5em; border-collapse: collapse; font-size: .95em; line-height: 1.45; }
@@ -15,6 +17,8 @@
   main.content table tbody :is(th, td) { background: transparent; }
   main.content .matsugit-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; }
   main.content .matsugit-table-scroll table { display: table; table-layout: auto; }
+  main.content .matsugit-auto-columns > .matsugit-table-scroll > table > colgroup > col { width: auto !important; }
+  main.content .matsugit-table-scroll table { margin-bottom: .25rem; }
   main.content .matsugit-table-scroll table code { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
   main.content table p:last-child { margin-bottom: 0; }
 }
@@ -23,7 +27,14 @@ main.content pre.sourceCode, main.content pre code { background: transparent; bo
 main.content :not(pre) > code { color: inherit; padding: 0; border: 0; font-size: .93em; }
 main.content pre { border: 0; border-inline-start: 2px solid currentColor; padding: .55em 1em; border-radius: 0; }
 @media screen and (max-width: 640px) {
+  main.content .matsugit-auto-columns > .matsugit-table-scroll > table { width: max-content; min-width: 100%; max-width: 44rem; }
   main.content table { display: block; overflow-x: auto; }
+}
+@media screen and (min-width: 960px) {
+  main.content table :is(th,td) { padding-block: .36em; }
+}
+@media screen and (hover: hover) {
+  main.content table tbody tr:hover > :is(th,td) { background-color: color-mix(in srgb, currentColor 5%, transparent); }
 }
 .matsugit-pocket-outline { display: none; }
 .matsugit-desktop-outline > summary { cursor: pointer; font-size: .85rem; font-weight: 600; }
@@ -40,6 +51,7 @@ main.content pre { border: 0; border-inline-start: 2px solid currentColor; paddi
   .matsugit-pocket-outline nav { max-height: 45vh; overflow: auto; }
   .matsugit-pocket-outline ul { padding-inline-start: 1.2em; list-style: none; }
   .matsugit-pocket-outline a { display: block; padding-block: .22em; }
+  .matsugit-pocket-outline :is(a,summary) { min-block-size: 2rem; align-content: center; }
   main.content :is(h1, h2, h3, section[id]) { scroll-margin-top: 3rem; }
 }
 @media print {

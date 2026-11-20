@@ -1,5 +1,9 @@
 #+title: matsugit product requirements
 
+* Compact document hierarchy (2026-11-20)
+Keep theme heading colors while using weight instead of large jumps in size.
+Fit ordinary Markdown table columns to content, without overriding custom widths.
+
 * Reading wide tables (2026-11-20)
 Closing the desktop outline returns its column to the document. When data no
 longer fits, scroll only the table; preserve inline identifiers as one unit.

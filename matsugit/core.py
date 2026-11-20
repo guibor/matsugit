@@ -536,6 +536,8 @@ def render(settings, output, edit_url=None, *, source_text=None,
     pandoc = settings.get('_preview_pandoc', [settings['quarto'], 'pandoc'])
     if _prepared is None:
         theme = install_theme(settings, output)
+        if source_text is None and 'document' in formats:
+            source_text = bounded_source(settings['source'], None)
         ast = normalize(settings, output, source_text=source_text)
         colours = read_json(inside(output / 'theme', theme['charts'])) if 'charts' in theme else {}
         display_ast = canvas_components(evidence_components(chart_components(
@@ -554,6 +556,12 @@ def render(settings, output, edit_url=None, *, source_text=None,
             from document import document
         document_ast = document(display_ast)
         document_ast = _transform(document_ast, 'document') if _transform else document_ast
+        if source_text and settings['source'].suffix.lower() in ('.md', '.markdown', '.qmd'):
+            if __package__:
+                from .reading_tables import auto_tables
+            else:
+                from reading_tables import auto_tables
+            auto_tables(document_ast, source_text)
         (output / "render.qmd").write_text(
             diagram_fences(run([*pandoc, '-f', 'json', '-t', 'markdown',
                                '--standalone', '--wrap=none'], text=json.dumps(math_html(document_ast))), render=True), encoding="utf-8")
