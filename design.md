@@ -2,6 +2,9 @@
 
 Reading navigation uses the renderer's heading IDs. The same YAML boolean,
 `document-toc: false`, hides both the desktop contents and its mobile disclosure.
+Closing the desktop outline moves its disclosure into the article and frees
+the sidebar track. A scroll container around each table preserves native table
+semantics; only an overflowing container becomes a keyboard focus stop.
 
 The HTML reading format uses Quarto's responsive grid and a screen-only
 stylesheet after theme CSS. Themes retain their colors and fonts. Tables use

@@ -1,3 +1,4 @@
+<script src="runtime/reading-tables.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const toc = document.querySelector('#quarto-margin-sidebar #TOC > ul');
@@ -13,6 +14,20 @@ document.addEventListener('DOMContentLoaded', () => {
   list.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
   list.querySelectorAll('[data-scroll-target]').forEach(el => el.removeAttribute('data-scroll-target'));
   nav.append(list); details.append(label, nav); main.prepend(details);
+  const sideNav = toc.closest('nav');
+  const desktop = document.createElement('details');
+  desktop.className = 'matsugit-desktop-outline';
+  desktop.open = true;
+  desktop.append(label.cloneNode(true));
+  const sidebar = sideNav.parentElement;
+  sideNav.before(desktop);
+  desktop.append(sideNav);
+  desktop.addEventListener('toggle', () => {
+    const target = desktop.open ? sidebar : main;
+    if (desktop.parentElement === target) return;
+    target.prepend(desktop);
+    desktop.querySelector('summary').focus({preventScroll: true});
+  });
   details.addEventListener('click', e => { if (e.target.closest('a')) details.open = false; });
 });
 </script>

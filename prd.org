@@ -1,5 +1,9 @@
 #+title: matsugit product requirements
 
+* Reading wide tables (2026-11-20)
+Closing the desktop outline returns its column to the document. When data no
+longer fits, scroll only the table; preserve inline identifiers as one unit.
+
 * Navigable reading documents (2026-11-19)
 Keep a contents outline on wide and narrow screens unless =document-toc:
 false= is set. Code identifiers in prose and tables should not look like badges.
