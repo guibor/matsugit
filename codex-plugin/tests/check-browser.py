@@ -158,6 +158,15 @@ try:
             assert frame.evaluate('document.documentElement.scrollWidth <= innerWidth')
             frame.locator('#gallery-close').click()
             frame.locator('#check-close').click()
+        example = '## Summary\n\nEvidence.\n\n## Method\n\nExplanation.'
+        replace(example)
+        frame.evaluate('matsugitWorkspace.editor.dispatch({selection:{anchor:21}})')
+        frame.locator('#insert').click()
+        frame.locator('#reference-target').select_option(label='Method')
+        assert '## Method {#detail-method}' in frame.evaluate(TEXT)
+        assert r'[\[1\]](#detail-method)' in frame.evaluate(TEXT)
+        frame.locator('#undo').click()
+        assert frame.evaluate(TEXT) == example
         assert not errors, errors
         assert source.read_text() == original
         print('PASS: verdict chip, located findings, Show, Fix + Undo, Ask AI prefill, stale marker, picker placement; no source save', flush=True)

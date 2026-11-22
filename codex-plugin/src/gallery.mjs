@@ -4,6 +4,7 @@ import {EditorView} from '@codemirror/view';
 import {snippet} from '@codemirror/autocomplete';
 import {createElement, X} from 'lucide';
 import {storyModel} from './story-model.mjs';
+import {destinations, sectionReference} from './section-reference.mjs';
 import {placeInsertion, wrapElement, snippetTemplate} from './insertions.mjs';
 
 const $ = id => document.getElementById(id);
@@ -98,6 +99,24 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
   function paint() {
     const terms = search.value.toLowerCase().split(/\s+/).filter(Boolean), where = target();
     groups.replaceChildren();
+    const reference = $('reference-picker');
+    reference.hidden = isOrg() || !terms.every(term => 'numbered reference link heading section appendix details footnote'.includes(term));
+    const picker = $('reference-target');
+    picker.replaceChildren(new Option('Choose a section...', ''));
+    if (!reference.hidden) for (const h of destinations(editor.state.doc.toString()))
+      picker.add(new Option(h.label, String(h.from)));
+    picker.disabled = picker.length === 1;
+    const snapshot = editor.state.doc;
+    picker.onchange = () => {
+      if (!picker.value) return;
+      if (snapshot !== editor.state.doc) { paint(); status.textContent = 'The draft changed. Choose the section again.'; return; }
+      try {
+        const edit = sectionReference(snapshot.toString(), editor.state.selection.main.head, Number(picker.value));
+        dialog.close(); reveal();
+        editor.dispatch({changes:edit.changes, selection:{anchor:edit.end}, userEvent:'input'});
+        editor.focus();
+      } catch (error) { status.textContent = error.message; }
+    };
     let shown = 0;
     for (const [group, heading] of [['slide', 'New slide'], ['part', 'Add to this slide']]) {
       const cards = entries.filter(([name, recipe]) => recipe.group === group
@@ -118,7 +137,7 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
       }
       section.append(title, grid); groups.append(section);
     }
-    status.textContent = shown ? '' : 'Nothing matches. Try another word, or describe what you want to the AI in chat.';
+    status.textContent = shown || !reference.hidden ? '' : 'Nothing matches. Try another word, or describe what you want to the AI in chat.';
   }
   search.oninput = paint;
   search.onkeydown = event => {

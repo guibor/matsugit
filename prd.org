@@ -452,3 +452,4 @@ Immediate, in priority order:
 - [X] Include the fix in renderer 0.21.9 / plugin 0.36.1.
 2026-11-22: Open document and Open slides must navigate independently of Copy, preserve internal HTTP URLs, and surface host refusal.
 
+2026-11-22: Insert a numbered link to an exported section from the draft; both reading HTML and presentation HTML must navigate to its details.

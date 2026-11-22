@@ -523,3 +523,5 @@ footer{justify-content:flex-end}
 .share-open,#more-published a{text-decoration:none}
 #more-published a{padding:6px 8px;font-size:13px;color:var(--accent)}
 #more-published a:hover,#more-published a:focus-visible{text-decoration:underline}
+#reference-picker:not([hidden]){display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;margin-block:8px}
+#reference-target{max-width:100%}
