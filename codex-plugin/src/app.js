@@ -12,6 +12,8 @@ import {foldEffect, unfoldEffect, foldedRanges} from '@codemirror/language';
 import {undo, redo, undoDepth, redoDepth, isolateHistory} from '@codemirror/commands';
 import {EditorState, Compartment, Transaction, ChangeSet} from '@codemirror/state';
 import {gallery} from './gallery.mjs';
+import {draftSearch} from './find-panel.mjs';
+import {openSearchPanel} from '@codemirror/search';
 import {share} from './share.mjs';
 import {slideRail} from './slide-rail.mjs';
 import {textChanges, savedEditHistory, planExternalEdit, wholeFileReview} from './external-edits.mjs';
@@ -155,8 +157,9 @@ const status = message => { $('status').textContent = message; $('status').datas
 const editability = new Compartment();
 const setup = new Compartment();
 const editable = value => [EditorState.readOnly.of(!value), EditorView.editable.of(value)];
-const editor = new EditorView({parent: $('editor'), extensions: [setup.of(basicSetup), markdown({extensions:GFM}), EditorView.lineWrapping,
-  authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice}),
+const editor = new EditorView({parent: $('editor'), extensions: [draftSearch, setup.of(basicSetup), markdown({extensions:GFM}), EditorView.lineWrapping,
+  authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice,
+    reference:(from,to)=>layouts.open({from,to})}),
   visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading, onError:notice,
     open:(range,placement)=>tables.open(range,null,placement),preview:source=>tables.preview(source),detach:root=>tables.detach(root)}),
   keymap.of([{key:'Alt-.',run:()=>{tables.atSelection();return true;}}]),
@@ -1467,6 +1470,10 @@ const changes = historyPanel({call,scope:recoveryScope,publication:()=>publicati
   }});
 $('history-open').onclick = () => changes.open();
 $('insert').onclick = () => layouts.open();
+$('find-draft').onclick = () => {
+  if (state.layout === 'render' || state.layout === 'story') changeLayout('split');
+  openSearchPanel(editor);
+};
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
 $('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };

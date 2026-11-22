@@ -167,6 +167,27 @@ try:
         assert r'[\[1\]](#detail-method)' in frame.evaluate(TEXT)
         frame.locator('#undo').click()
         assert frame.evaluate(TEXT) == example
+        for mode in ('raw', 'visual'):
+            frame.locator(f'[data-editor="{mode}"]').click()
+            replace(example + '\n\n')
+            frame.evaluate('''() => {const e=matsugitWorkspace.editor; e.dispatch({selection:{anchor:e.state.doc.length}}); e.focus();}''')
+            page.keyboard.type('/')
+            frame.locator('.cm-tooltip-autocomplete').wait_for()
+            page.keyboard.type('reference')
+            frame.get_by_role('option', name='/reference', exact=False).first.click()
+            frame.locator('#reference-target').select_option(label='Method')
+            assert '/reference' not in frame.evaluate(TEXT)
+            assert r'[\[1\]](#detail-method)' in frame.evaluate(TEXT)
+            page.keyboard.press('Control+f')
+            term = frame.get_by_role('textbox', name='Find in draft')
+            term.fill('method')
+            assert frame.locator('.ff-find output').inner_text() == '3 matches'
+            term.press('Enter')
+            assert ' of 3' in frame.locator('.ff-find output').inner_text()
+            term.fill('missing term')
+            assert frame.locator('.ff-find output').inner_text() == 'No matches'
+            term.press('Escape')
+            assert frame.evaluate('matsugitWorkspace.editor.hasFocus')
         assert not errors, errors
         assert source.read_text() == original
         print('PASS: verdict chip, located findings, Show, Fix + Undo, Ask AI prefill, stale marker, picker placement; no source save', flush=True)

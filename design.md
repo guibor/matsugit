@@ -495,3 +495,4 @@ The shared projection applies to preview, export and installed Pages CI.
 Published URLs are native new-tab links in a browser. Embedded workspaces ask the host to open them during the click and report an explicit refusal without retrying a delayed popup.
 
 Numbered section references are ordinary Markdown links to stable explicit H2 IDs. Add inserts the reference and any missing destination ID together, without renaming headings, reordering existing labels, or changing the file until saved.
+Visual and Raw share the CodeMirror completion source and search state. The Find panel keeps advanced and replacement controls behind one disclosure.

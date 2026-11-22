@@ -55,6 +55,7 @@ function sketch(name) {
 export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
   const dialog = $('gallery-dialog'), search = $('gallery-search'), groups = $('gallery-groups'), status = $('gallery-status');
   const entries = Object.entries(recipes).filter(([, recipe]) => recipe.title).sort((a, b) => a[1].rank - b[1].rank);
+  let trigger;
   $('gallery-close').append(createElement(X));
   $('gallery-close').onclick = () => dialog.close();
   const tableSelected = () => {
@@ -109,9 +110,14 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
     const snapshot = editor.state.doc;
     picker.onchange = () => {
       if (!picker.value) return;
-      if (snapshot !== editor.state.doc) { paint(); status.textContent = 'The draft changed. Choose the section again.'; return; }
+      if (snapshot !== editor.state.doc || (trigger && trigger.doc !== snapshot)) {
+        if (trigger) dialog.close(); else paint();
+        notice('The draft changed. Choose the section again.'); return;
+      }
       try {
-        const edit = sectionReference(snapshot.toString(), editor.state.selection.main.head, Number(picker.value));
+        const at = trigger?.from ?? editor.state.selection.main.head;
+        const edit = sectionReference(snapshot.toString(), at, Number(picker.value));
+        if (trigger) edit.changes.find(c=>c.from === at).to = trigger.to;
         dialog.close(); reveal();
         editor.dispatch({changes:edit.changes, selection:{anchor:edit.end}, userEvent:'input'});
         editor.focus();
@@ -145,8 +151,10 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
     if (event.key === 'Enter' && cards.length === 1) { event.preventDefault(); cards[0].click(); }
     if (event.key === 'ArrowDown' && cards.length) { event.preventDefault(); cards[0].focus(); }
   };
-  return {open() {
+  return {open(range) {
     if (!enabled()) return;
-    search.value = ''; paint(); dialog.showModal(); search.focus();
+    trigger = range ? {...range,doc:editor.state.doc} : null;
+    search.value = range ? 'reference' : ''; paint(); dialog.showModal();
+    (range ? $('reference-target') : search).focus();
   }};
 }

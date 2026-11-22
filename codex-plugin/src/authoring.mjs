@@ -63,7 +63,7 @@ class BlockLabel extends WidgetType {
   ignoreEvent() { return true; }
 }
 
-export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
+export function authoringExtensions({isOrg, enabled, onError = () => {}, reference}) {
   // Folding asks about each visible line; parse once per document, not per line.
   const cache = new WeakMap();
   const parsed = state => {
@@ -107,6 +107,12 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
       const block = parsed(state).blocks.find(block => block.from === from);
       return block ? {from: block.startEnd, to: block.to} : null;
     }),
+    EditorView.updateListener.of(update => {
+      if (!enabled() || !update.docChanged || !update.transactions.some(t=>t.isUserEvent('input.type'))) return;
+      const pos = update.state.selection.main.head, line = update.state.doc.lineAt(pos);
+      if (line.text.trim() === '/' && pos === line.from + line.text.indexOf('/') + 1)
+        queueMicrotask(()=>{if (update.view.state === update.state && update.view.hasFocus) startCompletion(update.view);});
+    }),
     autocompletion({override: [context => {
       if (!enabled()) return null;
       const line = context.state.doc.lineAt(context.pos);
@@ -140,7 +146,8 @@ export function authoringExtensions({isOrg, enabled, onError = () => {}}) {
             snippet(snippetTemplate(value, !wrapping))(view, _completion, from, to);
             view.focus();
           },
-        }))};
+        })).concat(!isOrg() && reference && slash ? [{label:'/reference',detail:'Numbered section reference',
+          type:'keyword',apply:(_view,_item,from,to)=>reference(from,to)}] : [])};
     }], maxRenderedOptions: 30, aboveCursor: true}),
   ];
 }

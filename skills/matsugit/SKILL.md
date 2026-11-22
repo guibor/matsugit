@@ -226,3 +226,4 @@ remote host use its approved private preview mechanism; a server path is not a
 browser link. Creating a deck or theme does not authorize publication, public
 hosting, new credentials, or installation into unrelated repositories.
 To link a claim to more detail, put the cursor after the claim and use **Add > Numbered section reference**. Choose an exported level-two heading. The picker inserts ordinary Markdown such as `[\[1\]](#detail-method)` and reuses or adds a stable ID on the destination, e.g. `## Method {#detail-method}`. Both the reading document and the slide deck use that target. The number is a label, not an automatically reordered footnote.
+In Visual or Raw, type `/` on an empty line to filter the shared commands, including `/reference`. Use **More > Find in draft** or Cmd/Ctrl+F in the editor; Enter and Shift+Enter move between matches. Find options include Replace, whole word, regex and match case.

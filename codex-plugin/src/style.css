@@ -525,3 +525,17 @@ footer{justify-content:flex-end}
 #more-published a:hover,#more-published a:focus-visible{text-decoration:underline}
 #reference-picker:not([hidden]){display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;margin-block:8px}
 #reference-target{max-width:100%}
+.ff-find{background:var(--bg);color:var(--fg);padding:5px 8px;font:13px/1.35 var(--font-sans,system-ui,sans-serif)}
+.ff-find-row,.ff-find-options{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.ff-find svg{width:15px;height:15px;flex:none}
+.ff-find-row>input{min-width:6em;flex:1;width:8em}
+.ff-find input:not([type=checkbox]){font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 6px}
+.ff-find output{color:var(--muted);font-variant-numeric:tabular-nums}
+.ff-find button{font:inherit;color:inherit;min-height:26px;padding:3px 5px;background:transparent;border:1px solid transparent;border-radius:4px}
+.ff-find button:hover:not(:disabled),.ff-find button[aria-expanded=true]{background:var(--muted-bg);border-color:var(--border)}
+.ff-find-options{padding-top:4px;gap:6px 10px}.ff-find-options label{display:inline-flex;align-items:center;gap:3px}
+.ff-find-options>.ff-find-row{flex-basis:100%}.ff-find [hidden]{display:none}
+.cm-editor .cm-tooltip-autocomplete{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.cm-editor .cm-tooltip-autocomplete ul li{font:13px/1.5 var(--font-sans,system-ui,sans-serif);padding:2px 6px}
+.cm-editor .cm-tooltip-autocomplete ul li[aria-selected=true]{background:var(--accent);color:white}
+.cm-editor .cm-tooltip-autocomplete li[aria-selected=true] .cm-completionDetail{color:inherit}
