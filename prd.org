@@ -450,3 +450,5 @@ Immediate, in priority order:
 - [X] Run the focused runtime tests and verify an actual browser/PDF export
   on md-server, including fast failure with a deliberately missing dependency.
 - [X] Include the fix in renderer 0.21.9 / plugin 0.36.1.
+2026-11-22: Open document and Open slides must navigate independently of Copy, preserve internal HTTP URLs, and surface host refusal.
+

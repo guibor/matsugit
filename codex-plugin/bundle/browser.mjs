@@ -87,7 +87,7 @@ addEventListener('message',async event=>{
       event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:result},'*');return;
     }
     case 'ui/initialize': return answer({protocolVersion:'2026-01-26',hostInfo:{name:'matsugit in the browser',version:'1.0.0'},
-      hostCapabilities:{serverTools:{},serverResources:{},openLinks:{}},hostContext:context()});
+      hostCapabilities:{serverTools:{},serverResources:{}},hostContext:context()});
     case 'ui/open-link': {
       const url=String(message.params?.url||'');
       if(/^https?:/i.test(url))open(url,'_blank','noopener,noreferrer');

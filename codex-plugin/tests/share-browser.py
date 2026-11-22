@@ -121,10 +121,10 @@ try:
         # The same links stay one click away in the "..." menu.
         # All three are one click away in the "..." menu.
         frame.locator('#more').click()
-        assert [b.get_attribute('data-link') for b in frame.locator('#more-published button').all()] == ['slides', 'document', 'source']
-        assert frame.locator('#more-published button[data-link="slides"]').get_attribute('title') == SITE + '/deck/slides.html'
-        assert frame.locator('#more-published button[data-link="document"]').get_attribute('title') == SITE + '/deck/index.html'
-        frame.locator('#more-published button[data-link="source"]').click()
+        assert [b.get_attribute('data-link') for b in frame.locator('#more-published a').all()] == ['slides', 'document', 'source']
+        assert frame.locator('#more-published a[data-link="slides"]').get_attribute('href') == SITE + '/deck/slides.html'
+        assert frame.locator('#more-published a[data-link="document"]').get_attribute('href') == SITE + '/deck/index.html'
+        frame.locator('#more-published a[data-link="source"]').click()
         page.wait_for_function('window.openedLinks.length === 2', timeout=5000)
         assert page.evaluate('window.openedLinks').pop() == 'https://git.example.invalid/team/docs/-/blob/main/matsugit-site/deck/source.md'
 

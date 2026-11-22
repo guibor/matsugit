@@ -520,3 +520,6 @@ footer{justify-content:flex-end}
 #share-link{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--accent);border-radius:6px;overflow-wrap:anywhere}
 #more-published{display:grid;gap:2px;padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid var(--border)}#more-published[hidden]{display:none}
 #more-published>span{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px 2px}
+.share-open,#more-published a{text-decoration:none}
+#more-published a{padding:6px 8px;font-size:13px;color:var(--accent)}
+#more-published a:hover,#more-published a:focus-visible{text-decoration:underline}

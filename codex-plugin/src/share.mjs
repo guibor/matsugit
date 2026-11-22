@@ -39,7 +39,7 @@ export function plainBlocked(reasons) {
 }
 const safe = url => { try { const parsed = new URL(url); return typeof url === 'string' && !/[\s\x00-\x1f]/.test(url) && ['https:', 'http:'].includes(parsed.protocol) && parsed.hostname && !parsed.username && !parsed.password ? url : null; } catch { return null; } };
 
-export function share({call, state, text, dirty, save, run, lock, isBusy, snapshot, mergeReview, publication, reload, notice, demo, openLink = url => window.open(url, '_blank', 'noopener')}) {
+export function share({call, state, text, dirty, save, run, lock, isBusy, snapshot, mergeReview, publication, reload, notice, demo}) {
   const dialog = $('share-dialog'), go = $('share-go'), progress = $('share-progress');
   let step = null, context = null, contextOwner = null, visit = 0, showingOutcome = false, monitoring = false, linkSignature;
   $('share').append(createElement(Share2), document.createElement('span'));
@@ -83,7 +83,6 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
   for (const [id, target] of [['share-advanced-sync', 'git-sync'], ['share-advanced-publish', 'publish'], ['share-advanced-status', 'publication-state']])
     $(id).onclick = () => { if (isBusy()) return; dialog.close(); $(target).click(); };
   $('share-copy').onclick = () => copy($('share-copy'), $('share-link').href);
-  $('share-link').onclick = event => { event.preventDefault(); openLink($('share-link').href); };
   const view = () => state.session || state.uri;
   let checkedOwner, checkedAt = 0, incoming = false, currentLabel, generation = 0;
   function paintIncoming() {
@@ -136,13 +135,14 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const root = $('share-links');
     root.hidden = !list.length;
     root.replaceChildren(...list.map(item => {
-      const row = document.createElement('li'), open = document.createElement('button'), copyButton = document.createElement('button');
-      open.type = 'button'; open.className = 'share-open'; open.dataset.link = item.key;
+      const row = document.createElement('li'), open = document.createElement('a'), copyButton = document.createElement('button');
+      open.href = item.url; open.target = '_blank'; open.rel = 'noopener noreferrer';
+      open.className = 'share-open'; open.dataset.link = item.key;
       const label = document.createElement('strong'); label.textContent = `Open ${item.label.toLowerCase()}`;
       const detail = document.createElement('span'); detail.textContent = item.detail;
       const words = document.createElement('span'); words.className = 'share-link-label'; words.append(label, detail);
       open.append(createElement(item.key === 'slides' ? Presentation : item.key === 'document' ? FileText : ExternalLink), words);
-      open.title = item.url; open.onclick = () => openLink(item.url);
+      open.title = item.url;
       copyButton.type = 'button'; copyButton.className = 'share-copy-link'; copyButton.dataset.link = item.key;
       copyIcon(copyButton, Copy, `Copy ${item.label.toLowerCase()} link`);
       copyButton.onclick = () => copy(copyButton, item.url, item.label);
@@ -397,11 +397,11 @@ export function share({call, state, text, dirty, save, run, lock, isBusy, snapsh
     const root = $('more-published'), list = knownLinks();
     root.hidden = !list.length;
     root.replaceChildren(Object.assign(document.createElement('span'), {textContent: 'Shared deck'}), ...list.map(item => {
-      const button = document.createElement('button');
-      button.type = 'button'; button.dataset.link = item.key; button.title = item.url;
-      button.dataset.label = `Open ${item.label.toLowerCase()} ${item.detail}`;
-      button.onclick = () => openLink(item.url);
-      return button;
+      const link = document.createElement('a');
+      link.href = item.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      link.dataset.link = item.key; link.title = item.url;
+      link.textContent = `Open ${item.label.toLowerCase()} ${item.detail}`;
+      return link;
     }));
   }
   return {painted(label, busy) {

@@ -10,7 +10,7 @@ export function browserBlocker(state) {
   return '';
 }
 
-export function browserButton({current, save, call, openLink}) {
+export function browserButton({current, save, call}) {
   const $ = id => document.getElementById(id);
   const trigger = $('browser-open'), dialog = $('browser-dialog'), action = $('browser-confirm');
   const status = $('browser-status'), link = $('browser-link');
@@ -21,11 +21,6 @@ export function browserButton({current, save, call, openLink}) {
   $('browser-close').onclick = close;
   $('browser-cancel').onclick = close;
   dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
-  link.onclick = async event => {
-    event.preventDefault();
-    try { await openLink(link.href); }
-    catch { status.textContent = `The host could not open the link. Open ${link.href} on the computer running matsugit.`; }
-  };
   async function run(consent = false) {
     if (busy) return;
     link.hidden = true;

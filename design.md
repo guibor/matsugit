@@ -492,3 +492,5 @@ in preview metadata so a cover-policy change requires a full render. Reading
 projection replaces only a matching opening H1/H2 with its anchor, preserving
 the claim and all body content. Later matching headings remain real sections.
 The shared projection applies to preview, export and installed Pages CI.
+Published URLs are native new-tab links in a browser. Embedded workspaces ask the host to open them during the click and report an explicit refusal without retrying a delayed popup.
+

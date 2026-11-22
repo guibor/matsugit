@@ -2,7 +2,7 @@
   "name": "matsugit",
   "displayName": "matsugit",
   "description": "Edit the story, formatted Markdown and slides in one local workspace.",
-  "version": "0.36.20",
+  "version": "0.36.21",
   "publisher": "guibor",
   "license": "MIT",
   "repository": {

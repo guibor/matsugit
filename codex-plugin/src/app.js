@@ -43,6 +43,7 @@ import {fileDownloads} from './download.mjs';
 import {setupCheck} from './setup-check.mjs';
 import {historyPanel} from './history-panel.mjs';
 import {browserButton} from './browser-button.mjs';
+import {openWorkspaceLink} from './open-link.mjs';
 
 const $ = id => document.getElementById(id);
 const app = new App({name: 'matsugit', version});
@@ -205,13 +206,23 @@ function moreMenu(open) {
   $('more-panel').hidden = !open; $('more').setAttribute('aria-expanded', String(open));
 }
 $('more').onclick = () => moreMenu($('more-panel').hidden);
-$('more-panel').addEventListener('click', event => { if (event.target.closest('button')) moreMenu(false); });
+$('more-panel').addEventListener('click', event => { if (event.target.closest('button,a')) moreMenu(false); });
+document.addEventListener('click', event => {
+  const link = event.target.closest?.('.share-open,#more-published a,#share-link,#browser-link,#publication-site,#publication-pipeline');
+  if (!link) return;
+  const output = link.closest('#share-dialog') ? $('share-copy-status')
+    : link.closest('#browser-dialog') ? $('browser-status')
+    : link.closest('#publication-dialog') ? $('publication-progress') : null;
+  void openWorkspaceLink(event, link, app, window.openai, message => {
+    if (output) output.textContent = message;
+    else notice(message);
+  });
+});
 document.addEventListener('pointerdown', event => { if (!$('more-wrap').contains(event.target)) moreMenu(false); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('more-panel').hidden) { moreMenu(false); $('more').focus(); } });
 const setupDiagnostics = setupCheck({call, workspaceVersion:version});
 browserButton({call, save,
-  current:() => ({...state, dirty:dirty(), pendingTable:tables?.pending()}),
-  openLink: url => app.getHostCapabilities()?.openLinks ? app.openLink({url}) : window.open(url, '_blank', 'noopener')});
+  current:() => ({...state, dirty:dirty(), pendingTable:tables?.pending()})});
 $('setup-check').onclick = () => { moreMenu(false); setupDiagnostics.open($('more')); };
 $('notice-setup').onclick = () => setupDiagnostics.open($('notice-setup'));
 // Autosave: write the draft to its file shortly after typing stops. It uses
@@ -1429,9 +1440,7 @@ publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pen
 const delivering = delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,
   hasUnsaved:() => dirty() || tables.pending() || !!state.incomingReady, refreshControls, publication, mergeReview});
 sharing = share({call, state, text, dirty: () => dirty() || tables.pending() || !!state.incomingReady, save: () => save({review: false}), ...delivering,
-  mergeReview, publication, reload, notice, demo,
-  // Links open in the person's browser through the host when it can; a plain new tab otherwise.
-  openLink: url => app.getHostCapabilities()?.openLinks ? app.openLink({url}).catch(() => window.open(url, '_blank', 'noopener')) : window.open(url, '_blank', 'noopener')});
+  mergeReview, publication, reload, notice, demo});
 publication.update();
 const changes = historyPanel({call,scope:recoveryScope,publication:()=>publication,
   snapshot:()=>({...mergeSnapshot(),org:state.name.toLowerCase().endsWith('.org'),dirty:dirty() || tables.pending(),
