@@ -1,8 +1,8 @@
 import {EditorState, StateEffect, StateField} from '@codemirror/state';
-import {Decoration, EditorView, ViewPlugin, WidgetType} from '@codemirror/view';
+import {Decoration, EditorView, ViewPlugin, WidgetType, showTooltip} from '@codemirror/view';
 import {syntaxTree} from '@codemirror/language';
 import {parser, GFM} from '@lezer/markdown';
-import {createElement, Pencil} from 'lucide';
+import {createElement, Bold, Italic, Link, Pencil} from 'lucide';
 import {structure} from './structure.mjs';
 import {layoutControl, layoutEditAllowed} from './layout-edit.mjs';
 
@@ -222,7 +222,37 @@ export function visualExtensions(actions) {
     },
     provide:f=>EditorView.decorations.from(f,v=>v.decorations),
   });
-  return [field, EditorState.transactionFilter.of(tr => {
+  const selectionTools = showTooltip.computeN([field, 'selection'], state => {
+    const {from,to,empty} = state.selection.main;
+    if (empty || !state.field(field).enabled || state.readOnly || state.selection.ranges.length !== 1) return [];
+    const selected = state.sliceDoc(from,to);
+    if (!selected.trim() || /[\n\[\]*_`{}<>\\|]/.test(selected)) return [];
+    const tree = syntaxTree(state), paragraph = tree.resolveInner(from,1);
+    if (paragraph.name !== 'Paragraph' || paragraph.to < to ||
+        tree.resolveInner(to,-1).from !== paragraph.from ||
+        /^\s*(?:---|[:#|])/.test(state.doc.lineAt(from).text) ||
+        (state.doc.line(1).text === '---' && from < (state.doc.toString().match(/^---\n[\s\S]*?\n(?:---|\.\.\.)(?:\n|$)/)?.[0].length || 0))) return [];
+    return [{pos:from,end:to,above:true,create:view => {
+      const dom = document.createElement('div'); dom.className = 'selection-tools';
+      dom.setAttribute('role','toolbar'); dom.setAttribute('aria-label','Selected text');
+      for (const [title, icon, mark] of [['Bold', Bold, '**'], ['Italic', Italic, '*'], ['Link to heading', Link, null]]) {
+        const button = document.createElement('button'); button.type='button'; button.title=title;
+        button.setAttribute('aria-label',title); button.append(createElement(icon));
+        button.onmousedown=e=>e.preventDefault();
+        button.onclick=()=>{
+          if (!actions.enabled() || view.state.doc !== state.doc ||
+              !view.state.selection.eq(state.selection)) return;
+          if (!mark) { actions.linkHeading?.({from,to,label:selected}); return; }
+          view.dispatch({changes:{from,to,insert:mark+selected+mark},
+            selection:{anchor:to+mark.length*2},userEvent:'input.format'});
+          view.focus();
+        };
+        dom.append(button);
+      }
+      return {dom};
+    }}];
+  });
+  return [field, selectionTools, EditorState.transactionFilter.of(tr => {
     if (!tr.docChanged || !tr.startState.field(field).enabled || actions.isOrg()
         || tr.annotation(layoutControl) || !(tr.isUserEvent('input') || tr.isUserEvent('delete'))) return tr;
     const changes = [];

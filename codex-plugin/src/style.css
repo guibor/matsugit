@@ -539,3 +539,6 @@ footer{justify-content:flex-end}
 .cm-editor .cm-tooltip-autocomplete ul li{font:13px/1.5 var(--font-sans,system-ui,sans-serif);padding:2px 6px}
 .cm-editor .cm-tooltip-autocomplete ul li[aria-selected=true]{background:var(--accent);color:white}
 .cm-editor .cm-tooltip-autocomplete li[aria-selected=true] .cm-completionDetail{color:inherit}
+.selection-tools{display:flex;gap:2px;padding:3px}
+.selection-tools button{display:grid;place-items:center;width:30px;height:28px;padding:3px}
+.selection-tools svg{width:16px;height:16px}

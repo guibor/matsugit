@@ -12,7 +12,7 @@ function button(icon, name, run) {
   return el;
 }
 
-export function storyView({editor, state, enabled, notice, sourceView, changed, askAgent, previewSlide}) {
+export function storyView({editor, state, enabled, notice, sourceView, changed, askAgent, previewSlide, browseSlides}) {
   const panel = $('story-pane'), list = $('story-list');
   let model, renderedSource = '', editing = null, ownInput = false, drag = null, frame, scrollFrame;
   let hasSelection = false;
@@ -226,6 +226,13 @@ export function storyView({editor, state, enabled, notice, sourceView, changed, 
     const snapshot = text(), at = position();
     const dialog = $('story-new-dialog'), title = $('story-new-slide-title'), claim = $('story-new-claim');
     title.value = ''; claim.value = '';
+    const browse = $('story-browse-types');
+    const protectDraft = () => { browse.disabled = !!(title.value || claim.value); };
+    title.oninput = claim.oninput = protectDraft; protectDraft();
+    browse.onclick = () => {
+      if (!enabled() || snapshot !== text()) { notice('The draft changed. Reopen Add slide.'); return; }
+      dialog.close(); browseSlides(at);
+    };
     $('story-new-form').onsubmit = event => {
       event.preventDefault();
       if (!enabled()) return;

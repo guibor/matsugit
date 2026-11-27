@@ -1,5 +1,11 @@
 #+title: matsugit product requirements
 
+* First edits and slide discovery (2026-11-27)
+The disposable first-run sample should let an author type a new title and see
+the preview change without saving. Both the Add picker and Story must offer
+whole-slide recipes by purpose, separately from elements within a slide.
+Selected prose can link to another exported section without editing Markdown.
+
 * Compact document hierarchy (2026-11-20)
 Keep theme heading colors while using weight instead of large jumps in size.
 Fit ordinary Markdown table columns to content, without overriding custom widths.

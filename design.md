@@ -1,5 +1,11 @@
 # matsugit design
 
+The first-run title shortcut selects real text in the disposable tour, not a
+second editor. The Visual selection toolbar edits the same draft as Markdown.
+A section link and its destination ID are one transaction. Story and Add share
+one recipe picker; switching the scope filters existing recipes rather than
+creating another catalogue. Reading documents start with elements, not slides.
+
 Reading layouts use smaller screen-only headings. Only unadorned pipe tables
 with a matching three-dash delimiter receive content-sized columns. Renderers
 leave ambiguous and explicitly sized layouts alone; the Markdown is untouched.

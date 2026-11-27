@@ -127,6 +127,7 @@ function paintNotice() {
   $('notice-title').hidden = !receipt;
   $('notice-title').textContent = receipt?.title || '';
   $('notice-text').textContent = message;
+  $('tour-edit').hidden = !message || message !== state.standingNotice || !state.tourTitle;
   $('notice-check').hidden = !state.renderError || noticeMessage !== state.renderNotice;
   $('notice-setup').hidden = !state.setupIssue || message !== state.renderNotice;
   // The file vanished from disk: offer the two ways to keep the text.
@@ -161,6 +162,7 @@ const editor = new EditorView({parent: $('editor'), extensions: [draftSearch, se
   authoringExtensions({isOrg: () => state.name.toLowerCase().endsWith('.org'), enabled: () => !demo && !state.loading, onError: notice,
     reference:(from,to)=>layouts.open({from,to})}),
   visualExtensions({isOrg:()=>state.name.toLowerCase().endsWith('.org'), enabled:()=>!demo&&!state.loading, onError:notice,
+    linkHeading:range=>layouts.open(range),
     open:(range,placement)=>tables.open(range,null,placement),preview:source=>tables.preview(source),detach:root=>tables.detach(root)}),
   keymap.of([{key:'Alt-.',run:()=>{tables.atSelection();return true;}}]),
   outlineKeys(() => state.name.toLowerCase().endsWith('.org')),
@@ -256,7 +258,9 @@ const peek = slidePeek({call, snapshot:() => ({text:text(), name:state.name, ses
   revision:state.revision, theme:$('theme').value.trim(),
   html:state.revisions.slides === state.revision ? state.rendered?.slides : null})});
 story=storyView({editor,state,notice,changed:scheduleRecovery,
-  previewSlide:node=>peek.open(node),
+  previewSlide:node=>peek.open(node), browseSlides:at=>{
+    editor.dispatch({selection:{anchor:at}}); layouts.open(null,'slide');
+  },
   askAgent:node=>agentSlide.open(node),
   enabled:()=>!demo&&!state.loading&&!state.merging&&!state.saving&&!tables.pending(),
   sourceView:from=>{
@@ -292,7 +296,7 @@ check = checkPanel({editor, isOrg, enabled: editing, format: () => state.format,
   renderedFindings: () => state.revisions.slides === state.revision && fitBase === state.bases.slides ? [...fitFindings.values()] : [],
   show: showSource, toggled: paintNotice, changed: list => rail.findings(list),
   askAgent: (slide, suggestion) => agentSlide.open(slide, suggestion)});
-const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editing, notice,
+const layouts = gallery({editor, recipes: recipeCatalogue, isOrg, enabled: editing, notice, format:()=>state.format,
   reveal: () => { if (state.layout === 'story' || state.layout === 'render') changeLayout('split'); }});
 $('notice-check').onclick = () => check.open();
 $('notice-download').onclick = () => download();
@@ -336,6 +340,7 @@ function changeEditorMode(mode) {
   refreshSpacing(); scheduleRecovery();
 }
 function refreshSpacing() {
+  $('slide-spacing').closest('label').hidden = state.format !== 'slides';
   const spacing = isOrg() ? null : slideSpacing(text(), editor.state.selection.main.head);
   $('slide-spacing').disabled = !spacing || demo || state.loading;
   $('slide-spacing').value = spacing?.active ? 'compact' : 'normal';
@@ -344,7 +349,10 @@ $('slide-spacing').onchange = () => {
   const change = slideSpacing(text(),editor.state.selection.main.head,$('slide-spacing').value === 'compact');
   if (change && !isOrg() && !state.loading) editor.dispatch({changes:change,userEvent:'input',annotations:layoutControl.of(true)});
 };
-for(const button of document.querySelectorAll('[data-editor]')) button.onclick=()=>changeEditorMode(button.dataset.editor);
+for(const button of document.querySelectorAll('[data-editor]')) button.onclick=()=>{
+  changeEditorMode(button.dataset.editor);
+  editor.focus();
+};
 $('slide-separators').onchange = () => {
   editor.dispatch({effects: slideSeparators.of($('slide-separators').checked)});
   scheduleRecovery();
@@ -501,6 +509,7 @@ function changeFormat(format) {
     $('preview-stale').hidden = true;
   }
   state.format = format;
+  refreshSpacing();
   check?.refresh();
   paintNotice();
   state.renderedRevision = state.revisions[format] ?? -1;
@@ -1174,6 +1183,7 @@ async function load(data, {acceptRevision = null} = {}) {
     // It stays whenever no other notice is showing, so a finished render keeps it.
     state.standingNotice = !state.writable && !state.session && !state.uri && !demo
       ? 'This is a scratch copy to try things in; it is not saved. To keep a deck, ask in the chat: "Show me how matsugit works" for a sample of your own, or "Turn my notes into a deck".' : '';
+    state.tourTitle = state.standingNotice && source.includes('\n## Change this title and watch the slide\n');
     notice(state.writable && !state.etag ? 'The host supplied no file version. Saving is disabled to protect concurrent edits.' : '');
     if (state.historyError) notice('History is unavailable: ' + state.historyError);
     if (state.conflict) notice('Recovered draft differs from the saved file. Both versions are retained for review.');
@@ -1438,6 +1448,19 @@ $('accept-update').onclick = async () => {
       && [document.body,$('accept-update')].includes(document.activeElement)) editor.focus();
 };
 $('notice-dismiss').onclick = () => { state.fileReceipt = null; notice(); };
+const tourEdit = document.createElement('button');
+tourEdit.id = 'tour-edit'; tourEdit.textContent = 'Edit first title'; tourEdit.hidden = true;
+$('notice-check').before(tourEdit);
+tourEdit.onclick = () => {
+  const title = 'Change this title and watch the slide', start = text().indexOf('\n## ' + title + '\n');
+  if (start >= 0 && state.tourTitle) {
+    changeLayout('split');
+    editor.dispatch({selection:{anchor:start + 4, head:start + 4 + title.length},
+      effects:EditorView.scrollIntoView(start + 4, {y:'center'})});
+    editor.focus();
+  }
+  state.tourTitle = false; paintNotice();
+};
 let sharing;
 publication = publicationStatus({call,state,hasUnsaved:()=>dirty() || tables.pending() || !!state.incomingReady,demo,painted:(label,busy)=>sharing?.painted(label,busy)});
 const delivering = delivery({call, state, text, theme:() => $('theme').value.trim(), notice, download, downloadFile, demo, reload, load, follow,

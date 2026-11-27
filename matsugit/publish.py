@@ -198,6 +198,7 @@ def setup_ci(settings, provider):
         ".matsugit-ci/sugar.py": Path(__file__).parent / "sugar.py",
         ".matsugit-ci/layout.py": Path(__file__).parent / "layout.py",
         ".matsugit-ci/document.py": Path(__file__).parent / "document.py",
+        ".matsugit-ci/reading_tables.py": Path(__file__).parent / "reading_tables.py",
         ".matsugit-ci/components.py": Path(__file__).parent / "components.py",
         ".matsugit-ci/canvas.py": Path(__file__).parent / "canvas.py",
         ".matsugit-ci/relationships.py": Path(__file__).parent / "relationships.py",

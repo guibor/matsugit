@@ -8,6 +8,17 @@ function insert(text, at, heading) {
   for (const {from,insert} of changes.reverse()) text = text.slice(0,from) + insert + text.slice(from);
   return {text,end};
 }
+test('linking selected prose is one draft edit with the caret after the link', () => {
+  for (const [label,title] of [['Evidence','Appendix'], ['Other','Decision']]) {
+    const at = source.indexOf(label), heading = source.indexOf('## '+title);
+    const {changes,end} = sectionReference(source,at,heading,label);
+    let text = source;
+    for (const {from,to=from,insert} of changes.reverse()) text = text.slice(0,from)+insert+text.slice(to);
+    assert.ok(text.slice(0,end).endsWith('['+label+'](#detail-'+title.toLowerCase()+')'));
+    assert.ok(text.includes('{#detail-'+title.toLowerCase()));
+    assert.throws(() => sectionReference(source,at,heading,'wrong selection'));
+  }
+});
 test('one draft transaction creates a numbered reference and preserves target classes', () => {
   assert.deepEqual(destinations(source).map(h=>h.label), ['Decision','Appendix','Appendix']);
   const {text,end} = insert(source, source.indexOf('here.')+5, source.indexOf('## Appendix'));

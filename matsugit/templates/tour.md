@@ -10,8 +10,8 @@ slide-section-dividers: false
 ## Change this title and watch the slide
 ### The slide on the right follows every word you type
 
-Click into this title on the left and write something of your own. There is
-nothing to drag or resize: you write the words, and the theme lays them out.
+Rename this slide **What should we try first?** in the editor on the left.
+Switch between Formatted and Markdown: the same words are already in both. No Save needed.
 
 Use Undo to take back your edits. For a deck with a file, press Save to keep
 them, or enable Save automatically under More options.
@@ -40,14 +40,14 @@ Plain text that you and the agent edit together, and that lives in Git.
 ::::
 
 ## Add a layout by picture
-### Press Add at the top, then choose Compare options
+### Open Add, choose New slide, then Compare options under Compare or decide
 
 :::: comparison
-#### Before
-A blank slide and a set of boxes to line up by hand.
+#### Small pilot
+Test the idea with one team. Learn quickly; reach fewer people.
 
-#### After
-Two clean columns, already on-brand, waiting for your words.
+#### Broad launch
+Launch to every team. Reach everyone; learn about mistakes later.
 ::::
 
 > [!TAKEAWAY]
@@ -56,7 +56,7 @@ Two clean columns, already on-brand, waiting for your words.
 ## Ask the agent for the heavy lifting
 ### Say what you want in the chat; it edits this same file
 
-- "Make the slide about layouts a timeline."
+- "On the comparison slide, change the second option to a two-team pilot."
 - "Tighten every claim to one line."
 - "Split the next slide in two."
 

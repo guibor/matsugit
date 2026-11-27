@@ -9,7 +9,7 @@ export function destinations(source, parsed = structure(source)) {
     ![...parsed.blocks,...parsed.unfinished].some(b => b.from < h.from && h.from < b.to));
 }
 
-export function sectionReference(source, at, headingFrom) {
+export function sectionReference(source, at, headingFrom, label) {
   const parsed = structure(source), targets = destinations(source, parsed);
   const h = targets.find(h => h.from === headingFrom);
   if (!h) throw Error('Choose an exported section heading.');
@@ -32,7 +32,10 @@ export function sectionReference(source, at, headingFrom) {
     .filter(m => !parsed.literals.some(r => r.from <= m.index && m.index < r.to));
   const previous = refs.find(m => m[2] === id);
   const number = previous ? previous[1] : 1 + refs.reduce((max,m) => Math.max(max, Number(m[1])),0);
-  const mark = `[\\[${number}\\]](#${id})`, changes = [{from:at, insert:mark}];
+  if (label !== undefined && (!label || /[\n\[\]\\]/.test(label) || !source.startsWith(label,at)))
+    throw Error('Select the link text again.');
+  const mark = label === undefined ? `[\\[${number}\\]](#${id})` : `[${label}](#${id})`;
+  const changes = [{from:at, to:at+(label?.length || 0), insert:mark}];
   if (!existing) changes.push(attrs ? {from:h.from + attrs.index + attrs[0].indexOf('{') + 1, insert:'#'+id+' '}
     : {from:end, insert:' {#'+id+'}'});
   return {changes:changes.sort((a,b)=>a.from-b.from), end:at + mark.length +

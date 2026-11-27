@@ -62,14 +62,30 @@ def launcher(page, frame):
     assert frame.locator('.rail-slide').count() == 7
     page.screenshot(path=str(shots / 'first-run-launcher.png'))
     # The first instruction works: edit the title, the slide follows.
-    frame.evaluate('''(() => { const e = matsugitWorkspace.editor, t = e.state.doc.toString(), at = t.indexOf('Change this title and watch the slide');
-      e.dispatch({changes: {from: at, to: at + 'Change this title and watch the slide'.length, insert: 'My first matsugit slide'}}); })()''')
+    frame.locator('#tour-edit').click()
+    assert frame.evaluate('matsugitWorkspace.editor.state.selection.main.empty') is False
+    page.keyboard.insert_text('My first matsugit slide')
     preview = lambda: frame.locator('#preview').element_handle().content_frame()
     wait(frame, '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision', 60)
     deadline = time.monotonic() + 30
     while 'My first matsugit slide' not in preview().locator('body').inner_text() and time.monotonic() < deadline:
         time.sleep(.3)
     assert 'My first matsugit slide' in preview().locator('body').inner_text()
+    frame.locator('[data-editor="raw"]').click()
+    caret = frame.evaluate('matsugitWorkspace.editor.state.selection.main.head')
+    frame.locator('[data-editor="visual"]').click()
+    assert caret == frame.evaluate('matsugitWorkspace.editor.state.selection.main.head')
+    frame.evaluate("""() => {const e = matsugitWorkspace.editor, at = e.state.doc.toString().indexOf('Test the idea');
+        e.dispatch({selection:{anchor:at,head:at+'Test the idea'.length},scrollIntoView:true});e.focus()}""")
+    frame.get_by_role('button', name='Link to heading', exact=True).click()
+    frame.locator('#reference-target').select_option(label='One file does three jobs')
+    assert '[Test the idea](#detail-one-file-does-three-jobs)' in frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
+    frame.locator('[data-layout="story"]').click()
+    frame.locator('#story-add-slide').click()
+    frame.locator('#story-browse-types').click()
+    assert frame.locator('#gallery-scope').input_value() == 'slide'
+    frame.locator('[data-recipe="comparison"]').click()
+    assert 'Compare options against the same criteria' in frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
 
 
 def no_quarto(page, frame):

@@ -52,7 +52,15 @@ function sketch(name) {
   return svg;
 }
 
-export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
+const families = [
+  ['Start a slide', ['slide','cover','section','section-deck']],
+  ['Make a point', ['statement','summary','quotation','assertion']],
+  ['Show evidence', ['evidence','table','exhibit','chart-slide','metrics','annotated']],
+  ['Compare or decide', ['comparison','decision','mapping']],
+  ['Explain a sequence or relationship', ['timeline','process','implication','d2']],
+];
+
+export function gallery({editor, recipes, isOrg, enabled, reveal, notice, format}) {
   const dialog = $('gallery-dialog'), search = $('gallery-search'), groups = $('gallery-groups'), status = $('gallery-status');
   const entries = Object.entries(recipes).filter(([, recipe]) => recipe.title).sort((a, b) => a[1].rank - b[1].rank);
   let trigger;
@@ -74,6 +82,7 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
     };
   }
   function choose(name, recipe) {
+    if (!enabled()) { status.textContent = 'Finish the current edit first.'; return; }
     const org = isOrg(), selection = editor.state.selection.main;
     let change;
     try {
@@ -100,9 +109,10 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
   function paint() {
     const terms = search.value.toLowerCase().split(/\s+/).filter(Boolean), where = target();
     groups.replaceChildren();
-    const reference = $('reference-picker');
-    reference.hidden = isOrg() || !terms.every(term => 'numbered reference link heading section appendix details footnote'.includes(term));
+    const scope = $('gallery-scope').value, reference = $('reference-picker');
+    reference.hidden = scope === 'slide' || isOrg() || !terms.every(term => 'numbered reference link heading section appendix details footnote'.includes(term));
     const picker = $('reference-target');
+    $('reference-label').textContent = trigger?.label ? 'Link selected text to' : 'Numbered section reference';
     picker.replaceChildren(new Option('Choose a section...', ''));
     if (!reference.hidden) for (const h of destinations(editor.state.doc.toString()))
       picker.add(new Option(h.label, String(h.from)));
@@ -116,7 +126,7 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
       }
       try {
         const at = trigger?.from ?? editor.state.selection.main.head;
-        const edit = sectionReference(snapshot.toString(), at, Number(picker.value));
+        const edit = sectionReference(snapshot.toString(), at, Number(picker.value), trigger?.label);
         if (trigger) edit.changes.find(c=>c.from === at).to = trigger.to;
         dialog.close(); reveal();
         editor.dispatch({changes:edit.changes, selection:{anchor:edit.end}, userEvent:'input'});
@@ -124,9 +134,15 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
       } catch (error) { status.textContent = error.message; }
     };
     let shown = 0;
-    for (const [group, heading] of [['slide', 'New slide'], ['part', 'Add to this slide']]) {
-      const cards = entries.filter(([name, recipe]) => recipe.group === group
-        && terms.every(term => `${recipe.title} ${recipe.when} ${name}`.toLowerCase().includes(term)));
+    const direct = ([name,r]) => terms.every(term => `${r.title} ${r.when} ${name}`.toLowerCase().includes(term));
+    const hasDirect = entries.some(entry => (scope === 'all' || entry[1].group === scope) && direct(entry));
+    const known = new Set(families.flatMap(([, names]) => names));
+    for (const [heading, names, group] of [...families.map(([h,n]) => [h,n,'slide']),
+        ['Other slides', entries.filter(([n,r]) => r.group === 'slide' && !known.has(n)).map(([n])=>n), 'slide'],
+        ['Add an element', null, 'part']]) {
+      if (trigger?.label || (scope !== 'all' && scope !== group)) continue;
+      const cards = entries.filter(([name, recipe]) => recipe.group === group && (!names || names.includes(name))
+        && (direct([name, recipe]) || (!hasDirect && terms.every(term => heading.toLowerCase().includes(term)))));
       if (!cards.length) continue;
       const section = document.createElement('section'), title = document.createElement('h3'), note = document.createElement('span');
       title.textContent = heading; note.textContent = where[group]; title.append(note);
@@ -146,14 +162,17 @@ export function gallery({editor, recipes, isOrg, enabled, reveal, notice}) {
     status.textContent = shown || !reference.hidden ? '' : 'Nothing matches. Try another word, or describe what you want to the AI in chat.';
   }
   search.oninput = paint;
+  $('gallery-scope').onchange = paint;
   search.onkeydown = event => {
     const cards = groups.querySelectorAll('.gallery-card');
     if (event.key === 'Enter' && cards.length === 1) { event.preventDefault(); cards[0].click(); }
     if (event.key === 'ArrowDown' && cards.length) { event.preventDefault(); cards[0].focus(); }
   };
-  return {open(range) {
+  return {open(range, scope) {
     if (!enabled()) return;
     trigger = range ? {...range,doc:editor.state.doc} : null;
+    search.hidden = $('gallery-scope').hidden = !!trigger?.label;
+    $('gallery-scope').value = scope || (range || format() === 'document' ? 'part' : 'all');
     search.value = range ? 'reference' : ''; paint(); dialog.showModal();
     (range ? $('reference-target') : search).focus();
   }};

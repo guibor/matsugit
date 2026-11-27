@@ -141,10 +141,10 @@
   <div class="incoming-actions"><button type="button" id="setup-retry">Retry</button></div>
 </dialog>
 <dialog id="gallery-dialog" aria-labelledby="gallery-title">
-  <div class="recovery-heading"><h2 id="gallery-title">Add to your deck</h2><button type="button" id="gallery-close" title="Close" aria-label="Close"></button></div>
+  <div class="recovery-heading"><h2 id="gallery-title">Insert</h2><select id="gallery-scope" aria-label="What to insert"><option value="all">Slides and elements</option><option value="slide">New slide</option><option value="part">Element</option></select><button type="button" id="gallery-close" title="Close" aria-label="Close"></button></div>
   <input id="gallery-search" type="search" placeholder="Search, for example: compare, numbers, quote" aria-label="Search layouts" autocomplete="off">
   <p id="gallery-status" role="status" aria-live="polite"></p>
-  <label id="reference-picker" hidden>Numbered section reference <select id="reference-target"></select></label>
+  <label id="reference-picker" hidden><span id="reference-label">Numbered section reference</span> <select id="reference-target"></select></label>
   <div id="gallery-groups"></div>
   <p class="gallery-hint">The text is added to your draft with placeholders to replace. Press Tab to move between them. Typing / on an empty line opens the same list.</p>
 </dialog>
@@ -184,6 +184,7 @@
     <label>Title<input id="story-new-slide-title" required autocomplete="off"></label>
     <label>Claim <span class="story-optional">(optional)</span><textarea id="story-new-claim" rows="2"></textarea></label>
     <button type="submit" class="delivery-primary">Add slide</button>
+    <button type="button" id="story-browse-types">Choose a slide type...</button>
   </form>
 </dialog>
 <dialog id="slide-agent-dialog" class="delivery-dialog" aria-labelledby="slide-agent-title">

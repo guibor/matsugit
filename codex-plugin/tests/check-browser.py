@@ -120,6 +120,12 @@ try:
         frame.evaluate('matsugitWorkspace.editor.dispatch({selection: {anchor: 0}})')
         frame.locator('#insert').click()
         assert frame.locator('#gallery-dialog').is_visible()
+        frame.locator('#gallery-scope').select_option('slide')
+        assert 'Show evidence' in frame.locator('#gallery-groups').inner_text()
+        assert not frame.locator('[data-recipe="takeaway"]').count()
+        frame.locator('#gallery-scope').select_option('part')
+        assert not frame.locator('[data-recipe="comparison"]').count()
+        frame.locator('#gallery-scope').select_option('all')
         assert frame.locator('.gallery-card').count() >= 30
         assert 'end of the deck' in frame.locator('#gallery-groups').inner_text()
         page.screenshot(path=str(shots / 'gallery.png'))
