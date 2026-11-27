@@ -29,7 +29,7 @@ def wait(frame, expression, timeout=120):
     raise AssertionError(expression + '\n' + frame.locator('#notice').inner_text())
 
 
-def session(extra_env, query, body):
+def session(extra_env, query, body, *, init_script=None):
     env = dict(os.environ, **extra_env)
     host = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')], env=env, stdout=subprocess.PIPE, text=True)
     try:
@@ -37,6 +37,8 @@ def session(extra_env, query, body):
         with sync_playwright() as p:
             browser = p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE'))
             page = browser.new_page(viewport={'width': 1440, 'height': 900})
+            if init_script:
+                page.add_init_script(init_script)
             errors = []
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(f'http://127.0.0.1:{ready["port"]}{query}')

@@ -1,5 +1,10 @@
 #+title: matsugit product requirements
 
+* Everyday editing (2026-11-27)
+Classic bold and italic shortcuts work in formatted and raw Markdown. Renaming
+a heading in Formatted preserves its ID and level. Empty table cells must keep
+their column, and applying a table edit changes the draft, not the file.
+
 * First edits and slide discovery (2026-11-27)
 The disposable first-run sample should let an author type a new title and see
 the preview change without saving. Both the Add picker and Story must offer

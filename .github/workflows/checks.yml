@@ -82,6 +82,8 @@ jobs:
           python3 -m unittest discover -s tests -p test_automatic_fit.py -v
           python3 codex-plugin/tests/layout-edit-browser.py
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/layout-edit-browser.py
+          python3 codex-plugin/tests/ordinary-edits-browser.py
+          MATSUGIT_STANDARD_MCP=1 MATSUGIT_TEST_HOST=cursor MATSUGIT_TEST_MAC_KEYS=1 python3 codex-plugin/tests/ordinary-edits-browser.py
           python3 codex-plugin/tests/export-save-browser.py
           python3 codex-plugin/tests/document-export-browser.py
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/document-export-browser.py

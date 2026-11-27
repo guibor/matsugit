@@ -1,5 +1,6 @@
-import {EditorState, StateEffect, StateField} from '@codemirror/state';
-import {Decoration, EditorView, ViewPlugin, WidgetType, showTooltip} from '@codemirror/view';
+import {EditorState, StateEffect, StateField, Prec} from '@codemirror/state';
+import {Decoration, EditorView, ViewPlugin, WidgetType, keymap, showTooltip} from '@codemirror/view';
+import {editableHeading, formatProse, headingText} from './prose-edit.mjs';
 import {syntaxTree} from '@codemirror/language';
 import {parser, GFM} from '@lezer/markdown';
 import {createElement, Bold, Italic, Link, Pencil} from 'lucide';
@@ -23,11 +24,19 @@ export function tableRanges(source, tree = md.parse(source)) {
     const rows = [];
     for (let row = node.node.firstChild; row; row = row.nextSibling) {
       if (!['TableHeader','TableRow'].includes(row.name)) continue;
+      // Lezer has no TableCell node for an empty cell. Its parsed delimiters
+      // retain those positions, without treating an escaped pipe as a column.
       const cells = [];
-      for (let cell = row.firstChild; cell; cell = cell.nextSibling) if (cell.name === 'TableCell') cells.push(source.slice(cell.from, cell.to));
+      let start = row.from;
+      for (let cell = row.firstChild; cell; cell = cell.nextSibling) if (cell.name === 'TableDelimiter') {
+        if (cell.from !== row.from) cells.push(source.slice(start, cell.from).trim());
+        start = cell.to;
+      }
+      if (start < row.to) cells.push(source.slice(start, row.to).trim());
       rows.push(cells);
     }
-    if (rows.length <= 250 && rows.reduce((sum, row) => sum + row.length, 0) <= 1000) {
+    if (rows.length <= 250 && rows.length * Math.max(...rows.map(r=>r.length),0) <= 1000) {
+      for (const row of rows) while (row.length < rows[0].length) row.push('');
       const delimiter=source.slice(node.from,node.to).split('\n')[1];
       const alignments=(delimiter.match(/:?-+:?/g) || []).map(value=>value.startsWith(':') ? value.endsWith(':')?'center':'left' : value.endsWith(':')?'right':null);
       tables.push({from:node.from, to:node.to, source:source.slice(node.from,node.to), rows, alignments, kind:'pipe'});
@@ -123,6 +132,22 @@ class Bullet extends WidgetType {
   ignoreEvent() { return false; }
 }
 
+class RenameHeading extends WidgetType {
+  toDOM(view) {
+    const button=document.createElement('button');
+    button.type='button';button.className='ff-rename-heading';
+    button.title='Rename heading (F2)';button.setAttribute('aria-label','Rename heading');
+    button.append(createElement(Pencil));
+    button.onmousedown=e=>e.preventDefault();
+    button.onclick=()=>{
+      const line=view.state.doc.lineAt(view.posAtDOM(button)), title=headingText(line);
+      if (title) view.dispatch({selection:{anchor:title.from,head:title.to}});
+      view.focus();
+    };
+    return button;
+  }
+}
+
 class ExportBoundary extends WidgetType {
   toDOM() {
     const el = document.createElement('div');
@@ -190,11 +215,21 @@ export function visualExtensions(actions) {
       if (node.from<frontmatter || ['FencedCode','CodeBlock','HTMLBlock','Image'].includes(node.name)) return false;
       if (tables.some(t=>node.from>=t.from && node.from<t.to)) return false;
       const heading=/^(?:ATX|Setext)Heading([1-6])$/.exec(node.name);
-      if (heading) decorations.push(Decoration.line({class:'ff-visual-heading ff-heading-'+heading[1]}).range(state.doc.lineAt(node.from).from));
+      if (heading) {
+        const line = state.doc.lineAt(node.from), title = headingText(line);
+        decorations.push(Decoration.line({class:'ff-visual-heading ff-heading-'+heading[1],
+          attributes:{title:'Edit title (F2 selects the heading text)'}}).range(line.from));
+        if (node.name.startsWith('ATX') && title) {
+          decorations.push(Decoration.replace({}).range(line.from,title.from));
+          if (title.to < line.to) decorations.push(Decoration.replace({}).range(title.to,line.to));
+          if (active(node)) decorations.push(Decoration.widget({widget:new RenameHeading(),side:1}).range(line.to));
+        }
+      }
       const mark={StrongEmphasis:'ff-visual-strong',Emphasis:'ff-visual-em',InlineCode:'ff-visual-code',Strikethrough:'ff-visual-strike',Link:'ff-visual-link'}[node.name];
       if (mark) decorations.push(Decoration.mark({class:mark}).range(node.from,node.to));
       if (['HeaderMark','EmphasisMark','CodeMark','StrikethroughMark','LinkMark','URL','LinkTitle'].includes(node.name)) {
         const parent=node.node.parent;
+        if (node.name==='HeaderMark' && parent.name.startsWith('ATX') && headingText(state.doc.lineAt(node.from))) return;
         // Reveal syntax only in the inline construct currently being edited.
         if (!active(parent) && (node.name!=='URL' || parent.name==='Link'))
           decorations.push(Decoration.replace({}).range(node.from,node.to));
@@ -237,14 +272,18 @@ export function visualExtensions(actions) {
       dom.setAttribute('role','toolbar'); dom.setAttribute('aria-label','Selected text');
       for (const [title, icon, mark] of [['Bold', Bold, '**'], ['Italic', Italic, '*'], ['Link to heading', Link, null]]) {
         const button = document.createElement('button'); button.type='button'; button.title=title;
+        if (mark) {
+          const key = mark==='**'?'B':'I';
+          button.title += ' ('+(/Mac|iPhone|iPad/.test(navigator.platform)?'Cmd':'Ctrl')+'+'+key+')';
+          button.setAttribute('aria-keyshortcuts','Control+'+key+' Meta+'+key);
+        }
         button.setAttribute('aria-label',title); button.append(createElement(icon));
         button.onmousedown=e=>e.preventDefault();
         button.onclick=()=>{
           if (!actions.enabled() || view.state.doc !== state.doc ||
               !view.state.selection.eq(state.selection)) return;
           if (!mark) { actions.linkHeading?.({from,to,label:selected}); return; }
-          view.dispatch({changes:{from,to,insert:mark+selected+mark},
-            selection:{anchor:to+mark.length*2},userEvent:'input.format'});
+          formatProse(view,mark);
           view.focus();
         };
         dom.append(button);
@@ -252,11 +291,26 @@ export function visualExtensions(actions) {
       return {dom};
     }}];
   });
-  return [field, selectionTools, EditorState.transactionFilter.of(tr => {
+  const bindings = ['b','i'].flatMap(key => ['Mod','Ctrl'].map(mod=>({key:mod+'-'+key,run:view=>
+    !actions.isOrg() && actions.enabled() && formatProse(view,key==='b'?'**':'*')})));
+  bindings.push({key:'F2',run:view=>{
+    if (!view.state.field(field).enabled || !actions.enabled() || actions.isOrg()) return false;
+    const line=view.state.doc.lineAt(view.state.selection.main.head),title=editableHeading(view.state,line);
+    if (!title) return false;
+    view.dispatch({selection:{anchor:title.from,head:title.to},scrollIntoView:true});return true;
+  }});
+  return [field, selectionTools, Prec.highest(keymap.of(bindings)), EditorState.transactionFilter.of(tr => {
     if (!tr.docChanged || !tr.startState.field(field).enabled || actions.isOrg()
         || tr.annotation(layoutControl) || !(tr.isUserEvent('input') || tr.isUserEvent('delete'))) return tr;
     const changes = [];
     tr.changes.iterChanges((from,to,_a,_b,insert) => changes.push({from,to,insert:insert.toString()}));
+    // Backspacing at the first letter or deleting at the last must not eat
+    // hidden syntax. Deliberate deletion of the whole heading still works.
+    for (const c of changes) {
+      const line=tr.startState.doc.lineAt(c.from), title=editableHeading(tr.startState,line);
+      if (!title || (c.from<=line.from && c.to>=line.to)) continue;
+      if (c.from<title.from || (title.to<line.to && c.to>title.to)) return [];
+    }
     if (layoutEditAllowed(tr.startState.doc.toString(), changes)) return tr;
     queueMicrotask(() => actions.onError?.('Layout boundary protected. Edit the words inside it, or switch to Markdown to change the structure.'));
     return [];

@@ -542,3 +542,5 @@ footer{justify-content:flex-end}
 .selection-tools{display:flex;gap:2px;padding:3px}
 .selection-tools button{display:grid;place-items:center;width:30px;height:28px;padding:3px}
 .selection-tools svg{width:16px;height:16px}
+.ff-rename-heading{display:inline-flex;vertical-align:middle;margin-inline-start:6px;padding:2px 4px;color:var(--muted);background:transparent;border:0}
+.ff-rename-heading svg{width:13px;height:13px}

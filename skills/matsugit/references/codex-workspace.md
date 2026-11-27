@@ -33,6 +33,12 @@ Check the connected tool schema before using these options with an older plugin.
 Org retains its native source editor. A missing source/result is an error, not
 an empty document; do not claim the viewer opened when the panel is blank.
 
+In Markdown or Formatted, **Ctrl+B / Ctrl+I** (also **Cmd+B / Cmd+I** on Mac)
+format a selected phrase or the word at the cursor. In Formatted, click a
+heading's pencil or press **F2** to select its title without its ID or level.
+Click a table cell to edit it, use Tab or Shift+Tab to move, and use
+**Ctrl+Enter / Cmd+Enter** to apply it to the draft. Save is separate.
+
 The workspace has Story, Source/Markdown, Render and Split layouts, plus independent
 Document/Slides tabs. It uses the normal matsugit renderer and project/theme
 configuration. Preview is local, uses temporary files and does not save or publish.

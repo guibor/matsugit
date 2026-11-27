@@ -1,5 +1,15 @@
 #+title: Renderer and workspace regression checks
 
+* Ordinary edits (0.36.25)
+=ordinary-edits-browser.py= drives actual editor controls in standard and
+Cursor-style hosts, using a disposable document with a stable heading ID and
+a table with an empty first cell. It checks the file was never saved.
+
+For native usability acceptance, give a first-time author these tasks without
+pointing to controls: rename a heading, italicize a word, edit a middle table
+cell and insert a comparison slide. Record the first place they hesitate in
+each native host. An automated host test cannot establish discoverability.
+
 * Layout editing and delivery (0.36.1)
 =layout-edit-browser.py= protects structural boundaries while retaining prose
 and ratio edits, and checks Raw/Formatted passage continuity in standard and

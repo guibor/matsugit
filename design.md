@@ -1,5 +1,10 @@
 # matsugit design
 
+Formatted headings retain stable decoration ranges while typing. The pencil
+selects only the heading text; change its markup in the Markdown view. Table
+widgets count parsed delimiters rather than nonempty cells so a click addresses
+the same column displayed. Apply is separate from saving the containing file.
+
 The first-run title shortcut selects real text in the disposable tour, not a
 second editor. The Visual selection toolbar edits the same draft as Markdown.
 A section link and its destination ID are one transaction. Story and Add share

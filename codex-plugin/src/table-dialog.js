@@ -113,7 +113,14 @@ export function tableDialog({editor, state, call, changed, notice, downloadFile,
   button('Undo table edit',Undo2,()=>rich.chain().focus().undo().run(),()=>rich.can().undo());
   button('Redo table edit',Redo2,()=>rich.chain().focus().redo().run(),()=>rich.can().redo());
   for(const [label,icon,mark] of [['Bold',Bold,'bold'],['Italic',Italic,'italic'],['Strikethrough',Strikethrough,'strike'],['Inline code',Code,'code']])
-    button(label,icon,()=>rich.chain().focus().toggleMark(mark).run(),null,()=>rich.isActive(mark));
+    {
+      const action=button(label,icon,()=>rich.chain().focus().toggleMark(mark).run(),null,()=>rich.isActive(mark));
+      if (['bold','italic'].includes(mark)) {
+        const key=label[0];
+        action.title=label+' ('+(/Mac|iPhone|iPad/.test(navigator.platform)?'Cmd':'Ctrl')+'+'+key+')';
+        action.setAttribute('aria-keyshortcuts','Control+'+key+' Meta+'+key);
+      }
+    }
   button('Bullet list',List,()=>rich.chain().focus().toggleBulletList().run());
   button('Edit link',Link2,()=>{
     const href=prompt('Link URL',rich.getAttributes('link').href || '');
@@ -141,6 +148,8 @@ export function tableDialog({editor, state, call, changed, notice, downloadFile,
   $('table-close').append(createElement(X));$('table-close').onclick=close;
   $('table-expand').append(createElement(Maximize2));$('table-expand').onclick=expand;
   $('table-apply').append(createElement(Check));$('table-apply').append('Apply');
+  $('table-apply').title='Apply table edits to the draft (Ctrl+Enter or Cmd+Enter)';
+  $('table-apply').setAttribute('aria-keyshortcuts','Control+Enter Meta+Enter');
   $('table-download').append(createElement(Download));$('table-download').onclick=async()=>{
     const html=rich?tableHTML(rich):current?.html;
     if(!html)return;
@@ -152,11 +161,24 @@ export function tableDialog({editor, state, call, changed, notice, downloadFile,
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
   dialog.addEventListener('keydown',event=>{
     if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close();}
+    if(!event.defaultPrevented && !event.isComposing && (event.ctrlKey||event.metaKey) && !event.shiftKey && !event.altKey) {
+      if (rich?.isEditable && $('table-content').contains(event.target) && ['b','i'].includes(event.key.toLowerCase())) {
+        event.preventDefault();event.stopPropagation();
+        rich.chain().focus().toggleMark(event.key.toLowerCase()==='b'?'bold':'italic').run();
+      }
+    }
   });
+  // Handle Apply before the rich editor interprets Mod-Enter as a new block.
+  dialog.addEventListener('keydown',event=>{
+    if (!event.isComposing && event.key==='Enter' && (event.ctrlKey||event.metaKey) && !event.altKey && !event.shiftKey) {
+      event.preventDefault();event.stopPropagation();$('table-apply').click();
+    }
+  },true);
   $('table-apply').onclick=async()=>{
     if(busy || !rich || !current)return;
     const captured=current,id=token;lock(true);message('Checking table...');
     try {
+      if (!captured.dirty && editor.state.doc.eq(captured.doc)) {clean();return;}
       const converted=await call('matsugit_table',{operation:'serialize',source:captured.range.source,format:captured.format,html:tableHTML(rich)});
       if(id!==token)return;
       if(!editor.state.doc.eq(captured.doc)) throw Error('Document changed while the table was open. Download this table draft before closing; reopen the current table to reconcile.');
