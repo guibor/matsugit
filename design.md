@@ -517,3 +517,10 @@ Preview freshness is separate from saving and from structural checks. A new
 preview frame acknowledges its own job before it counts as displayed. When
 Reveal uses its narrow scroll view, apply text patches to the cached HTML and
 mount that result: resizing must not restore Reveal's older internal snapshot.
+# Column editing
+
+In the workspace, a click on slide column whitespace identifies the slide,
+layout kind, ordered column headings and selected column. The editor checks
+the displayed revision and resolves a unique group in the Markdown before
+placing the caret. It does not search for matching bullet text, write, or
+create an undo entry. Presentation and exported slides keep their normal behavior.

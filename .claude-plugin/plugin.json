@@ -1,7 +1,7 @@
 {
   "name": "matsugit",
   "displayName": "matsugit",
-  "version": "0.36.27",
+  "version": "0.36.28",
   "description": "Write a deck like a document: one Markdown file is your slides, your reading document and your source. Opens the matsugit workspace in your browser from Claude Code.",
   "author": {
     "name": "MDF (guibor)",

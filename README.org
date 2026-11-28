@@ -42,6 +42,10 @@ bottom is your deck: click a slide to go there, and a dot marks any slide that
 needs attention. Double-click something on a slide to jump to that spot in the
 text.
 
+To add to a column, click the empty space beside its words in the slide
+preview. The editor places the caret at the end of that column; press Enter
+after a bullet to add another. Clicking alone does not change the draft.
+
 Prefer a full browser tab? Click the globe (=Open in browser=) in the toolbar.
 It opens the same file in the browser editor. Unsaved writing prompts for
 =Save and open= or =Cancel=; nothing is published.
@@ -58,7 +62,8 @@ place and selects what to type over.
 
 [[file:docs/images/codex/09-check-panel.png]]
 
-=Check= says =No problems=, =2 to fix= or =1 tip=. Each item names the slide and
+=Check draft= opens the checks; when there are findings, it shows a count
+such as =2 to fix= or =1 tip=. Each item names the slide and
 the line, explains the problem without jargon, and offers =Show=, a one-click
 fix where one is safe, and =Ask AI=. If a mistake stops the preview, a banner
 says why and the preview is marked as the last version that worked.

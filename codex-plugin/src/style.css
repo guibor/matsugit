@@ -548,3 +548,4 @@ footer{justify-content:flex-end}
 .ff-rename-heading svg{width:13px;height:13px}
 .ff-option-placeholder{text-decoration:underline dotted var(--muted);text-underline-offset:3px;cursor:text}
 .ff-option-placeholder:hover{background:var(--accent-soft);text-decoration-color:var(--accent)}
+.cm-focused.ff-visual .cm-line.ff-active-column{box-shadow:inset 2px 0 var(--accent);background-color:var(--accent-soft)}

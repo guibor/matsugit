@@ -5,6 +5,7 @@ import {syntaxTree} from '@codemirror/language';
 import {parser, GFM} from '@lezer/markdown';
 import {createElement, Bold, Italic, Link, Pencil} from 'lucide';
 import {structure} from './structure.mjs';
+import {columnGroups} from './column-targets.mjs';
 import {layoutControl, layoutEditAllowed} from './layout-edit.mjs';
 
 export const visualMode = StateEffect.define();
@@ -199,12 +200,18 @@ export function visualExtensions(actions) {
     const parsed=structure(source);
     const comparisons=parsed.blocks.filter(b=>b.role==='comparison' && b.endFrom!==undefined);
     const optionHeadings=parsed.headings.filter(h=>h.level===4 && comparisons.some(b=>b.startEnd<h.from && h.to<=b.endFrom));
-    const result={tree,source,tables,frontmatter,comparisons,optionHeadings,exportEnd:parsed.exportEnd};cache.set(state.doc,result);return result;
+    const result={tree,source,tables,frontmatter,comparisons,optionHeadings,columns:columnGroups(parsed),exportEnd:parsed.exportEnd};cache.set(state.doc,result);return result;
   };
   const build = state => {
     if (actions.isOrg()) return {decorations:Decoration.none,atomic:Decoration.none};
     const {tree,tables,frontmatter,exportEnd,comparisons}=model(state), decorations=[];
     const active = node => state.selection.ranges.some(s=>s.from<=node.to && s.to>=node.from);
+    for (const group of model(state).columns) {
+      const parts=group.parts, part=parts.find(p=>p.from<=state.selection.main.from && state.selection.main.to<p.end);
+      if (!part) continue;
+      for (let i=state.doc.lineAt(part.from).number; i<=state.doc.lineAt(part.end-1).number; i++)
+        decorations.push(Decoration.line({class:'ff-active-column'}).range(state.doc.line(i).from));
+    }
     if (exportEnd && !active(exportEnd))
       decorations.push(Decoration.replace({widget:new ExportBoundary(),block:true}).range(exportEnd.from,exportEnd.to));
     // The settings block reads as one quiet line until the cursor goes into it.

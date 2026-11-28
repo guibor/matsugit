@@ -24,6 +24,7 @@ import {createElement, SlidersHorizontal, Ellipsis, FileText, FolderOpen, Save, 
 import {previewHtml, patchedHtml} from './preview.js';
 import {slidePeek} from './slide-peek.mjs';
 import {structure, headingTargets} from './structure.mjs';
+import {columnCaret} from './column-targets.mjs';
 import {authoringExtensions, recipeCatalogue, compactMarkup, slideSeparators} from './authoring.mjs';
 import {installRoleHelp} from './role-help.mjs';
 import {delivery} from './delivery.js';
@@ -607,6 +608,14 @@ window.addEventListener('message', event => {
     check.refresh();
   }
   if (event.data.presentExit) { exitPresentation(); return; }
+  const column = event.data.editColumn;
+  if (column && !presentation && state.format==='slides' && !isOrg() && editing() &&
+      previewCurrent() && column.base===displayedBase) {
+    sourceOutline();
+    const at=columnCaret(editor.state.doc,outline,column);
+    if (at!==null) showSource(at);
+    return;
+  }
   const wanted = event.data.matsugitEdit;
   if (wanted && !presentation && wanted.heading && typeof wanted.text === 'string') {
     // Find the double-clicked words inside the slide they were shown on.

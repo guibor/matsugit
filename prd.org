@@ -6,6 +6,9 @@ lags the editor, indicate it on the preview itself. A first-time author can
 update it without saving the draft, refreshing the file, or publishing.
 
 * Editing a comparison (2026-11-28)
+Clicking blank space in an identifiable slide column must focus its own
+source even if adjacent columns repeat the same words. Preserve the caret on
+format switches. Stale or ambiguous slides must never redirect typing.
 Authors can replace sample bullets in place and double-click a formatted heading
 to rename it without changing its anchor. Entering prose between options must
 not make a previously valid comparison stop rendering.

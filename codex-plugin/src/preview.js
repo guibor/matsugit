@@ -64,11 +64,13 @@ export function patchedHtml(html, changes) {
 function navigation(format, position, token, headingKey, base, applyChanges) {
   let lastInput = 0, suppressUntil = 0, currentTarget;
   let presenting = !!position.singleSlide;
+  document.documentElement.classList.toggle('matsugit-editable-slide',format==='slides' && !presenting);
   const post = data => parent.postMessage({...data, matsugitPreview: token}, '*');
   window.addEventListener('message', event => {
     if (event.source !== parent || event.data?.matsugitPreview !== token) return;
     if (typeof event.data.presenting === 'boolean') {
       presenting = event.data.presenting;
+      document.documentElement.classList.toggle('matsugit-editable-slide',format==='slides' && !presenting);
       if (presenting) { document.body.tabIndex = -1; document.body.focus(); }
     }
     if (presenting && format === 'slides' && window.Reveal?.isReady()) {
@@ -185,6 +187,30 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
       heading: {...current, occurrence: list.filter(item => { const other = info(item); return other.key === current.key && other.level === current.level; }).indexOf(el)}}});
   });
   document.addEventListener('click', event => {
+    const cell = event.target.closest('.columns > .column,.ff-comparison > .ff-region');
+    if (cell && format==='slides' && !presenting && event.detail===1 && !event.defaultPrevented &&
+        !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey &&
+        !event.target.closest('a,button,input,textarea,select,img,svg,video,table,pre,iframe') &&
+        !window.getSelection()?.toString()) {
+      // Keep text selection and double-click editing intact. Only the free
+      // space beside or below the words acts as the click-to-edit target.
+      const range=document.createRange(), walker=document.createTreeWalker(event.target,NodeFilter.SHOW_TEXT);
+      let onText=false;
+      while (!onText && walker.nextNode()) {
+        range.selectNodeContents(walker.currentNode);
+        onText=[...range.getClientRects()].some(r=>event.clientX>=r.left && event.clientX<=r.right &&
+          event.clientY>=r.top && event.clientY<=r.bottom);
+      }
+      const section=cell.closest('section'), h=section?.querySelector('h2');
+      if (!onText && h) {
+        const cells=[...cell.parentElement.children].filter(el=>el.matches('.column,.ff-region'));
+        const key=info(h).key, occurrence=headings().filter(el=>el.tagName==='H2' && info(el).key===key).indexOf(h);
+        post({editColumn:{base,slide:key,occurrence,index:cells.indexOf(cell),
+          kind:cell.matches('.column')?'columns':'comparison',
+          keys:cells.map(el=>info(el.querySelector('h4,[role="heading"][aria-level="4"]'))?.key || '')}});
+        return;
+      }
+    }
     const anchor = event.target.closest('a');
     if (!anchor) return;
     const href = anchor.getAttribute('href') || '';
@@ -269,6 +295,7 @@ export function previewHtml(html, format, position, token = '', base = null) {
   if (format === 'slides') {
     const quiet = parsed.createElement('style');
     quiet.textContent = '.reveal .slide-number,.reveal .slide-menu-button,.reveal .progress,.reveal .footer .matsugit-document-link,.reveal .footer .folioforge-document-link{display:none!important}';
+    quiet.textContent += '@media(hover:hover){.matsugit-editable-slide :is(.columns>.column,.ff-comparison>.ff-region):hover{outline:1px solid currentColor;outline-offset:2px;cursor:text}}';
     parsed.head.append(quiet);
   }
   const bridge = parsed.createElement('script');

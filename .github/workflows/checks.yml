@@ -84,6 +84,8 @@ jobs:
           MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/layout-edit-browser.py
           python3 codex-plugin/tests/ordinary-edits-browser.py
           python3 codex-plugin/tests/preview-freshness-browser.py
+          python3 codex-plugin/tests/column-edit-browser.py
+          MATSUGIT_STANDARD_MCP=1 MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/column-edit-browser.py
           MATSUGIT_STANDARD_MCP=1 MATSUGIT_TEST_HOST=cursor python3 codex-plugin/tests/preview-freshness-browser.py
           MATSUGIT_STANDARD_MCP=1 MATSUGIT_TEST_HOST=cursor MATSUGIT_TEST_MAC_KEYS=1 python3 codex-plugin/tests/ordinary-edits-browser.py
           python3 codex-plugin/tests/export-save-browser.py
