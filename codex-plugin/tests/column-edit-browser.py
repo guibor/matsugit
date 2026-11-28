@@ -45,6 +45,11 @@ def exercise(page, frame):
         page.keyboard.press('Enter')
         page.keyboard.insert_text('Evening delivery.')
         assert frame.evaluate(draft) == original.replace('day.\n::::','day.\n- Evening delivery.\n::::'), frame.evaluate(draft)
+        helpers['wait'](frame, 'matsugitWorkspace.state.revision===matsugitWorkspace.state.renderedRevision && '
+            '!matsugitWorkspace.state.rendering && document.getElementById("preview-stale").hidden')
+        regions = frame.locator('#preview').element_handle().content_frame().locator('.ff-comparison > .ff-region')
+        assert regions.nth(0).locator('li').all_text_contents() == ['Same day.']
+        assert regions.nth(1).locator('li').all_text_contents() == ['Same day.', 'Evening delivery.']
         frame.locator('#undo').click()
         assert frame.evaluate(draft) == original
         assert Path(frame.evaluate('matsugitWorkspace.state.path')).read_text() == original
