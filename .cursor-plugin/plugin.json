@@ -1,6 +1,6 @@
 {
   "name": "matsugit",
-  "version": "0.36.28",
+  "version": "0.36.29",
   "description": "Edit Markdown and Org in an interactive document/slide workspace, then present, export or explicitly publish.",
   "author": {
     "name": "matsugit"

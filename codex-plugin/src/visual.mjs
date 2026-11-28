@@ -318,6 +318,13 @@ export function visualExtensions(actions) {
       if (!state.field(field).enabled || actions.isOrg() || state.selection.ranges.length!==1 ||
           state.doc.lineAt(sel.anchor).number!==line.number) return false;
       const title=editableHeading(state,line);
+      // At the end of a visual list, CodeMirror's visual-line End can pass
+      // the next (replaced) closing fence. Stop at the actual bullet instead.
+      if (!title && key==='End' && /^\s*(?:[-+*]|\d+[.)])\s/.test(line.text) &&
+          model(state).columns.some(g=>g.parts.some(p=>line.from>=p.from && line.to<p.end))) {
+        view.dispatch({selection:{anchor:extend?sel.anchor:line.to,head:line.to},scrollIntoView:true});
+        return true;
+      }
       if (!title) return false;
       const head=key==='Home'?title.from:title.to;
       const anchor=extend?Math.max(title.from,Math.min(title.to,sel.anchor)):head;
@@ -336,6 +343,18 @@ export function visualExtensions(actions) {
         !view.state.field(field).enabled || !actions.enabled() || actions.isOrg()) return false;
     const placeholder=event.target.closest?.('.ff-option-placeholder');
     const heading=event.detail===2 && event.target.closest?.('.ff-visual-heading');
+    const row=event.detail===1 && event.target.closest?.('.cm-line');
+    if (!placeholder && row && !event.target.closest?.('button,select,a,.ff-block-label,.ff-visual-table')) {
+      const line=view.state.doc.lineAt(view.posAtDOM(row,0));
+      if (/^\s*(?:[-+*]|\d+[.)])\s/.test(line.text) &&
+          model(view.state).columns.some(g=>g.parts.some(p=>line.from>=p.from && line.to<p.end))) {
+        const edge=view.coordsAtPos(line.to,-1);
+        if (edge && event.clientX>edge.right && event.clientY>=edge.top-2 && event.clientY<=edge.bottom+2) {
+          event.preventDefault();
+          view.dispatch({selection:{anchor:line.to}});view.focus();return true;
+        }
+      }
+    }
     if ((!placeholder && !heading) || event.target.closest?.('button')) return false;
     const pos=view.posAtDOM(placeholder || heading);
     const range=placeholder ? {from:pos,to:pos+placeholder.textContent.length} :

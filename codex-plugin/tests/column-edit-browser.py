@@ -36,6 +36,17 @@ def exercise(page, frame):
             assert frame.evaluate(caret) == pos
         frame.locator('#undo').click()
         assert frame.evaluate(draft) == original
+        # Some first-time authors go straight to the visible Delivery bullet.
+        bullet = frame.locator('.cm-line').filter(has_text='Same day.').last
+        bullet.click()
+        clicked = frame.evaluate(caret)
+        page.keyboard.press('End')
+        assert frame.evaluate(caret) == original.rindex('Same day.')+9, (width, clicked, frame.evaluate(caret))
+        page.keyboard.press('Enter')
+        page.keyboard.insert_text('Evening delivery.')
+        assert frame.evaluate(draft) == original.replace('day.\n::::','day.\n- Evening delivery.\n::::'), frame.evaluate(draft)
+        frame.locator('#undo').click()
+        assert frame.evaluate(draft) == original
         assert Path(frame.evaluate('matsugitWorkspace.state.path')).read_text() == original
     # With live preview paused, clicking the old right column must not move
     # an author who is typing into the left one.
