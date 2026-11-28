@@ -507,3 +507,8 @@ Published URLs are native new-tab links in a browser. Embedded workspaces ask th
 
 Numbered section references are ordinary Markdown links to stable explicit H2 IDs. Add inserts the reference and any missing destination ID together, without renaming headings, reordering existing labels, or changing the file until saved.
 Visual and Raw share the CodeMirror completion source and search state. The Find panel keeps advanced and replacement controls behind one disclosure.
+
+Formatted heading selection excludes the Markdown prefix and ID. Inside comparison
+blocks, sample bullet selection similarly excludes its list marker. When typing
+consumes the blank line before an existing option, the editor preserves the
+separator Pandoc needs as part of the same undoable edit. Raw mode is unchanged.

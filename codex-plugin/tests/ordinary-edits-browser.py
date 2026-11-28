@@ -16,7 +16,14 @@ def exercise(page, frame):
     draft = lambda: frame.evaluate('matsugitWorkspace.editor.state.doc.toString()')
     disk = Path(frame.evaluate('matsugitWorkspace.state.path'))
     heading = frame.locator('.cm-line.ff-heading-2').first
+    heading.dblclick()
+    page.keyboard.insert_text('Direct rename')
+    assert draft().startswith('## Direct rename {#decision}\n'), draft()
     heading.click()
+    page.keyboard.press('End')
+    page.keyboard.press('Shift+Home')
+    page.keyboard.insert_text('Keyboard rename')
+    assert draft().startswith('## Keyboard rename {#decision}\n'), draft()
     frame.get_by_role('button', name='Rename heading', exact=True).click()
     page.keyboard.type('Proposed pilot',delay=20)
     assert draft().startswith('## Proposed pilot {#decision}\n')
@@ -59,6 +66,26 @@ def exercise(page, frame):
     frame.locator('#story-browse-types').click()
     frame.get_by_role('button',name='Compare options',exact=False).click()
     assert 'Compare options against the same criteria' in draft() and disk.read_text() == original
+    frame.locator('button[data-layout="split"]').click()
+    frame.locator('button[data-format="slides"]').click()
+    example = frame.locator('.ff-option-placeholder')
+    for text in ['Small pilot', 'Limited reach', 'Full launch', 'Higher cost']:
+        example.first.click()
+        page.keyboard.insert_text(text)
+    assert '- Small pilot\n- Limited reach\n\n#### Option B\n- Full launch\n- Higher cost' in draft(), draft()
+    # The blank immediately above Option B looks like an ordinary writable line.
+    # The reported failure came from entering prose there.
+    frame.evaluate(r"""()=>{const e=matsugitWorkspace.editor,p=e.state.doc.toString().indexOf('\n#### Option B');
+        e.dispatch({selection:{anchor:p},scrollIntoView:true}); e.focus()}""")
+    page.keyboard.insert_text('Consider uncertainty.')
+    assert 'Consider uncertainty.\n\n#### Option B' in draft(), draft()
+    wait(frame, 'matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision && !matsugitWorkspace.state.rendering')
+    preview=frame.locator('#preview').element_handle().content_frame()
+    for label in ['Small pilot','Full launch','Consider uncertainty.']:
+        assert label in preview.locator('body').text_content()
+    frame.locator('#undo').click()
+    assert 'Consider uncertainty.' not in draft() and '#### Option B' in draft()
+    assert disk.read_text()==original
 
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -68,4 +95,4 @@ with tempfile.TemporaryDirectory() as tmp:
              json.dumps({'layout':'split','format':'document','editor':'visual'})}, '', exercise,
             init_script=("Object.defineProperty(navigator,'platform',{get:()=>'MacIntel'})"
                          if os.environ.get('MATSUGIT_TEST_MAC_KEYS') else None))
-print('PASS: rename a linked heading, toggle keyboard formatting, edit the right table cell, undo, add a comparison; disk unchanged.')
+print('PASS: linked heading rename, formatting, table edit, four comparison replacements, separator edit, live slides and undo; disk unchanged.')

@@ -1,5 +1,10 @@
 #+title: matsugit product requirements
 
+* Editing a comparison (2026-11-28)
+Authors can replace sample bullets in place and double-click a formatted heading
+to rename it without changing its anchor. Entering prose between options must
+not make a previously valid comparison stop rendering.
+
 * Everyday editing (2026-11-27)
 Classic bold and italic shortcuts work in formatted and raw Markdown. Renaming
 a heading in Formatted preserves its ID and level. Empty table cells must keep

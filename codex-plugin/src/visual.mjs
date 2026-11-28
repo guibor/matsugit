@@ -196,11 +196,14 @@ export function visualExtensions(actions) {
     if (old?.tree===tree) return old;
     const source=state.doc.toString(), tables=tableRanges(source,tree);
     const frontmatter=/^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source)?.[0].length || 0;
-    const result={tree,source,tables,frontmatter,exportEnd:structure(source).exportEnd};cache.set(state.doc,result);return result;
+    const parsed=structure(source);
+    const comparisons=parsed.blocks.filter(b=>b.role==='comparison' && b.endFrom!==undefined);
+    const optionHeadings=parsed.headings.filter(h=>h.level===4 && comparisons.some(b=>b.startEnd<h.from && h.to<=b.endFrom));
+    const result={tree,source,tables,frontmatter,comparisons,optionHeadings,exportEnd:parsed.exportEnd};cache.set(state.doc,result);return result;
   };
   const build = state => {
     if (actions.isOrg()) return {decorations:Decoration.none,atomic:Decoration.none};
-    const {tree,tables,frontmatter,exportEnd}=model(state), decorations=[];
+    const {tree,tables,frontmatter,exportEnd,comparisons}=model(state), decorations=[];
     const active = node => state.selection.ranges.some(s=>s.from<=node.to && s.to>=node.from);
     if (exportEnd && !active(exportEnd))
       decorations.push(Decoration.replace({widget:new ExportBoundary(),block:true}).range(exportEnd.from,exportEnd.to));
@@ -218,7 +221,7 @@ export function visualExtensions(actions) {
       if (heading) {
         const line = state.doc.lineAt(node.from), title = headingText(line);
         decorations.push(Decoration.line({class:'ff-visual-heading ff-heading-'+heading[1],
-          attributes:{title:'Edit title (F2 selects the heading text)'}}).range(line.from));
+          attributes:{title:'Double-click or press F2 to rename this heading'}}).range(line.from));
         if (node.name.startsWith('ATX') && title) {
           decorations.push(Decoration.replace({}).range(line.from,title.from));
           if (title.to < line.to) decorations.push(Decoration.replace({}).range(title.to,line.to));
@@ -226,6 +229,15 @@ export function visualExtensions(actions) {
         }
       }
       const mark={StrongEmphasis:'ff-visual-strong',Emphasis:'ff-visual-em',InlineCode:'ff-visual-code',Strikethrough:'ff-visual-strike',Link:'ff-visual-link'}[node.name];
+      if (node.name==='Paragraph' && node.node.parent?.name==='ListItem' &&
+          comparisons.some(b=>b.startEnd<node.from && node.from<b.endFrom)) {
+        // Lezer treats the closing Pandoc fence as a lazy continuation of the
+        // last list paragraph. Only the visible sample text is replaceable.
+        const end=state.doc.lineAt(node.from).to;
+        if (/^(?:Strength|Constraint)\.$/.test(state.sliceDoc(node.from,end)))
+          decorations.push(Decoration.mark({class:'ff-option-placeholder',
+            attributes:{title:'Click to replace this example'}}).range(node.from,end));
+      }
       if (mark) decorations.push(Decoration.mark({class:mark}).range(node.from,node.to));
       if (['HeaderMark','EmphasisMark','CodeMark','StrikethroughMark','LinkMark','URL','LinkTitle'].includes(node.name)) {
         const parent=node.node.parent;
@@ -293,13 +305,39 @@ export function visualExtensions(actions) {
   });
   const bindings = ['b','i'].flatMap(key => ['Mod','Ctrl'].map(mod=>({key:mod+'-'+key,run:view=>
     !actions.isOrg() && actions.enabled() && formatProse(view,key==='b'?'**':'*')})));
+  for (const key of ['Home','End']) {
+    const move=(view,extend)=>{
+      const state=view.state, sel=state.selection.main, line=state.doc.lineAt(sel.head);
+      if (!state.field(field).enabled || actions.isOrg() || state.selection.ranges.length!==1 ||
+          state.doc.lineAt(sel.anchor).number!==line.number) return false;
+      const title=editableHeading(state,line);
+      if (!title) return false;
+      const head=key==='Home'?title.from:title.to;
+      const anchor=extend?Math.max(title.from,Math.min(title.to,sel.anchor)):head;
+      view.dispatch({selection:{anchor,head},scrollIntoView:true});return true;
+    };
+    bindings.push({key,run:view=>move(view,false),shift:view=>move(view,true)});
+  }
   bindings.push({key:'F2',run:view=>{
     if (!view.state.field(field).enabled || !actions.enabled() || actions.isOrg()) return false;
     const line=view.state.doc.lineAt(view.state.selection.main.head),title=editableHeading(view.state,line);
     if (!title) return false;
     view.dispatch({selection:{anchor:title.from,head:title.to},scrollIntoView:true});return true;
   }});
-  return [field, selectionTools, Prec.highest(keymap.of(bindings)), EditorState.transactionFilter.of(tr => {
+  const pickText=EditorView.domEventHandlers({mousedown(event,view) {
+    if (event.button!==0 || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey ||
+        !view.state.field(field).enabled || !actions.enabled() || actions.isOrg()) return false;
+    const placeholder=event.target.closest?.('.ff-option-placeholder');
+    const heading=event.detail===2 && event.target.closest?.('.ff-visual-heading');
+    if ((!placeholder && !heading) || event.target.closest?.('button')) return false;
+    const pos=view.posAtDOM(placeholder || heading);
+    const range=placeholder ? {from:pos,to:pos+placeholder.textContent.length} :
+      editableHeading(view.state,view.state.doc.lineAt(pos));
+    if (!range) return false;
+    event.preventDefault();
+    view.dispatch({selection:{anchor:range.from,head:range.to}});view.focus();return true;
+  }});
+  return [field, selectionTools, Prec.highest(pickText), Prec.highest(keymap.of(bindings)), EditorState.transactionFilter.of(tr => {
     if (!tr.docChanged || !tr.startState.field(field).enabled || actions.isOrg()
         || tr.annotation(layoutControl) || !(tr.isUserEvent('input') || tr.isUserEvent('delete'))) return tr;
     const changes = [];
@@ -311,7 +349,20 @@ export function visualExtensions(actions) {
       if (!title || (c.from<=line.from && c.to>=line.to)) continue;
       if (c.from<title.from || (title.to<line.to && c.to>title.to)) return [];
     }
-    if (layoutEditAllowed(tr.startState.doc.toString(), changes)) return tr;
+    if (layoutEditAllowed(tr.startState.doc.toString(), changes)) {
+      // A blank line above the next option is editable on screen, but Pandoc
+      // needs that separator after prose. Keep it in the same undo transaction.
+      const separators=[];
+      for (const h of model(tr.startState).optionHeadings) {
+        if (changes.some(c=>c.from<=h.from && c.to>=h.to)) continue;
+        const old=tr.startState.doc.lineAt(h.from);
+        if (old.number<2 || tr.startState.doc.line(old.number-1).text.trim()) continue;
+        const line=tr.newDoc.lineAt(tr.changes.mapPos(h.from,1));
+        if (line.number>1 && /^####[ \t]/.test(line.text) && tr.newDoc.line(line.number-1).text.trim())
+          separators.push({from:line.from,insert:'\n'});
+      }
+      return separators.length ? [tr,{changes:separators,sequential:true}] : tr;
+    }
     queueMicrotask(() => actions.onError?.('Layout boundary protected. Edit the words inside it, or switch to Markdown to change the structure.'));
     return [];
   }), EditorView.atomicRanges.of(view=>view.state.field(field).atomic),
