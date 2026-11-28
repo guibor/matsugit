@@ -8,7 +8,8 @@ import time
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-READING = '---\ntitle: Reading check\nslide-layout: structured\n---\n\n## Concepts\n\nBody.\n\n### Definition\n\nDetail.\n'
+READING = ('---\ntitle: Reading check\nslide-layout: structured\n---\n\n## Concepts\n\nBody.\n\n'
+           '::: takeaway\nFirst point.\n:::\n\n::: takeaway\nSecond point.\n:::\n')
 SETTLED = '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision && document.getElementById("preview-stale").hidden'
 
 
@@ -44,6 +45,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-document-check-') as folder:
             for _ in range(2):
                 frame.locator('[data-format="slides"]').click()
                 wait(frame, '!!matsugitWorkspace.state.renderError && !matsugitWorkspace.state.rendering')
+                assert 'takeaway' in str(frame.evaluate('matsugitWorkspace.state.renderError')).lower()
                 assert chip.get_attribute('data-kind') == 'problem'
                 frame.locator('[data-format="document"]').click()
                 wait(frame, SETTLED)
