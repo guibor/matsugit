@@ -84,11 +84,11 @@ export function checkPanel({editor, isOrg, enabled, renderError, format = () => 
     const summary = checkSummary(findings);
     chip.dataset.kind = summary.problems ? 'problem' : summary.tips ? 'tip' : 'ok';
     $('check-icon').replaceChildren(createElement(summary.problems ? TriangleAlert : summary.tips ? Lightbulb : CircleCheck));
-    $('check-label').textContent = summary.label;
+    $('check-label').textContent = !findings.length ? 'Check draft' : summary.label;
     const documentMode = format() === 'document';
     panel.setAttribute('aria-label', documentMode ? 'Document check' : 'Slide check');
     chip.title = summary.problems ? 'Open issues for this view.' : summary.tips ? 'Open suggestions for this view.' : documentMode ? 'No document problems found' : 'No problems found in the slide structure';
-    $('check-summary').textContent = !findings.length ? documentMode ? 'No document problems found.' : 'No problems found. Fit is checked as slides are displayed; still review the whole deck.'
+    $('check-summary').textContent = !findings.length ? documentMode ? 'No document structure problems found.' : 'No slide structure problems found. Fit is checked as each slide appears.'
       : [summary.problems && `${summary.problems} to fix`, summary.tips && `${summary.tips} ${summary.tips === 1 ? 'tip' : 'tips'}`].filter(Boolean).join(', ');
     if (!panel.hidden) list.replaceChildren(...findings.map(item));
     changed(findings);

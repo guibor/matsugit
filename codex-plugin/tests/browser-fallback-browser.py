@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory() as directory:
         frame = page.frames[1]
         wait(frame, '!!window.matsugitWorkspace?.state.rendered && !matsugitWorkspace.state.rendering')
         assert frame.evaluate('matsugitWorkspace.state.layout') == 'split'
-        assert frame.locator('#check-label').inner_text() == 'No problems'
+        assert frame.locator('#check-label').inner_text() == 'Check draft'
 
         # Edit and save: the file on disk changes only on Save.
         frame.evaluate('''() => { const e = matsugitWorkspace.editor, at = e.state.doc.toString().indexOf('Some text.');

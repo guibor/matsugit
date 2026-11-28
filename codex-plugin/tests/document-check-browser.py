@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
 READING = '---\ntitle: Reading check\nslide-layout: structured\n---\n\n## Concepts\n\nBody.\n\n### Definition\n\nDetail.\n'
-SETTLED = '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision'
+SETTLED = '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision && document.getElementById("preview-stale").hidden'
 
 
 def wait(frame, expression):
@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix='matsugit-document-check-') as folder:
                 assert chip.get_attribute('data-kind') == 'problem'
                 frame.locator('[data-format="document"]').click()
                 wait(frame, SETTLED)
-                assert chip.inner_text().strip() == 'No problems'
+                assert chip.inner_text().strip() == 'Check draft'
                 assert frame.locator('#notice').is_hidden()
                 assert frame.locator('#preview-stale').is_hidden()
             frame.locator('#check-status').click()

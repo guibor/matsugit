@@ -512,3 +512,8 @@ Formatted heading selection excludes the Markdown prefix and ID. Inside comparis
 blocks, sample bullet selection similarly excludes its list marker. When typing
 consumes the blank line before an existing option, the editor preserves the
 separator Pandoc needs as part of the same undoable edit. Raw mode is unchanged.
+
+Preview freshness is separate from saving and from structural checks. A new
+preview frame acknowledges its own job before it counts as displayed. When
+Reveal uses its narrow scroll view, apply text patches to the cached HTML and
+mount that result: resizing must not restore Reveal's older internal snapshot.

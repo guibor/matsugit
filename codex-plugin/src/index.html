@@ -45,10 +45,10 @@
       <button data-format="document" aria-pressed="true" title="Preview as a reading document">Document</button>
       <button data-format="slides" aria-pressed="false" title="Preview as slides">Slides</button>
     </div>
-    <button id="check-status" aria-expanded="false" aria-controls="check-panel" data-kind="ok"><span id="check-icon"></span><span id="check-label">No problems</span></button>
+    <button id="check-status" aria-expanded="false" aria-controls="check-panel" data-kind="ok"><span id="check-icon"></span><span id="check-label">Check draft</span></button>
     <div class="render-actions">
       <label for="theme">Theme</label><select id="theme" aria-label="Theme"><option value="">Project default</option></select>
-      <label class="auto" title="Update the preview while you type"><input id="auto" type="checkbox" checked>Auto-update</label>
+      <label class="auto" title="Show edits in the preview as you type, without saving or sharing"><input id="auto" type="checkbox" checked>Live preview</label>
       <label class="auto" title="Keep the preview on the slide you are editing, and the editor on the slide you click"><input id="sync" type="checkbox" checked>Follow</label>
       <button id="refresh" title="Render preview" aria-label="Render preview"></button>
     </div>
@@ -107,7 +107,7 @@
     <div id="divider" role="separator" aria-label="Resize source and preview" aria-orientation="vertical" tabindex="0" aria-valuenow="50" aria-valuemin="20" aria-valuemax="80"></div>
     <section id="preview-pane" aria-label="Rendered preview">
       <iframe id="preview" title="Document preview" sandbox="allow-scripts allow-downloads" referrerpolicy="no-referrer"></iframe>
-      <div id="preview-stale" role="status" hidden>Showing the last version that worked</div>
+      <div id="preview-stale" role="status" hidden><span id="preview-message"></span> <button id="preview-update" hidden>Update preview</button></div>
       <div id="empty" aria-live="polite"><span id="empty-icon"></span><span id="empty-label">Waiting for preview</span></div>
     </section>
   </div>

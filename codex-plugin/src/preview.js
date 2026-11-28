@@ -89,6 +89,11 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
     const patch = event.data.patch;
     try {
       if (patch.base !== base) throw Error('Preview revision changed');
+      // Reveal restores its pre-scroll HTML when the pane widens. Updating
+      // only its temporary scroll DOM would silently undo the patch later.
+      if (format === 'slides' && window.Reveal?.isScrollView?.() && patch.changes.length) {
+        post({patched: patch.next, remount: true}); return;
+      }
       const slides = applyChanges(document, patch.changes);
       if (format === 'slides' && window.Reveal?.isReady()) {
         for (const slide of slides) if (slide) {
@@ -231,12 +236,12 @@ function navigation(format, position, token, headingKey, base, applyChanges) {
         }
         const indices = slide ? Reveal.getIndices(slide) : position;
         Reveal.slide(indices.h || 0, indices.v || 0);
-        post({matsugitReady: true});
+        post({matsugitReady: true, base});
       };
       if (Reveal.isReady()) restore(); else Reveal.on('ready', restore);
     };
     attach();
-  } else window.addEventListener('load', () => post({matsugitReady: true}));
+  } else window.addEventListener('load', () => post({matsugitReady: true, base}));
 }
 
 export function previewHtml(html, format, position, token = '', base = null) {

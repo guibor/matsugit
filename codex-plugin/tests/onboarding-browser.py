@@ -56,7 +56,7 @@ def launcher(page, frame):
     assert 'Change this title and watch the slide' in text
     assert frame.evaluate('matsugitWorkspace.state.format') == 'slides'
     assert frame.evaluate('matsugitWorkspace.state.layout') == 'split'
-    assert frame.locator('#check-label').inner_text() == 'No problems'
+    assert frame.locator('#check-label').inner_text() == 'Check draft'
     # A scratch copy says so, and how to get one that is kept.
     assert 'scratch copy' in frame.locator('#notice-text').inner_text()
     assert 'Show me how matsugit works' in frame.locator('#notice-text').inner_text()
@@ -97,7 +97,7 @@ def no_quarto(page, frame):
     assert 'Slides need Quarto' in notice and 'brew install --cask quarto' in notice and 'ask the agent' in notice, notice
     assert 'Executable not found' not in notice
     assert frame.locator('#notice-check').is_hidden()
-    assert frame.locator('#check-label').inner_text() == 'No problems'
+    assert frame.locator('#check-label').inner_text() == 'Check draft'
     assert frame.locator('#empty-label').inner_text() == 'Needs Quarto'
     # Check has no setup finding, so opening it must not hide the only guidance.
     frame.locator('#check-status').click()

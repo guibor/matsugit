@@ -21,7 +21,7 @@ def wait(frame, expression, timeout=180):
     raise AssertionError(expression + '\n' + frame.locator('body').inner_text()[-1500:])
 
 
-SETTLED = '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision'
+SETTLED = '!matsugitWorkspace.state.rendering && matsugitWorkspace.state.renderedRevision === matsugitWorkspace.state.revision && document.getElementById("preview-stale").hidden'
 TEXT = 'matsugitWorkspace.editor.state.doc.toString()'
 host = subprocess.Popen(['node', str(ROOT / 'codex-plugin/tests/browser-host.mjs')],
                         env=dict(os.environ, MATSUGIT_SHOWCASE_SOURCE=str(Path(__file__).with_name('product-review.md')),
@@ -46,7 +46,7 @@ try:
         assert frame.evaluate('matsugitWorkspace.state.editorMode') == 'visual'
         assert frame.locator('#insert').inner_text().strip() == 'Add'
         chip = frame.locator('#check-status')
-        assert chip.inner_text().strip() == 'No problems' and chip.get_attribute('data-kind') == 'ok'
+        assert chip.inner_text().strip() == 'Check draft' and chip.get_attribute('data-kind') == 'ok'
         assert frame.locator('#check-panel').is_hidden() and frame.locator('#preview-stale').is_hidden()
 
         def replace(text):
@@ -99,7 +99,7 @@ try:
 
         # Repairing the text clears the verdict, the banner and the stale marker.
         replace(original)
-        wait(frame, 'document.getElementById("check-label").textContent === "No problems"', 20)
+        wait(frame, 'document.getElementById("check-label").textContent === "Check draft"', 20)
         wait(frame, '!matsugitWorkspace.state.renderError && ' + SETTLED, 120)
         assert frame.locator('#preview-stale').is_hidden() and frame.locator('.check-item').count() == 0
         frame.locator('#check-close').click()
@@ -110,13 +110,13 @@ try:
         replace(original + '\n\n## Long section\n\n' + 'Detailed explanation. ' * 100)
         wait(frame, 'document.getElementById("check-label").textContent.includes("tip")', 20)
         frame.locator('[data-format="document"]').click()
-        wait(frame, 'document.getElementById("check-label").textContent === "No problems"', 20)
+        wait(frame, 'document.getElementById("check-label").textContent === "Check draft"', 20)
         wait(frame, SETTLED)
         frame.locator('[data-format="slides"]').click()
         wait(frame, 'document.getElementById("check-label").textContent.includes("tip")', 20)
         wait(frame, SETTLED)
         replace(original)
-        wait(frame, 'document.getElementById("check-label").textContent === "No problems"', 20)
+        wait(frame, 'document.getElementById("check-label").textContent === "Check draft"', 20)
         frame.evaluate('matsugitWorkspace.editor.dispatch({selection: {anchor: 0}})')
         frame.locator('#insert').click()
         assert frame.locator('#gallery-dialog').is_visible()
@@ -135,7 +135,7 @@ try:
         assert frame.locator('#gallery-dialog').is_hidden()
         text = frame.evaluate(TEXT)
         assert text.startswith(original.rstrip('\n')) and text.endswith(':::: comparison\n#### Option A\n- Strength.\n- Constraint.\n\n#### Option B\n- Strength.\n- Constraint.\n::::\n'), text[-300:]
-        assert frame.locator('#check-label').inner_text() == 'No problems'
+        assert frame.locator('#check-label').inner_text() == 'Check draft'
 
         # A part goes into the slide being edited; a second takeaway is never created.
         frame.evaluate('''() => { const e = matsugitWorkspace.editor, at = e.state.doc.toString().indexOf('Start with one customer');
@@ -154,7 +154,7 @@ try:
         frame.locator('.gallery-card[data-recipe="columns"]').click()
         selected = frame.evaluate('matsugitWorkspace.editor.state.sliceDoc(matsugitWorkspace.editor.state.selection.main.from, matsugitWorkspace.editor.state.selection.main.to)')
         assert selected == 'First column', selected
-        wait(frame, 'document.getElementById("check-label").textContent === "No problems"', 10)
+        wait(frame, 'document.getElementById("check-label").textContent === "Check draft"', 10)
 
         for width, height in [(390, 844), (760, 800)]:
             page.set_viewport_size({'width': width, 'height': height})

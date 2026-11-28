@@ -62,7 +62,7 @@ const state = {name: 'Untitled.md', base: '', etag: null, writable: false, confl
 let debounce, loadSequence = 0, previewSequence = 0, readSequence = 0, disposeUpdates, previewUrl;
 let previewToken = '', followingPreview = false, followTimer, origin = 'source', outlineRevision = -1, outline;
 let sourceInput = 0;
-let pendingPatch;
+let pendingPatch, displayedBase, frameReadyTimer, frameOverdue=false;
 let recoveryId, recoveryGeneration = 0, recoveryTimer, recoveryPending = false, recoveryPromise, recoveryCandidate;
 let restoredPosition = false;
 let presentation = null;
@@ -403,6 +403,7 @@ const connectedCall = sessionConnection({request:rawCall,
   }});
 async function call(name, args) { return connectedCall(name, args); }
 function refreshControls() {
+  paintPreviewFreshness();
   $('browser-open').disabled = !!demo || !state.path || !state.etag || state.loading || state.saving || state.merging;
   story?.refresh();
   publication?.update();
@@ -488,6 +489,21 @@ function changeLayout(layout) {
   if (!demo && !state.loading && previewVisible() && state.renderedRevision !== state.revision) render();
 }
 function previewVisible() { return state.layout !== 'source' && (state.layout !== 'story' || state.storyPreview); }
+function previewCurrent() {
+  return !!displayedBase && displayedBase === state.bases[state.format] && state.renderedRevision === state.revision;
+}
+function paintPreviewFreshness() {
+  const banner=$('preview-stale'), show=!demo && !!state.rendered?.[state.format] && !previewCurrent();
+  banner.hidden=!show;
+  if (!show) return;
+  const failed=!state.rendering && (state.renderError || state.setupIssue);
+  const paused=!state.rendering && !$('auto').checked && state.renderedRevision!==state.revision;
+  const message=failed ? "Preview couldn't update. Showing the previous version." :
+    paused ? 'Live preview is off. Your latest edits are not shown.' :
+    frameOverdue ? "Preview hasn't opened yet." : 'Updating preview. Your latest edits may not be shown yet.';
+  if ($('preview-message').textContent!==message) $('preview-message').textContent=message;
+  $('preview-update').hidden=!(paused || failed || frameOverdue);
+}
 function showPreview() {
   if (!state.rendered?.[state.format]) return;
   const frame = $('preview');
@@ -495,6 +511,10 @@ function showPreview() {
   // A real blob URL lets Reveal change fragments without navigating to the app itself.
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewToken = crypto.randomUUID();
+  displayedBase = null;
+  clearTimeout(frameReadyTimer); frameOverdue=false;
+  frameReadyTimer=setTimeout(()=>{frameOverdue=true;paintPreviewFreshness();},15000);
+  paintPreviewFreshness();
   previewUrl = URL.createObjectURL(new Blob([previewHtml(state.rendered[state.format], state.format, state.positions[state.format], previewToken, state.bases[state.format])], {type: 'text/html'}));
   frame.src = previewUrl + state.positions[state.format].hash;
   frame.title = state.format === 'slides' ? 'Slide preview' : 'Document preview';
@@ -602,9 +622,15 @@ window.addEventListener('message', event => {
     return;
   }
   if (event.data.patched && pendingPatch?.id === event.data.patched) {
-    pendingPatch.finish(event.data.patchError); pendingPatch = null;
+    pendingPatch.finish(event.data.patchError, event.data.remount === true); pendingPatch = null;
   }
-  if (event.data.matsugitReady) { if (!restoredPosition) followSource(); restoredPosition = false; presentationMessage(); }
+  if (event.data.matsugitReady) {
+    if (event.data.base && event.data.base === state.bases[state.format]) {
+      displayedBase=event.data.base; clearTimeout(frameReadyTimer); frameOverdue=false;
+    }
+    paintPreviewFreshness(); updateModelContext();
+    if (!restoredPosition) followSource(); restoredPosition = false; presentationMessage();
+  }
   if (['slides', 'document'].includes(event.data?.matsugitFormat)) changeFormat(event.data.matsugitFormat);
   const position = event.data?.matsugitPosition;
   if (position && ['slides', 'document'].includes(position.format)
@@ -680,14 +706,15 @@ async function render(manual = true) {
     }
     if (current()) {
       const result = parts.join('');
+      let remount = job.kind !== 'patch';
       if (job.kind === 'patch') {
         try {
           if (job.base !== state.bases[format]) throw Error('Preview base expired');
           const {changes} = JSON.parse(result);
           const updated = patchedHtml(state.rendered[format], changes);
-          await new Promise((resolve, reject) => {
+          remount = displayedBase !== job.base || await new Promise((resolve, reject) => {
             const timer = setTimeout(() => { pendingPatch = null; reject(Error('Preview did not acknowledge update')); }, 3000);
-            pendingPatch = {id: job.job, finish: error => { clearTimeout(timer); error ? reject(Error(error)) : resolve(); }};
+            pendingPatch = {id: job.job, finish: (error, replace) => { clearTimeout(timer); error ? reject(Error(error)) : resolve(replace); }};
             $('preview').contentWindow.postMessage({matsugitPreview: previewToken,
               patch: {base: job.base, next: job.job, changes}}, '*');
           });
@@ -695,6 +722,7 @@ async function render(manual = true) {
           // now has this base. Retain it so the next patch uses the correct DOM.
           if (sequence !== previewSequence || format !== state.format) return;
           state.rendered[format] = updated;
+          if (!remount) displayedBase=job.job;
         } catch (error) {
           if (sequence === previewSequence) { state.forceFull = true; state.pendingRender = true; }
           return;
@@ -706,7 +734,7 @@ async function render(manual = true) {
       state.bases[format] = job.job; state.revisions[format] = revision;
       state.renderedRevision = revision;
       state.lastRefresh = {kind: job.kind, changed: job.changed, format};
-      if (job.kind !== 'patch') showPreview();
+      if (remount) showPreview();
       state.resolvedTheme = job.theme;
       state.resolvedThemeInfo = job.themeInfo;
       if (job.themeInfo) $('theme').title = `Rendered theme: ${job.themeInfo.name}; ${job.themeInfo.origin}: ${job.themeInfo.path}`;
@@ -714,7 +742,7 @@ async function render(manual = true) {
         themeCatalog.default = job.theme;
         updateThemePicker($('theme'), themeCatalog);
       }
-      state.setupIssue = false; state.renderError = null; $('preview-stale').hidden = true; check.refresh();
+      state.setupIssue = false; state.renderError = null; paintPreviewFreshness(); check.refresh();
       if (!state.conflict) notice();
       completed = true;
     }
@@ -1110,6 +1138,7 @@ async function load(data, {acceptRevision = null} = {}) {
   editor.dispatch({effects: editability.reconfigure(editable(false))});
   origin = 'source'; outlineRevision = -1;
   clearTimeout(debounce); previewSequence++; state.rendering = false;
+  clearTimeout(frameReadyTimer); frameOverdue=false; displayedBase=null; previewToken='';
   disposeUpdates?.(); disposeUpdates = null;
   if (state.uri) extensions.resources?.unsubscribe({uri: state.uri}).catch(() => {});
   Object.assign(state, {uri: data.file?.resourceUri || null, session: data.session || null,
@@ -1393,7 +1422,7 @@ function updateModelContext() {
   // Explicit slide AI requests send their own context and remain available.
   const structuredContent = {
     file: state.name, layout: state.layout, format: state.format, dirty: dirty(), revision: state.revision,
-    conflict: state.conflict, previewCurrent: state.renderedRevision === state.revision,
+    conflict: state.conflict, previewCurrent: previewCurrent(),
   };
   const next = JSON.stringify(structuredContent);
   if (next === lastModelContext) return;
@@ -1498,7 +1527,12 @@ $('find-draft').onclick = () => {
   openSearchPanel(editor);
 };
 $('undo').onclick = () => undo(editor); $('redo').onclick = () => redo(editor);
-$('refresh').onclick = event => refresh(event.shiftKey); $('auto').onchange = () => { scheduleRender(); scheduleRecovery(); };
+$('refresh').onclick = event => refresh(event.shiftKey);
+$('preview-update').onclick = () => {
+  if (frameOverdue && state.renderedRevision===state.revision) showPreview();
+  else render();
+};
+$('auto').onchange = () => { paintPreviewFreshness(); scheduleRender(); scheduleRecovery(); };
 $('sync').onchange = () => { if ($('sync').checked) { origin = 'source'; followSource(); } scheduleRecovery(); };
 $('theme').onchange = () => { state.revision++; refreshControls(); scheduleRender(); scheduleRecovery(); };
 $('reload').onclick = () => incomingDocument ? reviewIncoming() : state.conflict ? reviewForSave() : reviewAllChanges();
